@@ -1,0 +1,36 @@
+# LMARS energy-flux stability test: 2-D Cartesian, x1 vertical, x2 horizontal periodic.
+# Dry H2-He ideal gas, isothermal T0 = 100 K, g = 8.87 m/s^2, no rotation.
+# run_arm.py overrides riemann-solver/type and the x2 size (nx2, x2max) per arm.
+geometry:
+  type: cartesian
+  bounds: {x1min: 0., x1max: 450000.0, x2min: 0., x2max: 320000.0, x3min: 0., x3max: 1.}
+  cells: {nx1: 100, nx2: 64, nx3: 1, nghost: 3}
+dynamics:
+  equation-of-state:
+    type: ideal-gas
+    gammad: 1.4                    # cv = 2.5 R (H2-He)
+    weight: 2.3e-3                 # kg/mol, R = Rgas/weight = 3615 J/(kg K)
+    density-floor: 1.0e-12
+    pressure-floor: 1.0e-12
+    temperature-floor: 1.0e-6
+    limiter: true
+  reconstruct:
+    vertical: {type: weno5, scale: true, shock: false}
+    horizontal: {type: weno5, scale: true, shock: false}
+  riemann-solver: {type: lmars}
+boundary-condition:
+  external:
+    x1-inner: reflecting
+    x1-outer: reflecting
+    x2-inner: periodic
+    x2-outer: periodic
+    x3-inner: periodic
+    x3-outer: periodic
+integration: {type: rk3, cfl: 0.3, implicit-scheme: 9, nlim: -1, tlim: 259200.0}
+forcing:
+  const-gravity: {grav1: -8.87}
+problem:
+  T0: 100.0         # K
+  Ps: 1.0e+6         # Pa, bottom-cell pressure before balance_column
+  noise_T: 1.0e-6   # K, std of Gaussian white noise in T (p held fixed)
+  seed: 20261025

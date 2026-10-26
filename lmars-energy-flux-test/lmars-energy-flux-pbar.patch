@@ -1,0 +1,24 @@
+diff --git a/src/riemann/lmars_impl.h b/src/riemann/lmars_impl.h
+index 144d144..7206ee4 100644
+--- a/src/riemann/lmars_impl.h
++++ b/src/riemann/lmars_impl.h
+@@ -58,7 +58,8 @@ void DISPATCH_MACRO lmars_impl(T *flx, T *wl, T *wr, T hl, T hr, T gammal,
+     FLX(ivx) = ubar * wli[IDN] * wli[IVX] + pbar;
+     FLX(ivy) = ubar * wli[IDN] * wli[IVY];
+     FLX(ivz) = ubar * wli[IDN] * wli[IVZ];
+-    FLX(IPR) = ubar * wli[IDN] * hl;
++    // break test: pressure work u* pbar instead of u* p_upwind
++    FLX(IPR) = ubar * (wli[IDN] * hl - wli[IPR] + pbar);
+   } else {
+     // Right side flux
+     for (int n = 0; n < ny; n++) {
+@@ -73,7 +74,8 @@ void DISPATCH_MACRO lmars_impl(T *flx, T *wl, T *wr, T hl, T hr, T gammal,
+     FLX(ivx) = ubar * wri[IDN] * wri[IVX] + pbar;
+     FLX(ivy) = ubar * wri[IDN] * wri[IVY];
+     FLX(ivz) = ubar * wri[IDN] * wri[IVZ];
+-    FLX(IPR) = ubar * wri[IDN] * hr;
++    // break test: pressure work u* pbar instead of u* p_upwind
++    FLX(IPR) = ubar * (wri[IDN] * hr - wri[IPR] + pbar);
+   }
+ }
+ 
