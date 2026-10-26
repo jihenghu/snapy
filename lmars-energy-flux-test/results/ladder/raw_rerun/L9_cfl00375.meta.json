@@ -18,5 +18,12 @@
  "z_mid": 227250.0,
  "snapy_file": "/data2/ai_workspace/worker1/lmft/site-main/snapy/__init__.py",
  "torch": "2.10.0+cu128",
- "flux_covariance": "default(on)"
+ "flux_covariance": "default(on)",
+ "resumed_from_t": 220320.15407407557,
+ "resumed_from_n": 1305947,
+ "status": "ok",
+ "steps": 1536408,
+ "redos": 0,
+ "t_end": 259200.0,
+ "wall_s": 5106.839093208313
 }

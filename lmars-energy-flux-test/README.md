@@ -159,3 +159,44 @@ Status of this commit: the completed arms and the g = 0 control are final. The f
 (L9/L1 at cfl 0.075 and 0.0375) were killed at 04:35 EDT on 2026-10-26, together with the agent
 session that launched them. Their partial logs are in `results/ladder/raw/`, marked "killed". They
 are being rerun. Tables: `results/ladder/ladder_results_partial.md`, `results/ladder/g0_results.md`.
+
+### Final dt-ladder results (all 8 arms done; supersedes the "in progress" status above)
+
+The four small-cfl arms were rerun from scratch with checkpoints every 0.05 d (`run_ladder_resume.sh`).
+They were resumed bitwise after each sandbox teardown. The reruns match the killed runs bitwise on
+every overlapping row, and an uninterrupted control run matches a SIGKILL + `--resume` run bitwise.
+Tables: `results/ladder/ladder_results.md` (per arm, rms w every 0.1 d) and `results/ladder/dt_extrap.md`.
+Figure: `results/ladder/ladder_rms_w.png`. Logs: `results/ladder/raw_rerun/`.
+
+| arm | scheme | dt (s) | u dt/dx | cs dt/dz | rate (/day) | fit window (d), R^2 | e-fold (h) | k (lambda) | t(max abs w = 50) |
+|---|---|---|---|---|---|---|---|---|---|
+| b | 9 | 1.350 | 0.108 | 0.213 | 16.06 +- 0.13 | band 0.19-0.63, 0.997 | 1.49 | 6 (10.7 dx) | 0.98 d |
+| i | 9 | 0.675 | 0.054 | 0.107 | 6.53 +- 0.06 | band 0.50-1.59, 0.992 | 3.68 | 5 (12.8 dx) | 2.53 d |
+| L9_cfl0075 | 9 | 0.337 | 0.027 | 0.053 | no clean exp. (band 2.77, R^2 0.963); late 2.98, upper bound 3.17 | late 2.00-3.00 | ~8 | 4 (16 dx) | not reached (max 5.1e-2) |
+| L9_cfl00375 | 9 | 0.169 | 0.0135 | 0.027 | no clean exp.; late 1.03, upper bound 1.19 | late 2.00-3.00 | ~23 | 4 (16 dx) | not reached (max 6.3e-4) |
+| h | 1 | 1.350 | 0.108 | 0.213 | 12.53 +- 0.07 | band 0.33-0.89, 0.998 | 1.92 | 6 (10.7 dx) | 1.39 d |
+| L1_cfl015 | 1 | 0.675 | 0.054 | 0.107 | 5.42 +- 0.08 | band 0.82-2.05, 0.977 | 4.43 | 5 (12.8 dx) | 2.93 d |
+| L1_cfl0075 | 1 | 0.337 | 0.027 | 0.053 | no clean exp. (band 2.03, R^2 0.825); late 2.33, upper bound 2.57 | late 2.00-3.00 | ~10 | 4 (16 dx) | not reached (max 4.3e-3) |
+| L1_cfl00375 | 1 | 0.169 | 0.0135 | 0.027 | no clean exp.; late 0.76, upper bound 0.93 | late 2.00-3.00 | ~32 | 4 (16 dx) | not reached (max 1.9e-4) |
+| G0 (g = 0) | 9 | 1.350 | 0.108 | 0.213 | none: rms w 4e-13 -> 1.2e-12 over 3 d | - | - | - | - |
+
+"band" = least-squares fit of ln(rms w) while rms w goes from 1e-4 to 1e-1 m/s. "late" = fit over the
+last day; its upper bound is slope + 2 se. The early stop on a clean fit was not used.
+
+Rate against dt (`python dt_extrap.py results/ladder/ladder_summary.json`). The band rate is used where
+it is clean, otherwise the late slope:
+
+- scheme 9: power law sigma = C dt^p with p = 1.28 +- 0.04 (local orders 1.30, 1.13, 1.54);
+  quadratic extrapolation sigma(dt -> 0) = -0.41 +- 0.31 /day; linear -1.28 +- 0.53 /day (poor fit,
+  chi2/dof 41).
+- scheme 1: p = 1.23 +- 0.03 (local orders 1.21, 1.22, 1.63); quadratic sigma(0) = -0.65 +- 0.14 /day;
+  linear -1.05 +- 0.22 /day.
+
+The rate falls with dt at an apparent order of about 1.2-1.3, and no fit gives a positive dt -> 0 limit.
+The quadratic extrapolations bound sigma(0) below +0.2 /day (scheme 9, 2 sigma) and below 0 (scheme 1).
+Hypothesis: the growth is a time-integration / splitting error of the vertically implicit step and goes
+to zero as dt -> 0, not a spatial or physical mode. This is consistent with explicit vertical stepping
+staying flat and with the g = 0 control staying flat. Caveat: at cfl 0.075 and 0.0375 the growth is not
+a clean exponential and was still accelerating at 3 d. Those rates are late-window slopes, and the
+asymptotic rate at those dt could be somewhat higher. For reference, the g = 0 control's late slope
+(0.23 /day) shows the detection floor of this measure.
