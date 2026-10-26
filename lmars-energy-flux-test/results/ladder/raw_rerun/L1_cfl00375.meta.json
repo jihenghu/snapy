@@ -1,0 +1,22 @@
+{
+ "solver": "lmars",
+ "u": 400.0,
+ "implicit": 1,
+ "cfl": 0.0375,
+ "dx": 5000.0,
+ "nx2": 64,
+ "nx1": 100,
+ "dz": 4500.0,
+ "g": 8.87,
+ "Rd": 3614.9837470231478,
+ "T0": 100.0,
+ "Ps": 1000000.0,
+ "noise_T": 1e-06,
+ "seed": 20261025,
+ "balance_residual": 5.2668490824075866e-11,
+ "balance_sweeps": 24,
+ "z_mid": 227250.0,
+ "snapy_file": "/data2/ai_workspace/worker1/lmft/site-main/snapy/__init__.py",
+ "torch": "2.10.0+cu128",
+ "flux_covariance": "default(on)"
+}
