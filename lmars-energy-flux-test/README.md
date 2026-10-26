@@ -127,3 +127,35 @@ The patched and unpatched `libsnap_release.so` have different md5s.
    horizontal wind gives a time-step-dependent instability at about 10 dx, independent of
    the Riemann solver. I did not run the u and dx sweeps that would show its scaling.
    Those are in the other leg's 24 arms.
+
+## Follow-up: dt ladder, g = 0 control, implicit code read (in progress)
+
+This follow-up uses the same deck, driver and builds (main 721a565). It adds new arms at dx = 5 km and
+u = 400 m/s with the same noise and seed:
+
+- dt ladder: cfl 0.3 / 0.15 / 0.075 / 0.0375 with implicit-scheme 9 and 1. Reused from above, with an
+  identical setup (the decks differ only in cfl or implicit-scheme): `b_lmars_u400` (scheme 9,
+  cfl 0.3), `i_lmars_u400_cfl015` (scheme 9, cfl 0.15) and `h_lmars_u400_impl1` (scheme 1, cfl 0.3).
+- g = 0 control `G0_u400_grav0`: `--grav0` sets grav1 = 0 and starts from a uniform column (p = 1e6 Pa,
+  T = 100 K, rho = p/(R T)) with no balance step. A uniform state is an exact rest state at g = 0.
+  The T noise is the same: 1e-6 K at fixed p, seed 20261025.
+- Code read of `src/implicit/` at 721a5654ad3cf48543226a76ef8b0be6ad1fc7ad: `CODE_READ_implicit.md`.
+
+Commands:
+
+```bash
+$T/run_ladder.sh site-main runs        # L9_cfl0075 L9_cfl00375 L1_cfl015 L1_cfl0075 L1_cfl00375 G0_u400_grav0
+python $T/ladder_fit.py --scheme9 runs/b_lmars_u400 runs/i_lmars_u400_cfl015 runs/L9_cfl0075 runs/L9_cfl00375 \
+    --scheme1 runs/h_lmars_u400_impl1 runs/L1_cfl015 runs/L1_cfl0075 runs/L1_cfl00375 \
+    --extra runs/G0_u400_grav0 > ladder_results.md
+python $T/analyze.py runs/G0_u400_grav0 > g0_results.md
+```
+
+`ladder_fit.py` fits ln(rms w) over the amplitude band rms w in [1e-4, 1e-1] m/s. It reports dt
+(the median logged step), u dt/dx, cs dt/dz (cs = 711.4 m/s), the e-folding time, k and wavelength
+(FFT of mid-height w at the band end), and t(max|w| >= 50). It also fits sigma = s0 + A dt per scheme.
+
+Status of this commit: the completed arms and the g = 0 control are final. The four small-cfl arms
+(L9/L1 at cfl 0.075 and 0.0375) were killed at 04:35 EDT on 2026-10-26, together with the agent
+session that launched them. Their partial logs are in `results/ladder/raw/`, marked "killed". They
+are being rerun. Tables: `results/ladder/ladder_results_partial.md`, `results/ladder/g0_results.md`.

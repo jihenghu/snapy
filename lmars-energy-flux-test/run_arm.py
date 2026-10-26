@@ -8,7 +8,7 @@ rms/max |w| and the mid-height w(x2) row every --dt-log seconds.
 
 usage: run_arm.py --solver lmars --u 400 --dx 5e3 --nx2 64 --out runs/b
 """
-import argparse, json, math, os, sys, time
+import argparse, json, math, os, signal, sys, time
 
 import numpy as np
 import torch
@@ -29,6 +29,8 @@ def main():
     ap.add_argument("--noise", type=float, default=None, help="override noise_T (K)")
     ap.add_argument("--implicit", type=int, default=None, help="override implicit-scheme (0 = explicit)")
     ap.add_argument("--cfl", type=float, default=None, help="override integration/cfl")
+    ap.add_argument("--grav0", action="store_true",
+                    help="g = 0 control: grav1 = 0, uniform p = Ps and T = T0, no balance step")
     ap.add_argument("--threads", type=int, default=4)
     ap.add_argument("--deck", default=os.path.join(HERE, "deck.yaml"))
     ap.add_argument("--out", required=True)
@@ -47,6 +49,8 @@ def main():
         cfg["integration"]["implicit-scheme"] = a.implicit
     if a.cfl is not None:
         cfg["integration"]["cfl"] = a.cfl
+    if a.grav0:
+        cfg["forcing"]["const-gravity"]["grav1"] = 0.0
     prob = cfg.pop("problem")
     noise = prob["noise_T"] if a.noise is None else a.noise
     deck = os.path.join(a.out, "deck.yaml")
@@ -69,8 +73,11 @@ def main():
     col = torch.zeros(kIPR + 1, 1, 1, nz, dtype=torch.float64)
     col[kIDN, 0, 0] = p / (rd * T0)
     col[kIPR, 0, 0] = p
-    wb, resid, sweeps = snapy.balance_column(
-        col, torch.full((nz,), dz, dtype=torch.float64), g)
+    if g > 0.:
+        wb, resid, sweeps = snapy.balance_column(
+            col, torch.full((nz,), dz, dtype=torch.float64), g)
+    else:  # g = 0: the uniform state is an exact rest state, nothing to balance
+        wb, resid, sweeps = col, 0.0, 0
 
     w = dict(block.named_buffers())["hydro.D"].clone().zero_()
     for c in (kIDN, kIPR):
@@ -115,7 +122,11 @@ def main():
     log.write(json.dumps(diag(t)) + "\n")
     next_log = a.dt_log
     status = "ok"
+    stop = {"flag": False}
+    signal.signal(signal.SIGTERM, lambda *_: stop.__setitem__("flag", True))
     while t < tlim:
+        if stop["flag"]:
+            status = "stopped early (SIGTERM)"; break
         dt = min(block.max_time_step(bvars), tlim - t)
         for s in range(nstage):
             block.forward(bvars, dt, s)
