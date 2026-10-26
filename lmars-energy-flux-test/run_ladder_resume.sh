@@ -9,6 +9,8 @@ mkdir -p "$O"
 export CUDA_VISIBLE_DEVICES=
 run() { name=$1; shift
   if [ -f "$O/$name/meta.json" ] && grep -q '"status"' "$O/$name/meta.json"; then echo "$name finished"; return; fi
+  # never start a second writer for an arm that is still running
+  if ps -eo args | grep -v grep | grep -q -- "run_arm.py --out $O/$name "; then echo "$name already running"; return; fi
   PYTHONPATH=$M setsid nohup python "$K/run_arm.py" --out "$O/$name" --resume --ckpt-dt 4320 "$@" >> "$O/$name.out" 2>&1 < /dev/null &
   echo "$name $!"; }
 run L9_cfl0075   --solver lmars --u 400 --implicit 9 --cfl 0.075
