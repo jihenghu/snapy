@@ -15,6 +15,7 @@ the log-log slope of sigma vs dt (apparent order if s0 = 0).
 import argparse, json, math, os
 import numpy as np
 
+LATE = 86400.
 CS = math.sqrt(1.4 * 8.31446261815324 / 2.3e-3 * 100.)  # 711.4 m/s
 
 
@@ -38,6 +39,16 @@ def arm(d, lo, hi):
                status=meta.get("status", "running"), t_end_d=float(t[-1] / 86400))
     j = np.where(mw >= 50.)[0]
     out["t50_d"] = float(t[j[0]] / 86400) if len(j) else None
+    # late slope: ln(rms w) over the last --late-s seconds (upper bound = slope + 2 se)
+    m = (t >= t[-1] - LATE) & (rw > 0)
+    if m.sum() > 5:
+        tl, yl = t[m], np.log(rw[m])
+        Al = np.vstack([tl, np.ones_like(tl)]).T
+        cl, *_ = np.linalg.lstsq(Al, yl, rcond=None)
+        s2l = ((yl - Al @ cl) ** 2).sum() / max(len(tl) - 2, 1)
+        sel = math.sqrt(s2l / ((tl - tl.mean()) ** 2).sum())
+        out.update(late_rate=cl[0] * 86400, late_ub=(cl[0] + 2 * sel) * 86400,
+                   late_win=[float(tl[0] / 86400), float(tl[-1] / 86400)])
     if i0 is None or i1 - i0 < 5:
         out.update(rate=None)
         return out, rows
@@ -56,8 +67,8 @@ def arm(d, lo, hi):
     return out, rows
 
 
-def fit_dt(arms):
-    a = [x for x in arms if x.get("rate")]
+def fit_dt(arms, min_r2=0.97, min_efolds=3.0):
+    a = [x for x in arms if x.get("rate") and x["r2"] >= min_r2 and x["efolds"] >= min_efolds]
     if len(a) < 2:
         return None
     dt = np.array([x["dt"] for x in a]); s = np.array([x["rate"] for x in a])
@@ -87,7 +98,11 @@ def main():
     ap.add_argument("--hi", type=float, default=1e-1)
     ap.add_argument("--every", type=float, default=8640.)
     ap.add_argument("--json", default="ladder_summary.json")
+    ap.add_argument("--min-r2", type=float, default=0.97, help="band fits used in the dt fit")
+    ap.add_argument("--late-s", type=float, default=86400., help="late-slope window, s")
     a = ap.parse_args()
+    global LATE
+    LATE = a.late_s
     allarms, fits, tables = [], {}, []
     print(f"Growth fits on the amplitude band rms w in [{a.lo:g}, {a.hi:g}] m/s; cs = {CS:.1f} m/s.\n")
     print("| arm | scheme | cfl | dt (s) | u dt/dx | cs dt/dz | rate (/day) | +- | R^2 | window (d) | e-folds | e-fold time (h) | k | lambda (dx) | t(max abs w >= 50) (d) | status |")
@@ -105,8 +120,14 @@ def main():
                 print(f"| {x['run']} | {x['scheme']} | {x['cfl']} | {x['dt']:.4f} | {x['c_h']:.4f} | {x['c_v']:.4f} | "
                       f"no band crossing | | | | | | | | {('%.3f' % x['t50_d']) if x['t50_d'] is not None else '-'} | {x['status']} (t_end {x['t_end_d']:.2f} d) |")
         if grp != "extra":
-            fits[grp] = fit_dt(arms)
+            fits[grp] = fit_dt(arms, a.min_r2)
     print()
+    print(f"Late slope (last {a.late_s/86400:g} d of each run; upper bound = slope + 2 se):\n")
+    for x in allarms:
+        if "late_rate" in x:
+            print(f"- {x['run']}: {x['late_rate']:.3f} /day, upper bound {x['late_ub']:.3f} /day on "
+                  f"[{x['late_win'][0]:.2f}, {x['late_win'][1]:.2f}] d")
+    print(f"\nrate-vs-dt fits use band fits with R^2 >= {a.min_r2} and >= 3 e-folds only.\n")
     for g, f in fits.items():
         if not f:
             continue

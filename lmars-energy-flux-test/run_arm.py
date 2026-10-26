@@ -31,6 +31,10 @@ def main():
     ap.add_argument("--cfl", type=float, default=None, help="override integration/cfl")
     ap.add_argument("--grav0", action="store_true",
                     help="g = 0 control: grav1 = 0, uniform p = Ps and T = T0, no balance step")
+    ap.add_argument("--ckpt-dt", type=float, default=4320.0,
+                    help="model seconds between checkpoints (written on a log row)")
+    ap.add_argument("--resume", action="store_true",
+                    help="continue from <out>/ckpt.pt if present (log truncated to the checkpoint)")
     ap.add_argument("--threads", type=int, default=4)
     ap.add_argument("--deck", default=os.path.join(HERE, "deck.yaml"))
     ap.add_argument("--out", required=True)
@@ -118,9 +122,29 @@ def main():
 
     tlim = a.days * 86400.
     t, n, redo_n, wall0 = 0.0, 0, 0, time.time()
-    log = open(os.path.join(a.out, "log.jsonl"), "w")
-    log.write(json.dumps(diag(t)) + "\n")
+    ckpt = os.path.join(a.out, "ckpt.pt")
+    logp = os.path.join(a.out, "log.jsonl")
     next_log = a.dt_log
+    if a.resume and os.path.exists(ckpt):
+        c = torch.load(ckpt)
+        for k, v in c["vars"].items():
+            bvars[k].copy_(v)
+        t, n, next_log = c["t"], c["n"], c["next_log"]
+        for _ in range(n):
+            block.inc_cycle()
+        keep = [l for l in open(logp) if json.loads(l)["t"] <= t + 1e-9]
+        log = open(logp, "w"); log.writelines(keep); log.flush()
+        meta.update(resumed_from_t=t, resumed_from_n=n)
+    else:
+        log = open(logp, "w")
+        log.write(json.dumps(diag(t)) + "\n")
+    next_ckpt = (math.floor(t / a.ckpt_dt) + 1) * a.ckpt_dt
+
+    def save_ckpt():
+        tmp = ckpt + ".tmp"
+        torch.save(dict(vars={k: v.clone() for k, v in bvars.items()}, t=t, n=n,
+                        next_log=next_log), tmp)
+        os.replace(tmp, ckpt)
     status = "ok"
     stop = {"flag": False}
     signal.signal(signal.SIGTERM, lambda *_: stop.__setitem__("flag", True))
@@ -147,6 +171,9 @@ def main():
             d = diag(t); d["n"] = n; d["dt"] = dt
             log.write(json.dumps(d) + "\n"); log.flush()
             next_log += a.dt_log
+            if t >= next_ckpt - 1e-9:
+                save_ckpt()
+                next_ckpt += a.ckpt_dt
             if d["max_w"] > 50.:
                 status = "blew up (max|w|>50)"; break
     meta.update(status=status, steps=n, redos=redo_n, t_end=t,
