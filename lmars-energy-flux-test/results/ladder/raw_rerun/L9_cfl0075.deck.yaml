@@ -1,0 +1,51 @@
+boundary-condition:
+  external:
+    x1-inner: reflecting
+    x1-outer: reflecting
+    x2-inner: periodic
+    x2-outer: periodic
+    x3-inner: periodic
+    x3-outer: periodic
+dynamics:
+  equation-of-state:
+    density-floor: 1.0e-12
+    gammad: 1.4
+    limiter: true
+    pressure-floor: 1.0e-12
+    temperature-floor: 1.0e-06
+    type: ideal-gas
+    weight: 0.0023
+  reconstruct:
+    horizontal:
+      scale: true
+      shock: false
+      type: weno5
+    vertical:
+      scale: true
+      shock: false
+      type: weno5
+  riemann-solver:
+    type: lmars
+forcing:
+  const-gravity:
+    grav1: -8.87
+geometry:
+  bounds:
+    x1max: 450000.0
+    x1min: 0.0
+    x2max: 320000.0
+    x2min: 0.0
+    x3max: 1.0
+    x3min: 0.0
+  cells:
+    nghost: 3
+    nx1: 100
+    nx2: 64
+    nx3: 1
+  type: cartesian
+integration:
+  cfl: 0.075
+  implicit-scheme: 9
+  nlim: -1
+  tlim: 259200.0
+  type: rk3
