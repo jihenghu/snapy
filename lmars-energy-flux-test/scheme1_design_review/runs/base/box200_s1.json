@@ -1,0 +1,23 @@
+{
+ "out": "/data2/ai_workspace/worker1/s1rev/chkruns/base/box200_s1",
+ "scheme": 1,
+ "dx": 200000.0,
+ "nx2": 64,
+ "u0": 400.0,
+ "shear": false,
+ "moist": false,
+ "column": false,
+ "noise": 1e-06,
+ "seed": 7,
+ "cfl": 0.3,
+ "days": 3.0,
+ "diag_dt": 600.0,
+ "status": "blew_up(redo>50)",
+ "t_end": 12986.522644278923,
+ "steps": 332,
+ "redos": 51,
+ "dt_median": 38.56710943638038,
+ "state_sha256": "6f1d092f851e81bcfc395d68472be5669818b86aded22e9931e5717a4bfb724e",
+ "snapy_file": "/data2/ai_workspace/worker1/s1rev/site-base/snapy/__init__.py",
+ "wall_s": 15.685377836227417
+}

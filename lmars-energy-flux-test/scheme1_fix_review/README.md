@@ -79,7 +79,7 @@ fall there ("band"), otherwise over 0.5-3 d. The 0.5-3 d fit is also listed. Ful
 |---|---|---|---|
 | box dx 50 km | +1.77/d (0.5-3 d, R^2 0.94) | +2.92 band (1.59-3.00 d, R^2 0.97); +2.85 0.5-3 d (R^2 0.99) | -0.33 (R^2 0.75) |
 | box dx 100 km | +31.44 band (0.17-0.38 d, R^2 0.985), rms w 0.49 at 3 d | +1.69 0.5-3 d (R^2 0.98); band only 2.96-3.00 d | -0.248 (R^2 0.60) |
-| box dx 200 km | blew up at 0.04 d (+375 band, R^2 0.999) | +0.77 (R^2 0.94) | -0.113 (R^2 0.21) |
+| box dx 200 km | blew up at 0.137 d, 303 steps (+375 band over 0.03-0.04 d, R^2 0.999; correction: earlier text said 0.04 d, which was the end of the fit window) | +0.77 (R^2 0.94) | -0.113 (R^2 0.21) |
 | column dx 100 km, max abs(u-u0)/u0 at 3 d | 2.49e-9 | 5.1e-13 | 4.9e-13 |
 | scheme-9 box dx 100 km, for reference | -0.248 | -0.248 (bitwise = base) | -0.248 (bitwise = base) |
 

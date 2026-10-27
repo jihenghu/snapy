@@ -1,0 +1,23 @@
+{
+ "out": "/data2/ai_workspace/worker1/s1rev/chkruns/fix2/colS_s1",
+ "scheme": 1,
+ "dx": 100000.0,
+ "nx2": 4,
+ "u0": 400.0,
+ "shear": true,
+ "moist": false,
+ "column": true,
+ "noise": 1e-06,
+ "seed": 7,
+ "cfl": 0.3,
+ "days": 3.0,
+ "diag_dt": 600.0,
+ "status": "finished",
+ "t_end": 259200.0,
+ "steps": 9853,
+ "redos": 0,
+ "dt_median": 26.307926908701457,
+ "state_sha256": "5e12ee108f3cc299ad3b25ad1a59ec2ff6ec02dc7866006ce3683bbf190947c8",
+ "snapy_file": "/data2/ai_workspace/worker1/s1rev/site-fix2/snapy/__init__.py",
+ "wall_s": 61.68377423286438
+}

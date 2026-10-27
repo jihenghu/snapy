@@ -1,0 +1,23 @@
+{
+ "out": "/data2/ai_workspace/worker1/s1rev/chkruns/roe/boxS_s1",
+ "scheme": 1,
+ "dx": 100000.0,
+ "nx2": 64,
+ "u0": 400.0,
+ "shear": true,
+ "moist": false,
+ "column": false,
+ "noise": 1e-06,
+ "seed": 7,
+ "cfl": 0.3,
+ "days": 3.0,
+ "diag_dt": 600.0,
+ "status": "finished",
+ "t_end": 259200.0,
+ "steps": 9853,
+ "redos": 0,
+ "dt_median": 26.30792360807717,
+ "state_sha256": "dfb36c66812a3a3e0006329e447b5fb42b04d9fa0bdb77c0f46cdb52d523e71a",
+ "snapy_file": "/data2/ai_workspace/worker1/s1rev/site-roe/snapy/__init__.py",
+ "wall_s": 286.6925778388977
+}
