@@ -88,3 +88,19 @@ At 3 stage iterations set in the deck, Xinyue's e59ed4c0 numbers hold:
 The only difference is the u = 0 rms w, which in my run is ~20× below her 2e-9 and decays in both.
 
 Not covered here: GPU, the tall-column cubed-sphere test, ladder errors below dt0/2 compared against hers, and whether 3 iterations should be the default.
+
+## Addendum: u = 0 box at 600 s sampling
+
+`kit/hevi_arm_cadence.py` is a copy of `kit/hevi_arm.py` with a `--diag-steps` flag: it also samples at the listed step numbers, and the next sample time advances past t after each sample. The diagnostics never change dt, so the time stepping is the same. The rerun used the same e59ed4c0 build, the same deck (byte-identical yaml) and the original arguments, plus `--diag-dt 600 --diag-steps 164`:
+
+```
+kit/hevi_arm_cadence.py --out runs/cad600/u0_lmars_dx100_nonoise --setup c100 --solver lmars --u 0 --dx 100e3 \
+  --noise 0 --integrator hevi-ark2 --iters 3 --diag-dt 600 --diag-steps 164
+```
+
+Results (`runs/cad600/`, 434 rows):
+- Final conserved state sha256 equals the 3600 s run's (e2ecf32b...), with 6414 steps and 0 redos.
+- All 74 rows of `runs/hevi/u0_lmars_dx100_nonoise.csv` reappear at the same steps with every printed digit equal, apart from the wall-clock column.
+- Step 164 (t = 6627.83 s; also the first step past 6600 s): rms w = 2.2188e-10 m/s. This is the series maximum.
+- At 3 d (step 6414): 8.6925e-13.
+- At 600 s sampling, rms w oscillates between about 3e-11 and 2e-10 over the first hours. The 3600 s sampling's maximum was 9.37e-11 (step 624).
