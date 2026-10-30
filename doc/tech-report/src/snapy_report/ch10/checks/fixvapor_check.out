@@ -1,8 +1,9 @@
-[C1] PASS a deficit covered from below is rewritten at one ratio to the dry density: yfrac = 0.0540540541; column ['5.405405e-02', '4.594595e-02', '0.000000e+00', '0.000000e+00']
+[C1] PASS a deficit covered from below is borrowed from the donor, whatever the dry density: column ['1.000000e-01', '0.000000e+00', '0.000000e+00', '0.000000e+00'] (dry density 1, 0.85, 0.72, 0.61); ['1.000000e-01', '0.000000e+00', '0.000000e+00', '0.000000e+00'] (dry density 1)
 [C2] PASS a bottom-cell deficit is taken from the first cell above, bounded by the deficit: transfer 1.700e-21 (deficit 1.7e-21); column sum change 0.0e+00
 [C3] PASS the upward branch writes nothing when it fails (net deficit, or a single negative cell): return 1, column unchanged True; single cell return 1
-[C4] PASS a successful repair keeps sum_i V_i rho_{n,i} and leaves no negative cell: max relative column-mass change 2.20e-15 over 1995 repaired random columns (non-uniform V)
+[C4] PASS a successful repair keeps sum_i V_i rho_{n,i} and leaves no negative cell: relative column-mass change below 1e-13 (the asserted bound) over 1995 repaired random columns (non-uniform V), no cell negative
 [C5] PASS every failure is a column whose total vapour is negative (no repairable column fails): 1948 failures, 0 of them on a column with non-negative total
-[C6] PASS a column with an interior and a bottom deficit is repaired in one top-down scan: return 0; min after 0.000e+00; relative column-mass change 0.0e+00
-[C7] PASS a failure below an already repaired window leaves that window rewritten, mass kept: return 1; cells rewritten before the failure [2, 3]; column sum change -1.1e-16
-[C8] PASS the flattened window keeps sum V rho_n, and the V_l/V_0 weights give the same ratio: both identities exact (sympy)
+[C6] PASS the port reproduces snapy's repair of a column with an interior and a bottom deficit: return 0; cells changed [0, 1, 39, 40]; port and snapy agree to 1e-15 of max|vapour|; min after 0.000e+00; relative column-mass change below 1e-14
+[C7] PASS a failure below an already repaired window leaves that window rewritten, mass kept: return 1; cells rewritten before the failure [2, 3]; column sum change below 1e-15
+[C8] PASS the borrowed window keeps sum V rho_n, the donors give up D in total, and the V_l/V_0 weights give the same share: three identities exact (sympy)
+[C9] PASS the downward branch ignores the dry density, and the donors give up the deficit and no more: 1648 repaired columns, 0 differ between two dry-density profiles; donors' loss equals the deficit to 1e-12 relative

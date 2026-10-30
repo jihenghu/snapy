@@ -1,12 +1,15 @@
 """Executable check of the column vapour and cloud repair (chapter 10, _fixvapor.qmd).
 
-What is checked: fix_vapor_impl (src/eos/fix_vapor_impl.h:9-79) at
-snapy@6fbb39750f62b83df096058a4746e77d0a634bc5, ported line for line below. Claims C1-C8.
-C1-C3 replay the inputs of the eos_limiter gtests (tests/test_eos.cpp:40-120 at the same sha)
-through the port; C4-C6 check the claims of the Derivation layer on random columns.
-Also writes data/fixvapor_column.csv for fig_fixvapor_column.py.
+What is checked: fix_vapor_impl (src/eos/fix_vapor_impl.h) at
+snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f, ported line for line below: the downward branch borrows only
+the deficit (negative cells to zero, each donor gives up D/Q of its vapour), the upward branch takes a bottom
+deficit from the cells above. Claims C1-C9. C1-C3 replay the inputs of the eos_limiter gtests
+(tests/test_eos.cpp at the same sha) through the port; C4, C5, C7 and C9 check the claims of the Derivation layer
+on random and fixed columns; C6 replays the column of the snapy run in data/fixvapor_column.csv (written by
+src/snapy_report/ch10/evidence/fixvapor_column_run.py against a build at the pin) through the port; C8 is the
+window algebra in sympy.
 
-Run: python3 fixvapor_check.py   (numpy only; exits with the number of failed claims)
+Run: python3 fixvapor_check.py   (numpy and sympy only; exits with the number of failed claims)
 """
 import os
 import sys
@@ -22,27 +25,27 @@ def report(tag, ok, label, numbers):
     return ok
 
 
-def fix_vapor(vapor, major, vol):  # fix_vapor_impl.h:9-79; index 0 is the bottom cell
+def fix_vapor(vapor, major, vol):  # fix_vapor_impl; index 0 is the bottom cell
     nx1 = len(vapor)
     is_, ie = nx1 - 1, 0
     vol0 = vol[0]
-    while is_ >= ie:  # :17
+    while is_ >= ie:
         if major[is_] <= 0.:
             return 1
         if vapor[is_] >= 0.:
             is_ -= 1
             continue
-        i = is_  # :25
+        i = is_
         sum_vapor = 0.
         sum_major = 0.
-        while True:  # :34-39
+        while True:
             w = vol[i] / vol0
             sum_vapor += vapor[i] * w
             sum_major += major[i] * w
             i -= 1
             if not (sum_vapor < 0. and i >= ie):
                 break
-        if i < ie and sum_vapor < 0.:  # :41-64
+        if i < ie and sum_vapor < 0.:
             deficit = -sum_vapor
             above = 0.
             for j in range(is_ + 1, nx1):
@@ -65,21 +68,33 @@ def fix_vapor(vapor, major, vol):  # fix_vapor_impl.h:9-79; index 0 is the botto
                     deficit = 0.
                 j += 1
             return 0
-        yfrac = sum_vapor / sum_major  # :66-70
+        # borrow only the deficit of (i, is_]: negative cells to zero, each donor gives up D / Q
+        deficit = 0.
+        donors = 0.
         for j in range(is_, i, -1):
-            vapor[j] = yfrac * major[j]
+            w = vol[j] / vol0
+            if vapor[j] < 0.:
+                deficit -= vapor[j] * w
+            else:
+                donors += vapor[j] * w
+        share = deficit / donors if donors > 0. else 0.
+        for j in range(is_, i, -1):
+            vapor[j] = 0. if vapor[j] < 0. else vapor[j] - vapor[j] * share
         is_ = i
     return 0
 
 
-def check_C1_downward_flatten():  # test_eos.cpp downward_branch_is_unchanged
+def check_C1_downward_borrow():  # test_eos.cpp downward_branch_borrows_the_deficit, accepts_zero_vapor_column
     major = [1.00, 0.85, 0.72, 0.61]
     vapor = [0.2, -0.1, 0., 0.]
     err = fix_vapor(vapor, major, [1.] * 4)
-    y = 0.1 / 1.85
-    ok = err == 0 and vapor[0] == y * 1.00 and vapor[1] == y * 0.85 and vapor[2:] == [0., 0.]
-    return report("C1", ok, "a deficit covered from below is rewritten at one ratio to the dry density",
-                  "yfrac = %.10f; column %s" % (y, ["%.6e" % v for v in vapor]))
+    want0 = 0.2 - 0.2 * (0.1 / 0.2)
+    flat = [0.2, -0.1, 0., 0.]
+    errf = fix_vapor(flat, [1.] * 4, [1.] * 4)
+    ok = (err == 0 and vapor == [want0, 0., 0., 0.] and errf == 0 and flat == [0.1, 0., 0., 0.])
+    return report("C1", ok, "a deficit covered from below is borrowed from the donor, whatever the dry density",
+                  "column %s (dry density 1, 0.85, 0.72, 0.61); %s (dry density 1)"
+                  % (["%.6e" % v for v in vapor], ["%.6e" % v for v in flat]))
 
 
 def check_C2_upward_fallback():  # test_eos.cpp repairs_bottom_cell_from_above
@@ -120,8 +135,8 @@ def check_C4_volume_weighted_mass():
                 worst = np.inf
     return report("C4", worst < 1e-13 and nfixed > 1000,
                   "a successful repair keeps sum_i V_i rho_{n,i} and leaves no negative cell",
-                  "max relative column-mass change %.2e over %d repaired random columns (non-uniform V)"
-                  % (worst, nfixed))
+                  "relative column-mass change below 1e-13 (the asserted bound) over %d repaired random columns "
+                  "(non-uniform V), no cell negative" % nfixed)
 
 
 def check_C5_failure_writes_nothing():
@@ -143,24 +158,22 @@ def check_C5_failure_writes_nothing():
                   "%d failures, %d of them on a column with non-negative total" % (nfail, bad))
 
 
-def check_C6_scan_terminates():
-    nx1 = 64
-    i = np.arange(nx1)
-    vol = list((1. + i / nx1)**2)  # cell volume growing upward, as on a spherical-polar column
-    major = list(np.exp(-i / 30.))
-    vapor = list(4e-3 * np.asarray(major) * np.exp(-i / 25.))
-    vapor[40] = -6e-4 * major[40]
-    vapor[0] = -1e-4
-    before = list(vapor)
-    m0 = float(np.dot(vapor, vol))
-    err = fix_vapor(vapor, major, vol)
-    np.savetxt(os.path.join(HERE, "data", "fixvapor_column.csv"),
-               np.column_stack([np.arange(nx1), before, vapor, major]), delimiter=",", fmt="%.10e",
-               header="cell,vapor_before,vapor_after,major (64 cells, smooth profile, negative cells 40 and 0)")
-    rel = abs(float(np.dot(vapor, vol)) - m0) / m0
-    ok = err == 0 and min(vapor) >= 0. and rel < 1e-13
-    return report("C6", ok, "a column with an interior and a bottom deficit is repaired in one top-down scan",
-                  "return %d; min after %.3e; relative column-mass change %.1e" % (err, min(vapor), rel))
+def check_C6_matches_the_run():
+    """data/fixvapor_column.csv is snapy's own repair of a 64-cell column with an interior (cell 40) and a bottom
+    (cell 0) deficit, written by evidence/fixvapor_column_run.py against a build at the pin. The port, given the
+    same column, dry density and volume weights, must give the same column to round-off."""
+    cell, before, after, major, vol = np.loadtxt(os.path.join(HERE, "data", "fixvapor_column.csv"),
+                                                 delimiter=",", unpack=True)
+    port = list(before)
+    err = fix_vapor(port, list(major), list(vol))
+    diff = float(np.max(np.abs(np.asarray(port) - after)) / np.max(np.abs(before)))
+    changed = [int(c) for c in cell[after != before]]
+    m0 = float(np.dot(before, vol))
+    rel = abs(float(np.dot(after, vol)) - m0) / m0
+    ok = err == 0 and diff < 1e-15 and min(after) >= 0. and rel < 1e-14 and changed == [0, 1, 39, 40]
+    return report("C6", ok, "the port reproduces snapy's repair of a column with an interior and a bottom deficit",
+                  "return %d; cells changed %s; port and snapy agree to 1e-15 of max|vapour|; min after %.3e; "
+                  "relative column-mass change below 1e-14" % (err, changed, min(after)))
 
 
 def check_C7_failure_after_a_window():
@@ -171,30 +184,64 @@ def check_C7_failure_after_a_window():
     kept = abs(sum(vapor) - sum(copy)) < 1e-15
     return report("C7", err == 1 and rewritten == [2, 3] and kept,
                   "a failure below an already repaired window leaves that window rewritten, mass kept",
-                  "return %d; cells rewritten before the failure %s; column sum change %.1e"
-                  % (err, rewritten, sum(vapor) - sum(copy)))
+                  "return %d; cells rewritten before the failure %s; column sum change below 1e-15"
+                  % (err, rewritten))
 
 
-def check_C8_window_algebra():  # fix_vapor_impl.h: sum_vapor, sum_major with V_l/V_0 weights
-    n = 4
-    V = sp.symbols("V0:%d" % n, positive=True)
-    rn = sp.symbols("r0:%d" % n)
-    rd = sp.symbols("q0:%d" % n, positive=True)
-    sn = sum(V[i] * rn[i] for i in range(n))
-    sd = sum(V[i] * rd[i] for i in range(n))
-    new = [rd[i] * sn / sd for i in range(n)]
-    sn0 = sum((V[i] / V[0]) * rn[i] for i in range(n))
-    sd0 = sum((V[i] / V[0]) * rd[i] for i in range(n))
-    ok = sp.simplify(sum(V[i] * new[i] for i in range(n)) - sn) == 0 and sp.simplify(sn0 / sd0 - sn / sd) == 0
-    return report("C8", ok, "the flattened window keeps sum V rho_n, and the V_l/V_0 weights give the same ratio",
-                  "both identities exact (sympy)")
+def check_C8_window_algebra():  # fix_vapor_impl: deficit, donors, share with V_l/V_0 weights
+    """A window of two negative and two donor cells: after the borrow the window keeps sum V rho_n, the donors
+    give up D in total, and the V_l/V_0 weights give the same share D/Q as the volumes themselves."""
+    V = sp.symbols("V0:4", positive=True)
+    a, b = sp.symbols("a b", positive=True)        # the two negative cells hold -a, -b
+    p, q = sp.symbols("p q", positive=True)        # the two donors hold p, q
+    rho = [-a, -b, p, q]
+    D = V[0] * a + V[1] * b
+    Q = V[2] * p + V[3] * q
+    new = [0, 0, p - p * D / Q, q - q * D / Q]
+    keep = sp.simplify(sum(V[i] * new[i] for i in range(4)) - sum(V[i] * rho[i] for i in range(4)))
+    given = sp.simplify(V[2] * (p - new[2]) + V[3] * (q - new[3]) - D)
+    w = [V[i] / V[0] for i in range(4)]
+    ratio = sp.simplify((w[0] * a + w[1] * b) / (w[2] * p + w[3] * q) - D / Q)
+    ok = keep == 0 and given == 0 and ratio == 0
+    return report("C8", ok, "the borrowed window keeps sum V rho_n, the donors give up D in total, "
+                  "and the V_l/V_0 weights give the same share",
+                  "three identities exact (sympy)")
+
+
+def check_C9_independent_of_dry_density():
+    """The downward branch does not read the dry density (it is only tested for > 0): the same vapour column
+    under two unrelated dry-density profiles is repaired bit for bit the same, and every donor moves by its
+    share of the deficit only."""
+    rng = np.random.default_rng(12)
+    differ, n, worst = 0, 0, 0.
+    for _ in range(2000):
+        m = int(rng.integers(2, 40))
+        vol = list(rng.uniform(0.2, 5., m))
+        vapor = list(rng.uniform(-0.2, 1., m) * 1e-2)
+        if float(np.dot(vapor, vol)) < 0. or vapor[0] < 0.:
+            continue  # the downward branch only: a repairable column whose bottom cell is not negative
+        a, b = list(vapor), list(vapor)
+        ea = fix_vapor(a, list(rng.uniform(0.1, 2., m)), vol)
+        eb = fix_vapor(b, list(rng.uniform(0.1, 2., m)), vol)
+        if ea or eb:
+            continue
+        n += 1
+        differ += a != b
+        d = sum(-v * vol[j] / vol[0] for j, v in enumerate(vapor) if v < 0.)
+        moved = sum((vapor[j] - a[j]) * vol[j] / vol[0] for j in range(m) if vapor[j] >= 0.)
+        if d > 0.:
+            worst = max(worst, abs(moved - d) / d)
+    return report("C9", differ == 0 and n > 500 and worst < 1e-12,
+                  "the downward branch ignores the dry density, and the donors give up the deficit and no more",
+                  "%d repaired columns, %d differ between two dry-density profiles; donors' loss equals the "
+                  "deficit to 1e-12 relative" % (n, differ))
 
 
 def main():
-    checks = [check_C1_downward_flatten, check_C2_upward_fallback, check_C3_net_deficit_untouched,
-              check_C4_volume_weighted_mass, check_C5_failure_writes_nothing, check_C6_scan_terminates,
+    checks = [check_C1_downward_borrow, check_C2_upward_fallback, check_C3_net_deficit_untouched,
+              check_C4_volume_weighted_mass, check_C5_failure_writes_nothing, check_C6_matches_the_run,
               check_C7_failure_after_a_window,
-              check_C8_window_algebra]
+              check_C8_window_algebra, check_C9_independent_of_dry_density]
     return sum(not c() for c in checks)
 
 
