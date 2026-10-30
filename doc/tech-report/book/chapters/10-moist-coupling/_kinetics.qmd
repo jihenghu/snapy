@@ -270,8 +270,8 @@ Kinetics exists only in drivers that implement it. A user driver that calls only
 
 - First order in time, operator-split from the dynamics; the split error is not measured.
 - No conserved limiter writes the state between the update and `check_redo`. With the limiter on, a negative
-  species from the kinetics is caught on the copy the floor test converts and redoes the step (cause 4); a repair
-  of round-off size is not marked and so is not redone. With the limiter off it stays in the state.
+  species from the kinetics is caught on the copy the floor test converts and redoes the step (cause 4); a deficit
+  of round-off size is repaired without a mark and so is not redone (@sec-ch10-redo). With the limiter off it stays in the state.
 - The update covers ghosts without an exchange.
 - `sources/canoe__EVAPORATION_MULTIPRODUCT_TECH_REPORT.md` describes the extent law as not yet in kintera; it is
   present at the kintera pin (@eq-ch10-kinetics-extent).

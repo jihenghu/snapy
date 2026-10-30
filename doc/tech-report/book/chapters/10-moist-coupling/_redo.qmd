@@ -1,7 +1,7 @@
 ## Step rejection for moist causes (`max_redo`) {#sec-ch10-redo}
 
 <!-- PROVENANCE
-pin: snapy@ccf40f9565642c32be69f4b9ef0cfa6daff3f201 (chengcli/snapy, code_pin.yml); kintera@c55b13b2204997d2d09e04498558ab9495d8ee77;
+pin: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f (chengcli/snapy, code_pin.yml); kintera@c55b13b2204997d2d09e04498558ab9495d8ee77;
      pyharp@4721715855e937c1e8b218e964c0655f46e56e29
 sources: OUTLINE.md 10.2; src/mesh/meshblock.cpp, src/mesh/mesh.cpp, tests/test_check_redo_saturation.py,
          tests/test_forcing.cpp, tests/test_uranus_cycle1_abort.cpp at the pin
@@ -12,13 +12,14 @@ status: draft
 
 The redo machinery itself (how $\Delta t$[^rg-e08a4caa8890] is halved, what the driver does with the return value) belongs to
 @sec-ch07-redo and is outlined in @sec-ch01-driver. This section covers the two causes moist physics raises and the
-parts of the rule that matter to them. A species repair by the conserved limiter that is larger than round-off
-(@sec-ch10-borrow, @sec-ch10-fixvapor) sets the limiter mark, cause 4. A cell that the saturation adjustment
+parts of the rule that matter to them. A species deficit that the conserved limiter repairs
+(@sec-ch10-borrow, @sec-ch10-fixvapor) sets the limiter mark, cause 4, when it was larger than round-off of the
+cell's gas density before the repair; how far the repair then moved other cells does not count. A cell that the saturation adjustment
 (@sec-ch10-satadj) failed to bring to equilibrium is counted by kintera, and a non-zero count after the step is
 cause 16. Either one, on any rank, rejects the step everywhere.
 
 ::: {.callout-note title="At a glance"}
-**Purpose.** Rejects a step for a limiter species repair above round-off (cause 4) or a failed saturation cell (cause 16).
+**Purpose.** Rejects a step for a species deficit above round-off (cause 4) or a failed saturation cell (cause 16).
 
 **Data.** Reads the block's limiter marks and kintera's failure count; writes their two bits of the cause word.
 
@@ -52,8 +53,11 @@ The scheme is a decision rule, not a discretization. Its why-steps are:
    `max_redo`; past it, a step with a moist cause terminates with the rejected state in memory, and only the
    VIC[^rg-132a64cd545b] cause 32 restores first (`[C3]`).
 4. *No round-off enters the decision.* The flags are integers compared and OR-ed exactly; the only rounded quantity
-   is the limiter's repair size, which is compared with a round-off threshold of `kPositivityRoundoffUlp` ulp of the
-   gas density before it can set bit 4 ($\iota=2$) (@sec-ch10-fixvapor).
+   is the species density before the limiter's repair, which must be below $-4096\,\epsilon_{\mathrm m}$ times the
+   cell's total gas density to set bit 4 ($\iota=2$). The bound is `species_repair_mark`, `kSpeciesRepairMarkUlp`
+   ulp, defined equal to `kPositivityRoundoffUlp` (64 float32 ulp in float32)
+   ({{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}},
+   {{< code src/hydro/flux_positivity.hpp kSpeciesRepairMarkUlp >}}; @sec-ch10-fixvapor).
 
 ::: {.callout-important title="Check"}
 A line-for-line port of the rule checks steps 1 to 3:[^redo-c] bits 4 and 16 (`[C1]`); MAX is OR over two ranks
@@ -138,28 +142,30 @@ The decision of steps 2 and 3 is these lines ({{< code src/mesh/meshblock.cpp Me
 |---|---|---|---|
 | `test_check_redo_saturation_python` | five arms, saturation cause alone | logical | failure protocol |
 | `test_check_redo_parallel.release` | one decision on 2 ranks | exact | saved tensors copied back |
-| `test_forcing.release` | species repair redoes; round-off does not | ulp bound | `kPositivityRoundoffUlp` |
+| `test_forcing.release` | a species deficit redoes; a round-off deficit does not | ulp bound | `kSpeciesRepairMarkUlp` |
 | `test_uranus_cycle1_abort.release` | column survives; abort exits nonzero | exit status | log strings |
 
-: Tests of the moist redo causes; all pass at the pin (@tbl-ch10-ctest-run). {#tbl-ch10-redo-tests}
+: Tests of the moist redo causes; all pass at the pin.[^redo-ctest] {#tbl-ch10-redo-tests}
 
 `test_check_redo_saturation` starts from one $\mathrm{NH_4SH}$ cell 150 times supersaturated. With `max-iter: 1` at
 least one cell is left unadjusted, and the step must be redone with the saturation cause alone and then accepted; a
 control step with the default `max-iter` must be clean; a failure counted between steps must not be charged; and a
 two-block `Mesh` with the cell in block 1 must read block 1's count
 ({{< code tests/test_check_redo_saturation.py >}}). The `test_forcing` cases put $-10^{-4}$ in a species at stage 1
-and require cause 4; a repair below `kPositivityRoundoffUlp` ulp of the gas density is applied but not redone
+and require cause 4. A deficit of $-10^{-300}$ in a cloud-free cell is repaired but not redone, and so is a
+$-10^{-300}$ vapour next to a cell of $0.01$ vapour, because the mark reads the deficit and not what the column
+repair moved; $-10^{-9}$, above the bound, is redone
 ({{< code tests/test_forcing.cpp forcing.limiter_species_repair_redoes_the_step >}},
 {{< code tests/test_forcing.cpp forcing.limiter_roundoff_species_repair_is_not_redone >}}). The CUDA arm
 `test_check_redo_saturation_cuda_python` exists only in CUDA builds; the 2-rank test is the only multi-rank evidence.
-Every ctest named here that the CPU build registers passed at the pin (@tbl-ch10-ctest-run); the CUDA and Gloo arms are not
-registered in that build and were not run.
+Every ctest named here that the CPU build registers passed at the pin; the CUDA arm is not registered in that build
+and was not run.[^redo-ctest]
 
 ### Limits
 
 ::: {.callout-warning title="Limits"}
-A failure that a smaller time step cannot cure exhausts `max_redo` and ends the run. A species repair above
-round-off redoes the step even when it would be harmless.
+A failure that a smaller time step cannot cure exhausts `max_redo` and ends the run. A species deficit above
+round-off redoes the step even when it would be harmless; a smaller one is repaired without a redo.
 :::
 
 - A driver that carries state across a rejected step which the restore does not reset can make every attempt
@@ -167,6 +173,9 @@ round-off redoes the step even when it would be harmless.
 - Past `max_redo` a moist failure terminates with the rejected state in memory; only the VIC cause restores first
   (`redo_check.py` `[C3]`).
 - Moist redo combinations are absent from the switch coverage matrix (@sec-ch12-matrix).
+
+[^redo-ctest]: [sha: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f; deck: the tests' own cards; run: `env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 PYTHONPATH="$SITE" ctest -R "^test_eos\.release|^test_fix_vapor|^test_parentless_cloud|^test_vapor_column_nb1|^test_check_redo|^test_forcing\.release|^test_uranus_cycle1_abort"`,
+    in the build's `tests` directory of a Release build (`cmake -B build -DCMAKE_BUILD_TYPE=Release -DNETCDF=ON -DCUDA=OFF`), CPU, double, 1 process (2 for `test_check_redo_parallel` and the `_mp` arms); GCC 13.3.1, Python 3.11.13, torch 2.10.0, kintera 2.6.6; `$SITE` the build installed with `pip install --no-deps --no-build-isolation --target`]: 16 of 16 passed, among them `test_check_redo_saturation_python`, `test_check_redo_parallel.release`, `test_forcing.release` and `test_uranus_cycle1_abort.release`.
 
 <!-- reader glossary notes -->
 [^rg-e08a4caa8890]: $\Delta t$ — the step
