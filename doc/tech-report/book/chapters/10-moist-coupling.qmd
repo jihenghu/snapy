@@ -31,7 +31,7 @@ make_fig()
 | Saturation adjustment (@sec-ch10-satadj) | reactions in the thermo | on with reactions | n/a | `test_wall_saturation` |
 | Redo causes (@sec-ch10-redo) | `max_redo`, from code only | 5 | n/a | `test_check_redo_saturation` |
 | Parent-vapour borrow (@sec-ch10-borrow) | `limiter`[^rg-8e24f1f74511] | off | n/a | `test_condensate_conservation` |
-| Column vapour repair (@sec-ch10-fixvapor) | `limiter` | off | n/a | `test_fix_vapor_volume` |
+| Column vapour repair (@sec-ch10-fixvapor) | `limiter` | off | n/a | `test_fix_vapor_deficit` |
 | Driver kinetics (@sec-ch10-kinetics) | driver | driver | 1 in time | `test_uranus_cycle1_abort` |
 | Dry-air tracers (@sec-ch10-tracer) | `scalar`[^rg-f9fa37178671] | off | as `reconstruct`[^rg-b120c62578aa] | `test_tracer_dry_convention` |
 | Sedimentation (@sec-ch10-sed) | `sedimentation`[^rg-f29580f552fb] | off | 1 in space | `test_sedimentation_guards` |
