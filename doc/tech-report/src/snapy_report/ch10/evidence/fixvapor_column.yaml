@@ -1,0 +1,34 @@
+# Deck of src/snapy_report/ch10/evidence/fixvapor_column_run.py: one spherical-polar x1 column of 64 cells
+# (cell volume grows 8.6x from bottom to top), vapour with a nucleation cloud, the EOS limiter on, so the
+# conserved limiter of a U->W conversion runs the vapour column repair (fix_vapor_impl).
+reference-state:
+  Tref: 300.
+  Pref: 1.e5
+species:
+  - name: dry
+    composition: {O: 0.42, N: 1.56, Ar: 0.01}
+    cv_R: 2.5
+  - name: vapor
+    composition: {H: 2, O: 1}
+    cv_R: 2.5
+    u0_R: 0.
+  - name: cloud
+    composition: {H: 2, O: 1}
+    cv_R: 9.0
+    u0_R: -3430.
+reactions:
+  - equation: vapor <=> cloud
+    type: nucleation
+    rate-constant: {formula: h2o_ideal}
+geometry:
+  type: spherical-polar
+  bounds: {x1min: 1., x1max: 3., x2min_pi: 0.25, x2max_pi: 0.75, x3min_pi: -0.5, x3max_pi: 0.5}
+  cells: {nx1: 64, nx2: 1, nx3: 1, nghost: 2}
+dynamics:
+  equation-of-state:
+    type: ideal-moist
+    limiter: true
+boundary-condition:
+  external:
+    x1-inner: reflecting
+    x1-outer: reflecting

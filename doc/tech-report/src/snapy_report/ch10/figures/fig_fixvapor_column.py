@@ -1,7 +1,9 @@
 """A 64-cell column with an interior and a bottom vapour deficit, before and after fix_vapor.
 
-Data: data/fixvapor_column.csv, written by fixvapor_check.py (claim C6), a line-for-line port of
-src/eos/fix_vapor_impl.h:9-79 at snapy@6fbb39750f62b83df096058a4746e77d0a634bc5.
+Data: data/fixvapor_column.csv, written by evidence/fixvapor_column_run.py: snapy's own repair (the U->W
+conversion of a spherical-polar MeshBlock with the EOS limiter on, so EquationOfStateImpl::apply_conserved_limiter_
+and fix_vapor_impl) at snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f. fixvapor_check.py [C6] replays it through
+the port.
 """
 import os
 
@@ -13,7 +15,7 @@ DATA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
 
 
 def make_fig():
-    cell, before, after, major = np.loadtxt(DATA, delimiter=",", unpack=True)
+    cell, before, after, major, _vol = np.loadtxt(DATA, delimiter=",", unpack=True)
     fig, ax = fs.new_figure(fs.SINGLE, 3.2)
     ax.plot(before / major * 1e3, cell, color=fs.VERMILLION, ls="--", marker="x", ms=3, label="before")
     ax.plot(after / major * 1e3, cell, color=fs.GREEN, marker="o", ms=2.5, label="after")
