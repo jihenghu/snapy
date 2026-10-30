@@ -144,7 +144,10 @@ dynamics:
 
 **What the parser accepts and refuses.** The framework's rules apply (@sec-ch04-framework). `scale` must be a
 boolean. With `shock: true` WENO acts on every row, velocity and pressure included; with `shock: false` those
-rows take cp3 or cp5.
+rows take cp3 or cp5. Either way, with the equation of state's `limiter` on, the species face states WENO writes are
+clamped at zero afterwards, so a WENO5 undershoot at a sharp vapour gradient reaches the solver as zero
+(`shock`, {{< code src/recon/reconstruct.cpp ReconstructImpl::forward >}}); @sec-ch08-reconfloors gives the floors and
+the test of the `shock: true` case.
 
 **The excerpt.** `interp_weno5_impl` ({{< code src/recon/interp_impl.h interp_weno5_impl >}}):
 
