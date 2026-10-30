@@ -249,8 +249,10 @@ def check_C9():
     """_reconfloors.qmd. ReconstructOptionsImpl::from_yaml (reconstruct.cpp:14-38) at
     snapy@6fbb39750f62b83df096058a4746e77d0a634bc5 returns the C++ default, shock = true
     (reconstruct.hpp:51), unless the deck has dynamics/reconstruct/<section>; only then is
-    shock read, with false as its default. The face floors and tracer clamps run only with
-    shock false (reconstruct.cpp:99-102), so a deck without that section gets none of them."""
+    shock read, with false as its default. The density and pressure face floors run only with
+    shock false, so a deck without that section gets none of them; the species faces are clamped
+    with the limiter on either way (ReconstructImpl::forward at
+    snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f)."""
     CXX_DEFAULT = True                                    # reconstruct.hpp:51
 
     def shock(deck, section):
@@ -281,7 +283,7 @@ def check_C9():
     old_wrong = sorted(n for n in decks if old[n] != got[n])
     report("C9", got == want and len(old_wrong) > 0,
            "shock is false only where the deck has the reconstruct section of that direction; "
-           "otherwise it keeps the C++ default, true, and the face floors do not run",
+           "otherwise it keeps the C++ default, true, and the density and pressure face floors do not run",
            "; ".join(f"{n}: vertical {v}, horizontal {h}" for n, (v, h) in got.items()) +
            f". A reading of 'false by default from YAML' is wrong for {len(old_wrong)} of "
            f"{len(decks)} decks ({', '.join(old_wrong)})")

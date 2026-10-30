@@ -1,7 +1,7 @@
 # Positivity, floors and limiters {#sec-ch08}
 
 <!-- PROVENANCE
-pin: snapy@ccf40f9565642c32be69f4b9ef0cfa6daff3f201 (chengcli/snapy)
+pin: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f (chengcli/snapy)
 sources: OUTLINE.md 8
 status: draft
 -->
@@ -37,8 +37,8 @@ make_fig()
 | Passive-scalar limiter (@sec-ch08-scalar) | `limiter`, or the scalar's covariance row | as the tracer limiter | the same, for scalars | none |
 | EOS[^rg-5c35e4c74097] limiter and floors (@sec-ch08-eoslimiter) | `limiter` | off | none; a clamp that invents mass | none |
 | Condensate borrow (@sec-ch08-borrow) | with the limiter | off | conservative in mass and elements | none |
-| Vapour column repair (@sec-ch08-fixvapor) | with the limiter | off | conservative in mass, or it throws | none |
-| Face floors (@sec-ch08-reconfloors) | `limiter`, with `shock`[^rg-0ecdbd193411] false | off | none; a clamp at the face | none |
+| Vapour column repair (@sec-ch08-fixvapor) | with the limiter | off | conservative in mass, moves only the deficit, or it throws | `test_fix_vapor_deficit` |
+| Face floors (@sec-ch08-reconfloors) | `limiter`; density and pressure also need `shock`[^rg-0ecdbd193411] false | off | none; a clamp at the face | `test_species_face_clamp` |
 | Well-balanced face fallback (@sec-ch08-wbface) | with the reference | none | no-op at rest | @sec-ch05 tests |
 | Implicit dry clamp (@sec-ch08-vic) | with the implicit scheme | none | none; recorded, not prevented | none |
 | Round-off thresholds (@sec-ch08-roundoff) | none | always | separates a repair from arithmetic | this chapter's check |

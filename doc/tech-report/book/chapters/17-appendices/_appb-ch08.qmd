@@ -10,7 +10,8 @@
 | @sec-ch08-scalar | none | The first pass uses @sec-ch08-theta to keep scalar density non-negative. |  | `positivity_check.py` | n/a |
 | @sec-ch08-eoslimiter | none | There is no derivation for a floor. |  | `floors_check.py` | n/a |
 | @sec-ch08-borrow | @eq-ch08-borrow-fractions | A cloud's deficit is shared among its parent vapours by the fractions $f_n=\nu_{nk}\mu_n/\sum_m\nu_{mk}\mu_m$, which sum to one, so the cell total is unchanged. | {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::cache_cloud_parents_ >}} | `floors_check.py`, `[C3]`, `[C8]` | re-derived |
-| @sec-ch08-fixvapor | none | The scheme is a redistribution, so the thing to establish is what it conserves. |  | none | n/a |
+| @sec-ch08-fixvapor | @eq-ch08-fixvapor-sums | A window's deficit $D$ and the vapour $Q$ of its donor cells, both weighted by cell volume; the window ends where $Q - D \ge 0$. | {{< code src/eos/fix_vapor_impl.h fix_vapor_impl >}} | none | re-derived |
+| @sec-ch08-fixvapor | @eq-ch08-fixvapor-borrow | Negative cells of the window go to zero and each donor gives up the fraction $D/Q$ of its vapour, so the window's mass is kept and the donors move by the deficit only. | {{< code src/eos/fix_vapor_impl.h fix_vapor_impl >}} | none | re-derived |
 | @sec-ch08-reconfloors | none | None: a floor is a clamp, and everything said about non-conservation in @sec-ch08-eoslimiter applies here too. |  | `floors_check.py` | n/a |
 | @sec-ch08-wbface | none | The pressure case is the simple one: a face pressure that comes out non-positive is replaced by the reference pressure at that face, at `psf_lo` ({{< code src/hydro/hydro_forward.cpp HydroImpl::forward >}}). |  | `floors_check.py` | n/a |
 | @sec-ch08-vic | none | The explicit limiter does not constrain the later implicit correction. |  | `positivity_check.py` | n/a |

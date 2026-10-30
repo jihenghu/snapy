@@ -2,5 +2,7 @@
  "eq-ch08-theta-def": "The positivity factor $\\Theta_i$ limits a cell's total outflow to its content over the step.",
  "eq-ch08-theta-bound": "With the donor factor on every draining face, $V_i(u_i+\\Delta t\\,\\Delta u_i) \\ge \\eta\\,u_iV_i + \\Delta t\\,\\mathrm{in}_i$, non-negative for a cell non-negative at stage entry.",
  "eq-ch08-carry-dm": "The mass withheld at a face by the limiter is $(1 - \\Theta_d)F$.",
- "eq-ch08-borrow-fractions": "A cloud's deficit is shared among its parent vapours by the fractions $f_n=\\nu_{nk}\\mu_n/\\sum_m\\nu_{mk}\\mu_m$, which sum to one, so the cell total is unchanged."
+ "eq-ch08-borrow-fractions": "A cloud's deficit is shared among its parent vapours by the fractions $f_n=\\nu_{nk}\\mu_n/\\sum_m\\nu_{mk}\\mu_m$, which sum to one, so the cell total is unchanged.",
+ "eq-ch08-fixvapor-sums": "A window's deficit $D$ and the vapour $Q$ of its donor cells, both weighted by cell volume; the window ends where $Q - D \\ge 0$.",
+ "eq-ch08-fixvapor-borrow": "Negative cells of the window go to zero and each donor gives up the fraction $D/Q$ of its vapour, so the window's mass is kept and the donors move by the deficit only."
 }

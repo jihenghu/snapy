@@ -1,8 +1,8 @@
 ## Reconstruction-stage floors {#sec-ch08-reconfloors}
 
 <!-- PROVENANCE
-pin: snapy@ccf40f9565642c32be69f4b9ef0cfa6daff3f201 (chengcli/snapy)
-sources: OUTLINE.md 8.8
+pin: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f (chengcli/snapy)
+sources: OUTLINE.md 8.8; chengcli/snapy#332 (PR body and squash-merge commit message)
 status: draft
 -->
 
@@ -10,6 +10,8 @@ status: draft
 
 A high-order reconstruction can overshoot into a negative face density or pressure even from a
 perfectly admissible cell state. These floors catch that at the face, before the Riemann solver sees it.
+The species faces are clamped at zero whenever the limiter is on, with or without `shock`, so a WENO undershoot cannot
+carry vapour up a gradient; the density and pressure floors run only with `shock` false.
 They belong to the reconstruction framework of @sec-ch04-framework and are described here because they
 are part of the positivity story rather than part of the interpolation.
 
@@ -20,11 +22,11 @@ are part of the positivity story rather than part of the interpolation.
 
 **Placement.** At the end of `ReconstructImpl::forward`, before the Riemann solver, every direction and stage.
 
-**Activation.** `limiter: true` and `shock` false (a reconstruct section in the deck); density, pressure only with `floor`.
+**Activation.** `limiter: true`. Species: always. Density and pressure: only with `shock` false and the caller's `floor`.
 
 **Guarantee / limits.** None: a clamp at the face invents mass, exactly as the cell floors of @sec-ch08-eoslimiter do.
 
-**Evidence.** `[C2]`, `[C9]` of `floors_check`; no ctest isolates the face floors.
+**Evidence.** `[C2]`, `[C9]` of `floors_check`; `test_species_face_clamp.<b>` for the species faces under `shock`.
 :::
 
 ### Derivation
@@ -38,37 +40,45 @@ between the three row groups, because it is not what a reader would guess.
 
 Two early returns come first. A reconstruction with no hydro parent, the passive-scalar one
 (@sec-ch08-scalar), clamps every row of its face states at zero, whatever the limiter, and returns (`phydro`,
-{{< code src/recon/reconstruct.cpp ReconstructImpl::forward >}}). A reconstruction with `shock` set returns before any
-floor (`shock`, {{< code src/recon/reconstruct.cpp ReconstructImpl::forward >}}). The options start with `shock`
+{{< code src/recon/reconstruct.cpp ReconstructImpl::forward >}}). A reconstruction with `shock` set reconstructs every
+row in one call, clamps the species rows at zero when the limiter is on, and returns before the density and pressure
+floors (`shock`, {{< code src/recon/reconstruct.cpp ReconstructImpl::forward >}}). The options start with `shock`
 true (`shock`, {{< code src/recon/reconstruct.hpp ReconstructOptionsImpl >}}). The deck sets it false only through
 `dynamics/reconstruct/vertical` for $x_1$ and `dynamics/reconstruct/horizontal` for $x_2$ and $x_3$
 (`recon1`, {{< code src/hydro/hydro_options.cpp HydroOptionsImpl::from_yaml >}}): `shock` is read, with false as its
 default, only when that section exists. A deck without a `dynamics` or a `reconstruct`[^rg-345bdb73b555] block, or without the section
 of a direction, keeps `shock` true there (`reconstruct`,
 {{< code src/recon/reconstruct.cpp ReconstructOptionsImpl::from_yaml overload=1 >}}; `section`,
-{{< code src/recon/reconstruct.cpp ReconstructOptionsImpl::from_yaml overload=2 >}}), and that direction gets no face
-floors and no tracer clamps, even with the limiter on (`[C9]`).
+{{< code src/recon/reconstruct.cpp ReconstructOptionsImpl::from_yaml overload=2 >}}), and that direction gets no
+density or pressure face floors, even with the limiter on (`[C9]`). Its species faces are still clamped.
 
 Past them, density and pressure are floored only when the caller asked for floors. Tracers are clamped at zero
 whenever the limiter is on, *regardless* of what the caller asked, at
 `clamp_min_` ({{< code src/recon/reconstruct.cpp ReconstructImpl::forward >}}). The well-balanced path of @sec-ch05 calls the reconstruction with
 floors switched off precisely so that it can handle its own perturbation variables, and it still gets
-its tracers clamped, unless `shock` is set.
+its tracers clamped, with or without `shock`.
 
 ### Numerical method
 
-The three groups are floored in place as each is reconstructed: density at
+With `shock` set, the species rows of the one-call result are clamped at `clamp_min_`
+({{< code src/recon/reconstruct.cpp ReconstructImpl::forward >}}) when the limiter is on and the state has species
+rows. Every species row is clamped, clouds included, as on the non-shock path. With `shock` false the three groups are
+floored in place as each is reconstructed: density at
 `eos` ({{< code src/recon/reconstruct.cpp ReconstructImpl::forward >}}), pressure at `eos` ({{< code src/recon/reconstruct.cpp ReconstructImpl::forward >}}) and the tracers
 at {{< code src/recon/reconstruct.cpp ReconstructImpl::forward >}}. The values are read from the equation-of-state options and not
 from the reconstruction options, which carry floor members that `forward` never reads.
 
-**Why at the face, and what it costs.** Three facts of the code.
+**Why at the face, and what it costs.** Four facts of the code.
 
 1. The floor values are read from the equation-of-state options and not from the reconstruction options, so the
    face and cell floors are the same absolute numbers ({{< code src/recon/reconstruct.cpp ReconstructImpl::forward >}}).
-2. With `shock` false and a hydro parent, the tracer clamp is gated on the limiter alone, not on the caller's `floor`
-   argument, so the well-balanced path that passes `floor=false` still has its tracer face states clamped. With
-   `shock` set no row is floored, and the passive-scalar reconstruction clamps every row with the limiter off too.
+2. With a hydro parent, the tracer clamp is gated on the limiter alone, not on the caller's `floor` argument and not
+   on `shock`, so the well-balanced path that passes `floor=false` still has its tracer face states clamped. With
+   `shock` set density and pressure are not floored, and the passive-scalar reconstruction clamps every row with the
+   limiter off too.
+4. `clamp_min_` with a bound of zero leaves a face that is not negative as it was; the comment at the `shock` branch
+   says so, and `test_species_face_clamp` checks that those faces are unchanged bit for bit
+   ({{< code src/recon/reconstruct.cpp ReconstructImpl::forward >}}).
 3. A clamp can only add; the mass it invents at a face is bounded by the overshoot it removes, and `[C2]` measures
    the cell-floor analogue strictly positive.
 
@@ -79,14 +89,24 @@ from the reconstruction options, which carry floor members that `forward` never 
 | the face density floor | {{< code src/recon/reconstruct.cpp ReconstructImpl::forward >}} | `density_floor` | limiter and floor |
 | the face pressure floor | {{< code src/recon/reconstruct.cpp ReconstructImpl::forward >}} | `pressure_floor` | limiter and floor |
 | the tracer clamp | {{< code src/recon/reconstruct.cpp ReconstructImpl::forward >}} | `clamp_min_` | limiter on, floor ignored |
+| the tracer clamp under `shock` | {{< code src/recon/reconstruct.cpp ReconstructImpl::forward >}} | `shock` | limiter on, `shock` true |
 
 : Code map of the reconstruction-stage floors. {#tbl-ch08-reconfloors-code}
 
 **How to use it.** The face floors follow the limiter switch of @sec-ch08-eoslimiter; a caller opts out of the
-density and pressure floors with the third argument of `forward`. The three clamps are these lines
+density and pressure floors with the third argument of `forward`. The clamps are these lines
 ({{< code src/recon/reconstruct.cpp ReconstructImpl::forward >}}):
 
 ```cpp
+  if (options->shock()) {
+    _apply_inplace(dim, il, iu, w, pinterp1, result);
+    ...
+    if (phydro->options->eos()->limiter() && nvar > ICY) {
+      result.narrow(1, ICY, nvar - ICY).clamp_min_(0.);
+    }
+    return result;
+  }
+  ...
   if (eos->limiter() && floor) {
     result.select(1, IDN).clamp_min_(eos->density_floor());
   }
@@ -100,14 +120,15 @@ density and pressure floors with the third argument of `forward`. The three clam
   }
 ```
 
-`result` holds the left and right face states, `floor` is the caller's argument, and the last clamp has no
+`result` holds the left and right face states, `floor` is the caller's argument, and neither species clamp has a
 `floor` test.
 
 ### Tests
 
 | test (ctest name) | what it asserts | tolerance | where the tolerance comes from |
 |---|---|---|---|
-| none | no test isolates the face floors; they fire inside every limited deck with a reconstruct section | not applicable | **missing evidence** |
+| `tests/test_species_face_clamp.cpp` (`test_species_face_clamp.<b>`) | `shock_species_faces_are_floored`: under `shock: true` WENO5 faces of a one-cell dry slot undershoot with the limiter off; with it on every species face is $\ge 0$, the non-negative faces and the non-species rows are unchanged bit for bit | exact (`torch::equal`) | the contract ({{< code tests/test_species_face_clamp.cpp recon.shock_species_faces_are_floored >}}) |
+| none | no test isolates the density and pressure face floors; they fire inside every limited deck with `shock` false | not applicable | **missing evidence** |
 | this chapter's check | `[C9]` where `shock` is false, deck by deck | exact | `floors_check.py` `check_C9` ports the two readers and compares booleans |
 
 : Tests of the reconstruction-stage floors. {#tbl-ch08-reconfloors-tests}
@@ -116,17 +137,28 @@ The shared property is measured by `[C2]` of the chapter's check on the cell flo
 without a `dynamics` or `reconstruct` block both directions keep `shock` true; with only a `vertical`[^rg-549637c96357] section $x_1$
 has `shock` false and $x_2$, $x_3$ keep it true; with both sections both are false.
 
-[^ch08-reconfloors-run]: [sha: snapy@ccf40f9565642c32be69f4b9ef0cfa6daff3f201; deck: the check itself, synthetic numpy
-    states; run: `python3 src/snapy_report/ch08/checks/floors_check.py`, CPU, double, 1 process; Python 3.14.7, numpy 2.5.1;
+`test_species_face_clamp` reconstructs along $x_2$ a row of vapour mass fractions $10^{-16}$ with a slot of
+$4.7\times10^{-3}$, $2.5\times10^{-9}$, $1.9\times10^{-5}$, by WENO5 with `scale` and `shock` on.[^ch08-reconfloors-ctest]
+The smallest vapour face is $-2.2162\times10^{-5}$ with the limiter off and $0$ with it on, and the test's two
+bitwise comparisons pass.
+
+[^ch08-reconfloors-run]: [sha: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f; deck: the check itself, synthetic numpy
+    states; run: `python3 src/snapy_report/ch08/checks/floors_check.py`, CPU, double, 1 process; Python 3.11.13, numpy 2.4.6;
     output identical to the committed file]. Output
     `floors_check.out`, lines `[C2]` and `[C9]`.
+[^ch08-reconfloors-ctest]: [sha: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f; deck:
+    `tests/test_species_face_clamp.yaml` and the row set in `tests/test_species_face_clamp.cpp`; run: `env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 ctest -R "test_fix_vapor_deficit|test_species_face_clamp" -V`, in the build's `tests` directory of a Release build (`cmake -B build -DCMAKE_BUILD_TYPE=Release -DNETCDF=ON -DCUDA=OFF`), CPU, double (float32 cases as named), 1 process;
+    GCC 13.3.1, CMake 3.26.5, Python 3.11.13, torch 2.10.0, kintera 2.6.6]. The two numbers are the test's own `printf` line. Source of the test and the clamp: chengcli/snapy#332.
 
 ### Limits
 
-1. **The tracer clamp ignores its caller.** Unless `shock` is set, a path that switches floors off to protect its own
-   variables still has its tracer face states clamped. Whether that is intended is not recorded anywhere; the
+1. **The tracer clamp ignores its caller.** A path that switches floors off to protect its own variables still has
+   its tracer face states clamped, with or without `shock`. Whether that is intended is not recorded anywhere; the
    chapter records the behaviour.
-2. **Same absolute values.** The face floors use the same absolute numbers as the cell floors, so the
+2. **A clamp, not a limiter.** A species face raised to zero changes the face flux the tracer limiter of
+   @sec-ch08-theta then scales, and so the mass it moves. The test checks the faces only; nothing in the repository
+   measures the effect on a run's species budget.
+3. **Same absolute values.** The face floors use the same absolute numbers as the cell floors, so the
    scaling caveat of @sec-ch08-eoslimiter applies to them unchanged.
 
 <!-- reader glossary notes -->

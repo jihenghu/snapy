@@ -1,8 +1,9 @@
 ## The tracer flux positivity limiter (`equation-of-state/limiter`) {#sec-ch08-theta}
 
 <!-- PROVENANCE
-pin: snapy@ccf40f9565642c32be69f4b9ef0cfa6daff3f201 (chengcli/snapy)
-sources: OUTLINE.md 8.1; chengcli/snapy#307 (PR body and squash-merge commit message)
+pin: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f (chengcli/snapy)
+sources: OUTLINE.md 8.1; chengcli/snapy#307 (PR body and squash-merge commit message); chengcli/snapy#332 (the
+         stage-forcing clip: PR body and squash-merge commit message)
 status: draft
 -->
 
@@ -12,7 +13,8 @@ This is the only mechanism in snapy that *guarantees* anything about positivity,
 alone. For each cell and species it computes the largest uniform scaling of that cell's outgoing fluxes that cannot
 drain it below zero in one forward-Euler step. It then applies the factor of the donor cell to every face. It runs
 inside the stage operator of @sec-ch04-divergence, after the seam averaging of @sec-ch04-seam and before the flux
-divergence.
+divergence. A user stage forcing comes after it in the stage, so with the limiter on the stage also clips the
+forcing's species increment at what transport left (@eq-ch08-theta-forcing-clip).
 
 ::: {.callout-note title="At a glance"}
 **Purpose.** Scale each face's tracer flux by the factor of the cell it drains, @eq-ch08-theta-def, so no cell is emptied past zero.
@@ -140,7 +142,32 @@ with it. Kintera's negative-concentration warnings 1474 against 0. The species d
 $2.4\times10^{-10}$ and the same as in the limited arm, is the panel-seam leak of @sec-ch04-fluxcov, not a failure of
 the gate.[^ch08-gate-numbers]
 
-**Why the donor factor, and what it costs.** Four facts of the code and two bounds.
+**User stage forcings.** A user stage forcing (`set_user_stage_forcings`) is added to the stage increment after this
+limiter and after the implicit correction, and before the stage average and the conserved pass of
+@sec-ch08-eoslimiter ({{< code src/mesh/meshblock.cpp MeshBlockImpl::advance_local >}}). Its sink is computed from the
+stage-input state, so on its own it could take a cell that this limiter had nearly emptied below zero. With the
+limiter on, user forcings present and species rows in the state, the stage keeps a copy, `species_base`, of the
+species increment before the forcings, $\Delta t\,\Delta u^{\mathrm{tr}}_i$, and afterwards replaces the species
+increment $\Delta t\,\Delta u_i$ cell by cell:
+
+$$
+\Delta t\,\Delta u_i \leftarrow \max\!\Big(\Delta t\,\Delta u_i,\ \minig(\Delta t\,\Delta u^{\mathrm{tr}}_i,\ -u_iig)\Big).
+$$ {#eq-ch08-theta-forcing-clip}
+
+This is `clip_species` ({{< code src/mesh/meshblock.cpp MeshBlockImpl::advance_local >}}). Adding $u_i$ to both
+arguments of the max bounds the result in one line:
+
+$$
+u_i + \Delta t\,\Delta u_i \;\ge\; \minig(u_i + \Delta t\,\Delta u^{\mathrm{tr}}_i,\ 0ig).
+$$
+
+So where transport and the implicit correction left the cell non-negative, the forcing cannot take it below zero;
+where they left it negative, the forcing cannot take it lower. A forcing increment at or above the bound is
+not touched, so a stage with no user forcing, or one where the clip does not bind, is bit for bit what it was.
+The part of a sink the clip withholds is not applied anywhere: the forcing removes less than it asked for in that
+cell.
+
+**Why the donor factor, and what it costs.** Five facts of the code and two bounds.
 
 1. The outgoing sum is accumulated over exactly the faces the divergence consumes, as a rectified pair per direction
    ({{< code src/hydro/flux_positivity.cpp flux_positivity_theta >}}). So the limiter and the divergence agree about
@@ -153,6 +180,9 @@ the gate.[^ch08-gate-numbers]
    $n_f$ faces; `[C3]` measures $1.7\times10^{-16}$ of the flux scale.
 4. The ghost factors are a raw copy, never interpolated ({{< code src/hydro/hydro_forward.cpp HydroImpl::forward >}}):
    the donor of a seam face is the neighbour's edge cell, and an interpolated ghost is not its factor.
+5. A user stage forcing's species increment is clipped by @eq-ch08-theta-forcing-clip, so it cannot undo the bound
+   this limiter gave the stage. The clip reads the limiter switch itself, not the covariance gate
+   ({{< code src/mesh/meshblock.cpp MeshBlockImpl::advance_local >}}).
 
 ### Code
 
@@ -168,6 +198,7 @@ The symbol column is the citation's anchor.
 | the ghost fill it needs | {{< code src/hydro/hydro_forward.cpp HydroImpl::forward >}} | `interpolate` | |
 | the gate, with the covariance rows | {{< code src/hydro/hydro_forward.cpp HydroImpl::forward >}} | `cov2` | `limiter` or covariance rows |
 | the contract, written out | {{< code src/hydro/flux_positivity.hpp flux_positivity_theta >}} | `flux_positivity_theta` | |
+| the clip of a user forcing's species increment, @eq-ch08-theta-forcing-clip | {{< code src/mesh/meshblock.cpp MeshBlockImpl::advance_local >}} | `clip_species` | `limiter: true`, a user stage forcing, species rows |
 
 : Code map of the tracer flux positivity limiter. {#tbl-ch08-theta-code}
 
@@ -199,7 +230,25 @@ limiter is skipped when there are no tracer rows. The factor is these lines of `
 `avail` is the mass the cell can afford, `drain` the mass it would lose unlimited, and the ratio is clamped at one. A
 cell that drains nothing keeps the factor one. The gate in the stage is
 `if ((options->eos()->limiter() || cov2 || cov3) && ny > 0)`
-({{< code src/hydro/hydro_forward.cpp HydroImpl::forward >}}).
+({{< code src/hydro/hydro_forward.cpp HydroImpl::forward >}}). The clip of a user forcing is these lines of
+`advance_local` ({{< code src/mesh/meshblock.cpp MeshBlockImpl::advance_local >}}):
+
+```cpp
+  int nspec = hydro_u.size(0) - ICY;
+  bool clip_species = !user_stage_forcings.empty() && nspec > 0 &&
+                      phydro->options->eos()->limiter();
+  auto species_base = clip_species ? fut_hydro_du.narrow(0, ICY, nspec).clone()
+                                   : torch::Tensor();
+  ...
+  if (clip_species) {
+    auto du = fut_hydro_du.narrow(0, ICY, nspec);
+    auto floor = torch::minimum(species_base, -hydro_u.narrow(0, ICY, nspec));
+    du.copy_(torch::where(du < floor, floor, du));
+  }
+```
+
+`fut_hydro_du` is the stage increment $\Delta t\,\Delta u$, already multiplied by $\Delta t$, and `hydro_u` the
+stage-input state $u$.
 
 ### Tests
 
@@ -210,6 +259,7 @@ cell that drains nothing keeps the factor one. The gate in the stage is
 | `tests/test_flux_positivity_cubedsphere_moist.py` (`test_flux_positivity_cubedsphere_moist_python`) | the moist arm across seams | `DRIFT_TOL` $10^{-13}$, `SPECIES_MIN` $-10^{-15}$ | round-off: the docstring raises the pressure, so the column is warm and everywhere unsaturated. The cloud channel then stays zero and the saturation adjustment moves nothing, so the vapour and cloud total has to hold in both arms ({{< code tests/test_flux_positivity_cubedsphere_moist.py DRIFT_TOL >}}). |
 | `test_flux_positivity_python`, `test_flux_positivity_carry.<b>` | their unlimited arm, run with `SNAP_FLUX_COVARIANCE=0` because the covariance turns the limiter on | as the limited arm | the arm changes the switch, not the tolerance: row 1 of this table and @tbl-ch08-carry-tests |
 | `test_flux_positivity_cubedsphere_cov_off_python` | the unlimited base arm of the six-panel test, with the covariance off | `DRIFT_TOL` $10^{-13}$ | the same script and the same constant as row 2; the arm changes the switch, not the tolerance |
+| `tests/test_forcing_species_clip.py` (`test_forcing_species_clip_python`) | a one-cell dry slot under a user forcing that diffuses vapour along $x_1$, for winds of $\pm 20$ m s$^{-1}$: at stage 0 the slot ends $\ge 0$, the cell below equals transport plus forcing (no column repair borrowed from it), the cell above is unchanged, and the whole step is not marked at the first $\Delta t$ | $10^{-14}$ relative on the cells below and above; exact on the sign and the mark | round-off of one stage on a value near $10^{-6}$ ({{< code tests/test_forcing_species_clip.py _case >}}) |
 | this section's check | `[C1]` the guarantee measured on the state; `[C2]` inactive away from depletion; `[C3]` conservation and its counter-example; `[C5]` the integrator argument; `[C7]` the donor rule; `[C10]` the stage-entry precondition; `[C11]` the convex split | bitwise and round-off | the check's own bounds, all in `positivity_check.py`. `check_C2` compares $\Theta$ against 1 exactly. `check_C5` asserts the stage weights to $10^{-15}$. `check_C3` asserts relative conservation below $10^{-14}$. `check_C7` asserts the donor rule to $10^{-15}$ relative. |
 
 : Tests of the tracer flux positivity limiter. {#tbl-ch08-theta-tests}
@@ -222,6 +272,13 @@ test, `test_flux_positivity_cubedsphere_cov_off` ({{< code tests/CMakeLists.txt 
 covered with the covariance off.[^ch08-gate-arms] No test asserts the minimum-vapour and warning counts quoted above;
 they are **missing evidence** at a pinned sha.
 
+`test_forcing_species_clip` makes the forcing clip bind.[^ch08-theta-clip-run] With the wind at
+$-20$ m s$^{-1}$ transport leaves the slot at $1.842720\times10^{-18}$ kg m$^{-3}$ and the forcing asks for
+$-3.612378\times10^{-11}$, which would leave $-3.612378\times10^{-11}$; after the stage the slot holds exactly $0$,
+the cell below holds $1.09596613082898916\times10^{-6}$, which is transport plus forcing to the last digit, and the
+step is accepted with no halving. With the wind at $+20$ m s$^{-1}$ the slot keeps $9.985322\times10^{-5}$, the clip
+does not bind, and the step is accepted with no halving.
+
 The chapter's check is a numpy port of the factor and the donor rule on random flux fields; it imports no
 snapy.[^ch08-theta-run] `[C1]`: over 4000 random fields the unlimited update goes negative in every one, worst
 $-5.879$, and the limited update never does, worst exactly $0$. `[C2]`: all $25\,974$ cells that can afford
@@ -233,8 +290,9 @@ cells non-negative at stage entry end at worst exactly $0$, while $4150$ of $783
 negative after the limited step. `[C11]`: the convex split holds exactly in rational arithmetic. The ctests named
 above have not been run for this report at the pin: **pending a pinned ctest run**.
 
-[^ch08-theta-run]: [sha: snapy@ccf40f9565642c32be69f4b9ef0cfa6daff3f201; deck: the check itself, synthetic numpy states;
-    run: `python3 src/snapy_report/ch08/checks/positivity_check.py`, CPU[^rg-2951cd52e369], double, 1 process; Python 3.14.7, numpy 2.5.1; output identical to the committed file]. Output
+[^ch08-theta-run]: [sha: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f; deck: the check itself, synthetic numpy states;
+    run: `python3 src/snapy_report/ch08/checks/positivity_check.py`, CPU[^rg-2951cd52e369], double, 1 process; Python 3.11.13,
+    numpy 2.4.6, sympy 1.14.0; output identical to the committed file]. Output
     `positivity_check.out`, lines `[C1]`, `[C2]`, `[C3]`, `[C5]`, `[C7]`, `[C10]` and `[C11]`.
 
 ### Limits
@@ -245,7 +303,9 @@ above have not been run for this report at the pin: **pending a pinned ctest run
 - `limiter: false` does not give the unlimited scheme while the covariance is on (the default); only
   `SNAP_FLUX_COVARIANCE=0` together with `limiter: false` does.
 - The guarantee is per stage, for transport only. A source term, a sedimentation flux added after the
-  limiter, or the implicit solve can still drive a tracer negative.
+  limiter, or the implicit solve can still drive a tracer negative. A user stage forcing cannot take a species below
+  what transport left when `limiter: true` (@eq-ch08-theta-forcing-clip); with the limiter on only through the
+  covariance gate, it is not clipped.
 :::
 
 1. **The ghost fill is a precondition, not a check.** If a caller scales before filling $\Theta$'s ghost layer, the
@@ -254,11 +314,17 @@ above have not been run for this report at the pin: **pending a pinned ctest run
    interior face differing by one part in a thousand move the volume-weighted mass total by
    $4\times10^{-14}$ of itself per step, three orders above the round-off the same run shows with one flux per
    face.
-2. **Not provided:** a measurement establishing that limiting at the full $\Delta t$ suffices for the
+2. **The forcing clip touches the species rows only.** A user forcing that also returns a dry-density or energy
+   increment computed from its full sink keeps that increment where the clip withholds part of the sink; nothing
+   reconciles the two. How often the clip binds in a run, and what it withholds, is not measured.
+3. **Not provided:** a measurement establishing that limiting at the full $\Delta t$ suffices for the
    multi-stage update; no check in this chapter integrates a full Runge-Kutta step. Sufficiency remains
    a hypothesis based on the convex-combination argument `[C5]` verifies for the shipped weights,
    not a measurement of a multi-stage run.
 
+[^ch08-theta-clip-run]: [sha: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f; deck:
+    `tests/test_forcing_species_clip.yaml` with the state and the forcing built in `tests/test_forcing_species_clip.py`;
+    run: `env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 PYTHONPATH="$SITE" ctest -R "test_forcing_species_clip|test_fix_vapor_reports_failure_python|test_fix_vapor_counts_every_column|test_fix_vapor_stale_count_python" -V`, in the build's `tests` directory of a Release build (`cmake -B build -DCMAKE_BUILD_TYPE=Release -DNETCDF=ON -DCUDA=OFF`), CPU, double (float32 cases as named), 1 process; GCC 13.3.1, Python 3.11.13, torch 2.10.0, numpy 2.4.6, kintera 2.6.6; `$SITE` is the directory the build was installed into with `pip install --no-deps --no-build-isolation --target`]. The numbers are the test's own printed lines; it prints `RESULT PASS`.
 [^ch08-gate-numbers]: Source: the chengcli/snapy#307 body, section "Positivity gate", and the commit message
     of that round's squash-merge, which is an ancestor of this book's pin. Deck: the test named above. Run: not
     recorded.

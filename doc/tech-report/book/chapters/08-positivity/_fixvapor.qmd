@@ -1,8 +1,9 @@
 ## The vapour column repair {#sec-ch08-fixvapor}
 
 <!-- PROVENANCE
-pin: snapy@ccf40f9565642c32be69f4b9ef0cfa6daff3f201 (chengcli/snapy)
-sources: OUTLINE.md 8, lifted out of scheme 8.5 as the outline recommends
+pin: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f (chengcli/snapy)
+sources: OUTLINE.md 8, lifted out of scheme 8.5 as the outline recommends; chengcli/snapy#332 (PR body and squash-merge
+         commit message)
 status: draft
 -->
 
@@ -11,9 +12,13 @@ status: draft
 When the borrow of @sec-ch08-borrow cannot cover a deficit from the parent vapour in the same cell, the vapour itself
 goes negative. A local repair has no mass to work with. The column repair is the fallback: it looks along the $x_1$
 column for mass to move, the whole column on the two stage calls and the block's piece of it on the others.
+It moves only the deficit. The negative cells go to zero, and the cells below that cover them each give up the same
+fraction of their vapour, so a deficit of $10^{-11}$ moves a moist cell by $10^{-11}$ and no more. The redo mark
+follows the deficit, not the donors: a deficit below round-off of the cell's gas density is repaired without a
+redo.[^ch08-fixvapor-alias]
 
 ::: {.callout-note title="At a glance"}
-**Purpose.** Repair a negative vapour by moving mass along its $x_1$ column, weighted by cell volume.
+**Purpose.** Repair a negative vapour by borrowing its deficit from the cells below, in proportion to their vapour; @eq-ch08-fixvapor-borrow.
 
 **Data.** In: the interior vapour and cloud rows, the dry density, the cell volumes. Out: the rows repaired in place, or an error.
 
@@ -21,22 +26,69 @@ column for mass to move, the whole column on the two stage calls and the block's
 
 **Activation.** With the limiter, where a vapour row is negative, or a parentless cloud after the borrow.
 
-**Guarantee / limits.** Conserves the mass of the column it sees (whole only on whole-column calls); vapour throws, clouds clamp.
+**Guarantee / limits.** Conserves the column mass it sees; donors move by the deficit only; vapour throws, clouds clamp.
 
-**Evidence.** `test_fix_vapor_volume.<b>` ($10^{-12}$), the two failure-reporting Python ctests; no report check.
+**Evidence.** `test_fix_vapor_deficit.<b>` (run at the pin), `test_fix_vapor_volume.<b>`, the failure ctests; no report check.
 :::
+
+Local symbols: $\mathcal M$ is the window of $x_1$ cells one scan step rewrites; $D$ and $Q$ [kg m$^{-3}$, per
+bottom-cell volume] are the window's deficit and the vapour of its donor cells. $\rho_{n,l}$ and $V_l$ are the partial
+density and the volume of cell $l$, as in @sec-appa.
 
 ### Derivation
 
-The scheme is a redistribution, so the thing to establish is what it conserves. It weights by cell volume at
+The repair is a redistribution, so the thing to establish is what it moves and what it conserves.
+It weights by cell volume at
 `cell_volume` ({{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}), which is the
 point recorded in the code comment there. A column repair that moved *densities* would not conserve mass on a
 non-uniform grid, because equal densities in unequal cells are unequal masses. Weighting by volume makes the
 redistribution conservative in mass.
 
+**What one scan step moves.** Index the column from the bottom, $l = 0..N-1$. The kernel `fix_vapor_impl` scans from
+the top ({{< code src/eos/fix_vapor_impl.h fix_vapor_impl >}}). A negative cell starts a window $\mathcal M$ that grows
+downward until its volume-weighted vapour sum is non-negative. Split the window into its negative and non-negative
+cells and sum each part:
+
+$$
+D = -\sum_{l\in\mathcal M,\ \rho_{n,l}<0} \frac{V_l}{V_0}\,\rho_{n,l} ,\qquad
+Q = \sum_{l\in\mathcal M,\ \rho_{n,l}\ge0} \frac{V_l}{V_0}\,\rho_{n,l} .
+$$ {#eq-ch08-fixvapor-sums}
+
+$D$ is the deficit and $Q$ the vapour the donor cells hold; both are `deficit` and `donors`
+({{< code src/eos/fix_vapor_impl.h fix_vapor_impl >}}). The window stops growing at the first cell that makes
+$Q - D \ge 0$. Every cell of the window is then rewritten as
+
+$$
+\rho_{n,l} \leftarrow
+\begin{cases}
+0, & \rho_{n,l} < 0,\\[2pt]
+\rho_{n,l} - \rho_{n,l}\,\dfrac{D}{Q}, & \rho_{n,l} \ge 0,
+\end{cases}
+\qquad l\in\mathcal M ,
+$$ {#eq-ch08-fixvapor-borrow}
+
+which is the loop over `share` ({{< code src/eos/fix_vapor_impl.h fix_vapor_impl >}}). Three properties follow, each in
+one line.
+
+1. *Mass is kept.* Multiply @eq-ch08-fixvapor-borrow by $V_l/V_0$ and sum over $\mathcal M$. The negative cells
+   contribute $0$ after and $-D$ before. The donors contribute $Q - Q\,D/Q = Q - D$ after and $Q$ before. Both sums are
+   $Q - D$.
+2. *Nothing goes negative.* The window stopped where $Q - D \ge 0$, so $D/Q \le 1$ and each donor keeps
+   $(1 - D/Q)\,\rho_{n,l} \ge 0$. The window holds at least one negative cell, so $D > 0$, and $Q - D \ge 0$ then
+   needs $Q > 0$: the division is always defined here. The code guards it anyway, with a share of zero for $Q = 0$
+   (`share`, {{< code src/eos/fix_vapor_impl.h fix_vapor_impl >}}).
+3. *The donors move by the deficit only.* Donor $l$ loses $\rho_{n,l}D/Q$, and the donors together lose $D$,
+   whatever their vapour. The dry density does not enter @eq-ch08-fixvapor-borrow. So a deficit at round-off size moves
+   the cells below it at round-off size.
+
+The branch that runs when the window passes the bottom with $Q - D < 0$ is a different one: it zeroes the window
+and takes the deficit from the cells above, cell by cell, and fails if they cannot cover it
+({{< code src/eos/fix_vapor_impl.h fix_vapor_impl >}}). @sec-ch10-fixvapor derives that branch.
+
 This chapter does not port the repair. The search is a device kernel reached through a dispatch call, so a numpy port
 would be a reimplementation. A check built on it would test the reimplementation and not the code. The conservation
-property above is read from the code and its comment, and asserted by the ctest of @tbl-ch08-fixvapor-tests.
+properties above are read from the code and its comments. The ctests of @tbl-ch08-fixvapor-tests assert them on
+fixed columns.
 
 ### Numerical method
 
@@ -59,6 +111,14 @@ path is therefore a hard stop, not a silent repair. On CUDA, inside a MeshBlock 
 which `check_redo` carries in its one device-to-host copy and raises there (@sec-ch07-redo); stage 0 zeroes it.
 Every other call, and every call on the CPU, raises at once.
 
+**The mark is on the deficit.** With marks enabled, the conserved pass copies the interior species rows before any
+species repair (`species_before`, {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}).
+After the column repair it sets the patch mark of @sec-ch08-eoslimiter only where a species density was below
+$-4096\,\epsilon_{\mathrm m}\lvert\rho\rvert$. Here $\rho$ is the cell's total gas density from those copied rows and
+$4096\,\epsilon_{\mathrm m}$ is `species_repair_mark` of @sec-ch08-roundoff
+({{< code src/hydro/flux_positivity.cpp species_repair_mark >}}). How far the repair moved the donors does not enter
+the test. A deficit below the bound is still repaired; it only does not ask for a redo.
+
 **Why volumes, and why two callers.** Three facts of the code.
 
 1. The redistribution weights by cell volume, so it moves mass and not density; moving densities would not conserve
@@ -68,6 +128,9 @@ Every other call, and every call on the CPU, raises at once.
    stage calls pass. The conversions' calls repair the block's piece of the column, and conserve its mass there.
 3. Clouds tolerate an unrepairable column and fall back to a clamp. Vapour must not copy a bad column back, so its
    caller passes `require_success` and the kernel's error becomes a hard stop.
+4. The redo mark tests the deficit before the repair against $4096\,\epsilon_{\mathrm m}$ of the total gas density
+   (`species_before`, {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}), so a
+   step is asked to be redone only when it left a species deficit above round-off, however the repair then spread it.
 
 ### Code
 
@@ -76,6 +139,9 @@ Every other call, and every call on the CPU, raises at once.
 | volume weighting, so mass is conserved | {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}} | `vol` | |
 | the two callers differ by design | {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}} | `repair_column` | |
 | the repair | {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}} | `repair_column` | vapour negative |
+| the scan and the deficit-only borrow, @eq-ch08-fixvapor-borrow | {{< code src/eos/fix_vapor_impl.h fix_vapor_impl >}} | `share` | |
+| the mark on the deficit | {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}} | `species_before` | marks enabled |
+| the mark's bound | {{< code src/hydro/flux_positivity.cpp species_repair_mark >}} | `species_repair_mark` | |
 | vapour must succeed | {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}} | `TORCH_CHECK` | `require_success` |
 | the count deferred to `check_redo` | {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}} | `vapor_failures_` | CUDA, in a stage |
 | clouds clamp instead | {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}} | `clamp_min_` | parentless or unrepairable |
@@ -96,6 +162,25 @@ kernel is the failure a run sees
     repair_column(cons.index(interior).narrow(0, ICY, nvapor), true);
 ```
 
+The borrow is these lines of `fix_vapor_impl` ({{< code src/eos/fix_vapor_impl.h fix_vapor_impl >}}), with `i` the
+cell below the window and `is` its top:
+
+```cpp
+    T share = donors > 0. ? deficit / donors : T(0.);
+    for (int j = is; j > i; --j) {
+      vapor[j] = vapor[j] < 0. ? T(0.) : vapor[j] - vapor[j] * share;
+    }
+```
+
+and the mark is these
+({{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}):
+
+```cpp
+      auto rho = cons.index(interior)[IDN] + species_before.sum(0);
+      auto tol = species_repair_mark(cons.scalar_type()) * rho.abs();
+      push_mark_(0, (species_before < -tol).any());
+```
+
 Refused: a vapour column that cannot be repaired, with the message above; a cloud column in the same state is
 clamped at zero instead.
 
@@ -103,15 +188,28 @@ clamped at zero instead.
 
 | test (ctest name) | what it asserts | tolerance | where the tolerance comes from |
 |---|---|---|---|
-| `tests/test_fix_vapor_volume.cpp` (`test_fix_vapor_volume.<b>`) | `fix_vapor_keeps_the_column_mass_on_varying_cell_volume`: the repaired vapour is non-negative and the column mass is unchanged on a non-uniform grid | relative $10^{-12}$ in float64, $10^{-6}$ in float32 | set inline in the test ({{< code tests/test_fix_vapor_volume.cpp >}}); the file gives no reason |
+| `tests/test_fix_vapor_deficit.cpp` (`test_fix_vapor_deficit.<b>`) | `fix_vapor_borrows_only_the_deficit`: on one column every cell ends $\ge 0$, the column mass is kept, the moist cell under the negative one moves by the deficit and the other cells are unchanged bit for bit; the deficit marks | column mass $10^{-15}$ relative; the moved amount within $4\,\epsilon_{\mathrm m}$ of the donor | the donor change is one product and one difference ({{< code tests/test_fix_vapor_deficit.cpp eos.fix_vapor_borrows_only_the_deficit >}}) |
+| the same | `fix_vapor_marks_on_the_deficit`: a deficit of a quarter of the mark's bound is repaired and not marked | exact (a flag); moved amount within $4\,\epsilon_{\mathrm m}$ | the contract ({{< code tests/test_fix_vapor_deficit.cpp eos.fix_vapor_marks_on_the_deficit >}}) |
+| `tests/test_fix_vapor_volume.cpp` (`test_fix_vapor_volume.<b>`) | `fix_vapor_keeps_the_column_mass_on_varying_cell_volume`: the repaired vapour is non-negative and the column mass is unchanged on a non-uniform grid; on the uniform Cartesian control the two donors hold exactly the borrowed values | relative $10^{-12}$ in float64, $10^{-6}$ in float32; the control values to 4 ulp | set inline in the test ({{< code tests/test_fix_vapor_volume.cpp >}}); the 4 ulp allow a device kernel to sum in another order |
+| `tests/test_eos.cpp` (`test_eos.<b>`) | `downward_branch_borrows_the_deficit`: the window's donor gives up $D/Q$ of its vapour, whatever the dry density | `EXPECT_DOUBLE_EQ`, 4 ulp | the gtest default ({{< code tests/test_eos.cpp >}}) |
 | `tests/test_fix_vapor_reports_failure.py` (`test_fix_vapor_reports_failure_python`, `_cuda_python`) | an unrepairable column raises `Failed to fix vapor` | exact (an exception) | the contract ({{< code tests/test_fix_vapor_reports_failure.py main >}}) |
 | `tests/test_fix_vapor_counts_every_column.py` (`test_fix_vapor_counts_every_column_python`) | a broken column at 32 positions, with several CPU threads, is reported every time | exact | the contract ({{< code tests/test_fix_vapor_counts_every_column.py main >}}) |
 | `tests/test_fix_vapor_stale_count.py` (`test_fix_vapor_stale_count_python`, `_cuda_python`) | a failure is reported once and never resurfaces: after a failed direct U->W, a reported `check_redo` failure and an abandoned failed step, `check_redo` on a healthy state returns 0 | exact | the contract ({{< code tests/test_fix_vapor_stale_count.py main >}}) |
 
 : Tests of the vapour column repair. {#tbl-ch08-fixvapor-tests}
 
-The registrations are in {{< code tests/CMakeLists.txt >}}. No report check covers the repair. The ctests have not
-been run for this report at the pin: **pending a pinned ctest run**.
+The registrations are in {{< code tests/CMakeLists.txt >}}. No report check covers the repair.
+
+`test_fix_vapor_deficit` puts vapour densities $2\times10^{-3}$, $1.5\times10^{-3}$, $10^{-3}$,
+$-2.5\times10^{-11}$, $10^{-16}$, $10^{-16}$ kg m$^{-3}$ (bottom to top) over a dry density of $0.8$ kg m$^{-3}$
+and runs the conserved pass once.[^ch08-fixvapor-run] The negative cell goes to $0$. The $10^{-3}$ cell, the only
+donor of the window, goes to $9.9999997500000012\times10^{-4}$, a change of $-2.5\times10^{-11}$. The other four cells
+are unchanged, the relative change of the column mass prints as $0$, and the step is marked. With the deficit set to
+$1.82\times10^{-13}$, a quarter of the bound $7.28\times10^{-13}$, the donor moves by $-1.81899\times10^{-13}$ and the
+step is not marked. The second command of the footnote ran `test_fix_vapor_volume`, `test_eos` and `test_forcing`
+on the same build: every CPU case passed, in float32 and float64, and their CUDA cases were skipped. The three CPU
+Python failure ctests, `test_fix_vapor_reports_failure_python`, `test_fix_vapor_counts_every_column_python` and
+`test_fix_vapor_stale_count_python`, passed on the same build; their CUDA arms were not run.[^ch08-fixvapor-pyrun]
 
 ### Limits
 
@@ -124,7 +222,18 @@ been run for this report at the pin: **pending a pinned ctest run**.
   deficit the piece cannot cover throws there even when the rest of the column could cover it.
 :::
 
-1. **Not ported.** The conservation claim is read from the code and its comment and asserted by one ctest on
-   one grid; no check in this chapter measures it.
-2. **Cost.** Gathering a column is communication inside the conserved pass of the two stage calls. Nothing in
+1. **Not ported.** The three properties of the Derivation are read from the code and asserted by ctests on fixed
+   columns; no check in this chapter measures them on random columns.
+2. **Proportional, not nearest-first.** Every donor of the window gives up the same fraction of its vapour, so a donor high in
+   the window, next to the negative cell, gives no more than one far below it. Nothing in the repository measures
+   whether a nearest-first borrow would change a run.
+3. **Cost.** Gathering a column is communication inside the conserved pass of the two stage calls. Nothing in
    the repository measures how often it fires or what it costs.
+
+[^ch08-fixvapor-alias]: Source: chengcli/snapy#332 (closes chengcli/snapy#330), the PR body and the commit message
+    of its squash-merge, which is this book's pin.
+[^ch08-fixvapor-run]: [sha: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f; deck:
+    `tests/test_fix_vapor_deficit.yaml` and the column set in `tests/test_fix_vapor_deficit.cpp`; run: `env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 ctest -R "test_fix_vapor_deficit|test_species_face_clamp" -V` and
+    `env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 ctest -R "^test_eos\.release|^test_fix_vapor_volume\.release|^test_forcing\.release|test_cycle_diagnostics\.release" -V`, in the build's `tests` directory of a Release build (`cmake -B build -DCMAKE_BUILD_TYPE=Release -DNETCDF=ON -DCUDA=OFF`), CPU, double (float32 cases as named), 1 process; GCC 13.3.1, CMake 3.26.5, Python 3.11.13, torch 2.10.0, kintera 2.6.6]. The printed lines are the test's own `printf` output.
+[^ch08-fixvapor-pyrun]: [sha: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f; deck: the columns the three scripts
+    build; run: `env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 PYTHONPATH="$SITE" ctest -R "test_forcing_species_clip|test_fix_vapor_reports_failure_python|test_fix_vapor_counts_every_column|test_fix_vapor_stale_count_python" -V`, in the build's `tests` directory of a Release build (`cmake -B build -DCMAKE_BUILD_TYPE=Release -DNETCDF=ON -DCUDA=OFF`), CPU, double (float32 cases as named), 1 process; GCC 13.3.1, Python 3.11.13, torch 2.10.0, numpy 2.4.6, kintera 2.6.6; `$SITE` is the directory the build was installed into with `pip install --no-deps --no-build-isolation --target`]: 4 of 4 passed.

@@ -1,7 +1,7 @@
 ## The equation-of-state limiter: two passes, floors and marks {#sec-ch08-eoslimiter}
 
 <!-- PROVENANCE
-pin: snapy@ccf40f9565642c32be69f4b9ef0cfa6daff3f201 (chengcli/snapy)
+pin: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f (chengcli/snapy)
 sources: OUTLINE.md 8.5, 8.6 and 8.7, merged
 status: draft
 -->
@@ -11,8 +11,9 @@ status: draft
 The equation of state floors the state in two passes. The conserved pass zeroes NaNs, floors the dry density
 and floors the total energy at the kinetic energy plus the internal energy of a temperature floor. The
 primitive pass floors density and pressure and clamps the species fractions at zero. The conserved pass marks every
-repair in the interior for the redo detector of @sec-ch08-redo; the primitive pass marks only a NaN and a negative
-species fraction, and leaves its density and pressure floors to the detector's own floor test.
+density and energy repair in the interior for the redo detector of @sec-ch08-redo, and a species repair only when the
+deficit it covered was above round-off. The primitive pass marks only a NaN and a negative species fraction, and
+leaves its density and pressure floors to the detector's own floor test.
 
 ::: {.callout-note title="At a glance"}
 **Purpose.** Clamp the state back into the admissible set: two floor passes and a NaN repair; the conserved pass marks its repairs.
@@ -88,7 +89,11 @@ and empties it ({{< code src/eos/equation_of_state.hpp EquationOfStateImpl >}});
 conserved pass the marks are queued at `push_mark_`
 ({{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}): a NaN sets
 entry one; entry zero is set by comparing the density and energy rows against a copy taken before the floors, and
-again by a species repair larger than the round-off threshold of @sec-ch08-roundoff. In the primitive pass
+again where a species density was below $-4096\,\epsilon_{\mathrm m}$ times the cell's total gas density before the
+species repairs (`species_before`,
+{{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}). The bound is
+`species_repair_mark` of @sec-ch08-roundoff, and @sec-ch08-fixvapor gives the reason it tests the deficit and not
+the repair. In the primitive pass
 `push_mark_` ({{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_primitive_limiter_ >}}) sets entry
 one for a NaN and entry zero for a species fraction below minus that threshold; its floors mark nothing.
 
@@ -99,7 +104,8 @@ one for a NaN and entry zero for a species fraction below minus that threshold; 
    floors do not commute; `[C1]` measures the difference.
 2. A clamp can only add: the invented mass is $\sum_i \max(\rho_{\mathrm{fl}} - \rho_i, 0)\,V_i \ge 0$ and likewise for the
    energy; `[C2]` measures both strictly positive and nothing removes them.
-3. The conserved pass marks by comparing the interior rows against a copy taken before the floors, and the
+3. The conserved pass marks its density and energy floors by comparing the interior rows against a copy taken
+   before the floors, and its species repairs by testing that copy's species rows for a deficit above round-off. The
    primitive pass marks only a NaN and a negative species fraction. A repair in a ghost cell marks nothing and cannot
    force a block to redo its step.
 
@@ -112,6 +118,7 @@ one for a NaN and entry zero for a species fraction below minus that threshold; 
 | the dry density floor | {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}} | `density_floor` | |
 | the energy floor | {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}} | `min_ie` | an energy row exists |
 | the patch mark | {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}} | `push_mark_` | interior only |
+| the species mark, on the deficit | {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}} | `species_before` | species present |
 | the primitive pass | {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_primitive_limiter_ >}} | `apply_primitive_limiter_` | `limiter: true` |
 | its density floor | {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_primitive_limiter_ >}} | `density_floor` | |
 | its species clamp | {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_primitive_limiter_ >}} | `clamp_min_` | species present |
@@ -171,12 +178,16 @@ floor.
 
 The repair cases of `test_forcing.<b>` exercise the real passes and their marks ({{< code tests/test_forcing.cpp >}});
 `limiter_patch_is_reported_below_the_temperature_floor` tests floor reporting, not the non-commutation of
-`[C1]`. They have not been run for this report at the pin: **pending a pinned ctest run**.
+`[C1]`. `limiter_species_repair_redoes_the_step` and `limiter_roundoff_species_repair_is_not_redone` exercise
+the species mark on the deficit. Both passed on a CPU build of the pin, with every other CPU case of `test_forcing.<b>`.[^ch08-eoslimiter-ctest]
 
-[^ch08-floors-run]: [sha: snapy@6fbb39750f62b83df096058a4746e77d0a634bc5; deck: the check itself, synthetic numpy
+[^ch08-floors-run]: [sha: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f; deck: the check itself, synthetic numpy
     states; run: `python3 src/snapy_report/ch08/checks/floors_check.py`, CPU, double, 1 process; Python 3.11.13, numpy 2.4.6;
     output identical to the committed file]. Output
     `floors_check.out`, lines `[C1]`, `[C2]`, `[C4]` and `[C5]`.
+[^ch08-eoslimiter-ctest]: [sha: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f; deck: the cards of
+    `tests/test_forcing.cpp`; run: `env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 ctest -R "^test_eos\.release|^test_fix_vapor_volume\.release|^test_forcing\.release|test_cycle_diagnostics\.release" -V`, in the build's `tests` directory of a Release build (`cmake -B build -DCMAKE_BUILD_TYPE=Release -DNETCDF=ON -DCUDA=OFF`), CPU, double (float32 cases as named), 1 process; GCC 13.3.1, CMake 3.26.5, Python 3.11.13, torch 2.10.0, kintera 2.6.6]: `test_forcing` ran 43 cases from 2 suites, 40 passed and the
+    3 CUDA cases were skipped.
 
 ### Limits
 

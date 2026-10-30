@@ -1,7 +1,7 @@
 ## Round-off thresholds for positivity events {#sec-ch08-roundoff}
 
 <!-- PROVENANCE
-pin: snapy@ccf40f9565642c32be69f4b9ef0cfa6daff3f201 (chengcli/snapy)
+pin: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f (chengcli/snapy)
 sources: OUTLINE.md 8.11
 status: draft
 -->
@@ -10,14 +10,15 @@ status: draft
 
 A limiter that aims at exactly zero will overshoot, because the target rounds negative. A census that
 counts every such overshoot will report a flood of events that mean nothing. Two constants separate a real
-repair from arithmetic: the donor margin and the event threshold, which differ in float32.
+repair from arithmetic: the donor margin and the event threshold, which differ in float32. A third, the species
+repair mark, decides when a species deficit asks for a redo; it is set to the event threshold.
 
 ::: {.callout-note title="At a glance"}
-**Purpose.** Decide what counts as a positivity event rather than arithmetic noise: a donor margin and an event threshold.
+**Purpose.** Decide what counts as a positivity event rather than arithmetic noise: a donor margin, an event threshold, a repair mark.
 
 **Data.** In: the precision of the state, the factors, the withheld mass, the cell gas mass. Out: the margin, the hit and severe counts.
 
-**Placement.** The margin inside `flux_positivity_theta`; the census in `HydroImpl::forward` after the factors.
+**Placement.** Margin in `flux_positivity_theta`; census in `HydroImpl::forward`; mark in the conserved pass.
 
 **Activation.** Always, with the limiter; the constants are `constexpr` and not configurable.
 
@@ -40,6 +41,15 @@ Event reporting instead uses `positivity_roundoff`: 4096 ulp in float64 and 64 u
 ($7.63\times10^{-6}$) in float32. The smaller float32 threshold avoids dismissing a real
 repair as noise ({{< code src/hydro/flux_positivity.cpp positivity_roundoff >}}).
 `[C4]` checks these arithmetic fractions; it does not execute the C++ census.
+
+The species repair mark is `species_repair_mark`: `kSpeciesRepairMarkUlp` ulp in float64 and
+`kSpeciesRepairMarkUlpFloat` in float32 ({{< code src/hydro/flux_positivity.cpp species_repair_mark >}}). Both are
+defined as the two event constants, 4096 and 64 ulp
+({{< code src/hydro/flux_positivity.hpp kSpeciesRepairMarkUlp >}},
+{{< code src/hydro/flux_positivity.hpp kSpeciesRepairMarkUlpFloat >}}), so the fractions are the same
+$9.09\times10^{-13}$ and $7.63\times10^{-6}$. The conserved pass of @sec-ch08-eoslimiter marks a redo where a species
+density before its repair is below minus that fraction of the cell's total gas density (@sec-ch08-fixvapor). The
+header comment says the value is to be set from redo logs; at the pin it is the event threshold.
 
 The threshold is measured against the cell's total gas mass over all species, not against the species being limited.
 That is what makes it robust for a trace species. An almost-empty cell drained by a round-off face flux has a factor
@@ -69,6 +79,10 @@ round-off events.
 3. The threshold is measured against the cell's total gas mass, all species. A trace species drained by a round-off
    face flux (factor 0, withheld mass about $10^{-20}$ of the cell) is reported as nothing
    ({{< code src/hydro/hydro_forward.cpp HydroImpl::forward >}}).
+4. The species repair mark has its own constants, defined equal to the event threshold's
+   ({{< code src/hydro/flux_positivity.hpp kSpeciesRepairMarkUlp >}}), and is scaled the same way, by the cell's total
+   gas density. A deficit at kinetics round-off, near $10^{-304}$ in a cloud-free cell, is repaired without a redo
+   ({{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}).
 
 ### Code
 
@@ -78,6 +92,8 @@ round-off events.
 | the margin in the factors | {{< code src/hydro/flux_positivity.cpp flux_positivity_theta >}} | `margin` | |
 | the census | {{< code src/hydro/hydro_forward.cpp HydroImpl::forward >}} | `_positivity_hits` | limiter on |
 | the severity test | {{< code src/hydro/hydro_forward.cpp HydroImpl::forward >}} | `_positivity_severe` | |
+| the species repair mark | {{< code src/hydro/flux_positivity.hpp kSpeciesRepairMarkUlp >}} | `kSpeciesRepairMarkUlp` | |
+| its value in a precision | {{< code src/hydro/flux_positivity.cpp species_repair_mark >}} | `species_repair_mark` | float32 or not |
 
 : Code map of the round-off thresholds. {#tbl-ch08-roundoff-code}
 
@@ -88,6 +104,10 @@ round-off events.
 constexpr double kPositivityRoundoffUlp = 4096.;
 ...
 constexpr double kPositivityRoundoffUlpFloat = 64.;
+...
+constexpr double kSpeciesRepairMarkUlp = kPositivityRoundoffUlp;
+...
+constexpr double kSpeciesRepairMarkUlpFloat = kPositivityRoundoffUlpFloat;
 ```
 
 and the severity census is these lines of the stage ({{< code src/hydro/hydro_forward.cpp HydroImpl::forward >}}):
@@ -116,16 +136,18 @@ interior factors, and the three counters are what @sec-ch13 prints.
 `positivity_severe_float32_needs_more_than_roundoff_withheld`
 ({{< code tests/test_cycle_diagnostics.cpp >}}), which exercise the real severity census. The chapter's check
 reproduces the fractions from the two epsilons.[^ch08-roundoff-run] `[C4]`: donor fractions $9.09\times10^{-13}$
-and $4.88\times10^{-4}$; event fractions of the gas mass $9.09\times10^{-13}$ and $7.63\times10^{-6}$. The ctest
-has not been run for this report at the pin: **pending a pinned ctest run**.
+and $4.88\times10^{-4}$; event fractions of the gas mass $9.09\times10^{-13}$ and $7.63\times10^{-6}$. The ctest passed
+both cases on a CPU build of the pin (@sec-ch08-eoslimiter gives the command). `test_fix_vapor_deficit.<b>` tests the
+species repair mark at its float64 value (@sec-ch08-fixvapor).
 
-[^ch08-roundoff-run]: [sha: snapy@ccf40f9565642c32be69f4b9ef0cfa6daff3f201; deck: the check itself, synthetic numpy
-    states; run: `python3 src/snapy_report/ch08/checks/positivity_check.py`, CPU, double, 1 process; Python 3.14.7, numpy 2.5.1; output identical to the committed file]. Output
+[^ch08-roundoff-run]: [sha: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f; deck: the check itself, synthetic numpy
+    states; run: `python3 src/snapy_report/ch08/checks/positivity_check.py`, CPU, double, 1 process; Python 3.11.13,
+    numpy 2.4.6, sympy 1.14.0; output identical to the committed file]. Output
     `positivity_check.out`, line `[C4]`.
 
 ### Limits
 
 1. **The constants are not derived.** The event thresholds distinguish repairs from arithmetic noise. The header gives the reasoning for the float32 value; neither constant comes
-   from an error analysis.
+   from an error analysis. The species repair mark copies them, and its header leaves its own value open.
 2. **A fixed fraction is left behind.** The limiter deliberately does not drain a cell to exactly zero.
    The budget reserves that fraction of the donor species mass; inflow may leave more.
