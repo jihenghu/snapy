@@ -50,7 +50,7 @@ withheld mass would have carried as the unscaled-minus-scaled mass flux times th
 the expression the code uses, and compares. The two agree to $1.8\times10^{-15}$ in energy and $8.9\times10^{-16}$ in
 momentum over two thousand face sets.
 
-The donor is chosen per face and per part of the flux, not per cell. In $x_1$[^rg-8de83003300b] the flux carries two physically distinct
+The donor is chosen per face and per part of the flux, not per cell. In $x_1$ the flux carries two physically distinct
 pieces, an advected part and a settling part from sedimentation, and they need not move in the same direction. A
 species may be advected upward while settling downward through the same face. Each part therefore takes its own donor,
 which is why the code applies the withholding twice in $x_1$ and once elsewhere. The settling part is kept apart only
@@ -163,8 +163,6 @@ the pin: **pending a pinned ctest run**.
 
 <!-- reader glossary notes -->
 [^rg-feffe9ebf0f4]: $\hat h_n$ — specific enthalpy of species $n$ [J kg$^{-1}$], $\hat h_n = u^{\star}_n + c_{p,n}T$ for a gas and without the $R_nT$ term for a condensate; always with the hat, because $h$ is the cell width (§1)
-
-[^rg-8de83003300b]: $x_1, x_2, x_3$ — the three coordinate directions; $x_1$ is always the vertical (radial) direction
 
 [^rg-addac7a45546]: CUDA — NVIDIA's parallel computing platform
 <!-- end reader glossary notes -->

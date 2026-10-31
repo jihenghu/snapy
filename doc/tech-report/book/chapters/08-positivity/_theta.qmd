@@ -259,7 +259,7 @@ stage-input state $u$.
 | `tests/test_flux_positivity_cubedsphere_moist.py` (`test_flux_positivity_cubedsphere_moist_python`) | the moist arm across seams | `DRIFT_TOL` $10^{-13}$, `SPECIES_MIN` $-10^{-15}$ | round-off: the docstring raises the pressure, so the column is warm and everywhere unsaturated. The cloud channel then stays zero and the saturation adjustment moves nothing, so the vapour and cloud total has to hold in both arms ({{< code tests/test_flux_positivity_cubedsphere_moist.py DRIFT_TOL >}}). |
 | `test_flux_positivity_python`, `test_flux_positivity_carry.<b>` | their unlimited arm, run with `SNAP_FLUX_COVARIANCE=0` because the covariance turns the limiter on | as the limited arm | the arm changes the switch, not the tolerance: row 1 of this table and @tbl-ch08-carry-tests |
 | `test_flux_positivity_cubedsphere_cov_off_python` | the unlimited base arm of the six-panel test, with the covariance off | `DRIFT_TOL` $10^{-13}$ | the same script and the same constant as row 2; the arm changes the switch, not the tolerance |
-| `tests/test_forcing_species_clip.py` (`test_forcing_species_clip_python`) | a one-cell dry slot under a user forcing that diffuses vapour along $x_1$, for winds of $\pm 20$ m s$^{-1}$: at stage 0 the slot ends $\ge 0$, the cell below equals transport plus forcing (no column repair borrowed from it), the cell above is unchanged, and the whole step is not marked at the first $\Delta t$ | $10^{-14}$ relative on the cells below and above; exact on the sign and the mark | round-off of one stage on a value near $10^{-6}$ ({{< code tests/test_forcing_species_clip.py _case >}}) |
+| `tests/test_forcing_species_clip.py` (`test_forcing_species_clip_python`) | a one-cell dry slot under a user forcing that diffuses vapour along $x_1$[^rg-8de83003300b], for winds of $\pm 20$ m s$^{-1}$: at stage 0 the slot ends $\ge 0$, the cell below equals transport plus forcing (no column repair borrowed from it), the cell above is unchanged, and the whole step is not marked at the first $\Delta t$ | $10^{-14}$ relative on the cells below and above; exact on the sign and the mark | round-off of one stage on a value near $10^{-6}$ ({{< code tests/test_forcing_species_clip.py _case >}}) |
 | this section's check | `[C1]` the guarantee measured on the state; `[C2]` inactive away from depletion; `[C3]` conservation and its counter-example; `[C5]` the integrator argument; `[C7]` the donor rule; `[C10]` the stage-entry precondition; `[C11]` the convex split | bitwise and round-off | the check's own bounds, all in `positivity_check.py`. `check_C2` compares $\Theta$ against 1 exactly. `check_C5` asserts the stage weights to $10^{-15}$. `check_C3` asserts relative conservation below $10^{-14}$. `check_C7` asserts the donor rule to $10^{-15}$ relative. |
 
 : Tests of the tracer flux positivity limiter. {#tbl-ch08-theta-tests}
@@ -343,6 +343,8 @@ above have not been run for this report at the pin: **pending a pinned ctest run
 [^rg-6879e5c9f18a]: dynamics — hydrodynamic options block
 
 [^rg-5c31940d8939]: equation-of-state — equation-of-state options
+
+[^rg-8de83003300b]: $x_1, x_2, x_3$ — the three coordinate directions; $x_1$ is always the vertical (radial) direction
 
 [^rg-2951cd52e369]: CPU — central processing unit
 <!-- end reader glossary notes -->

@@ -85,7 +85,7 @@ The code is the only record of the split; no source states a reason for it.
    pressure rows with `pinterp2`, and the species rows with `pinterp1`.
 4. *Hence under `weno5` velocity and pressure are fifth-order linear and unlimited*, while density and tracers
    are limited. With `shock: true` every row goes through `pinterp1` in one call; with the equation of state's
-   `limiter` on its species rows are then clamped at zero, and density and pressure are not floored. The probe
+   `limiter`[^rg-e5bc5308fcd8] on its species rows are then clamped at zero, and density and pressure are not floored. The probe
    below does not cover that clamp; `test_species_face_clamp` does (@sec-ch08-reconfloors).
 
 ### Numerical method
@@ -100,7 +100,7 @@ make_fig()
 ```
 
 **Floors.** They come from the equation of state, not from the reconstruct options (@sec-ch08-reconfloors).
-With the equation of state's `limiter`[^rg-e5bc5308fcd8] on and the caller's `floor` argument true, the density row is clamped to
+With the equation of state's `limiter` on and the caller's `floor` argument true, the density row is clamped to
 `density_floor` and the pressure row to `pressure_floor`; the species rows are clamped at zero whenever the
 limiter is on, whatever `floor` says. The well-balanced $x_1$ path calls `forward` with `floor = false`, because
 it reconstructs perturbations that may be negative (@sec-ch05-wbx1). The `shock: true` branch clamps the species

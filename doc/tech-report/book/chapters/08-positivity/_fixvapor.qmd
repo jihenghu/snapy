@@ -33,7 +33,7 @@ redo.[^ch08-fixvapor-alias]
 
 Local symbols: $\mathcal M$ is the window of $x_1$ cells one scan step rewrites; $D$ and $Q$ [kg m$^{-3}$, per
 bottom-cell volume] are the window's deficit and the vapour of its donor cells. $\rho_{n,l}$ and $V_l$ are the partial
-density and the volume of cell $l$, as in @sec-appa.
+density and the volume of cell $l$[^rg-31bbd5b6a214], as in @sec-appa.
 
 ### Derivation
 
@@ -114,7 +114,7 @@ Every other call, and every call on the CPU, raises at once.
 **The mark is on the deficit.** With marks enabled, the conserved pass copies the interior species rows before any
 species repair (`species_before`, {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}).
 After the column repair it sets the patch mark of @sec-ch08-eoslimiter only where a species density was below
-$-4096\,\epsilon_{\mathrm m}\lvert\rho\rvert$. Here $\rho$ is the cell's total gas density from those copied rows and
+$-4096\,\epsilon_{\mathrm m}\lvert\rho\rvert$. Here $\rho$[^rg-9095721433a1] is the cell's total gas density from those copied rows and
 $4096\,\epsilon_{\mathrm m}$ is `species_repair_mark` of @sec-ch08-roundoff
 ({{< code src/hydro/flux_positivity.cpp species_repair_mark >}}). How far the repair moved the donors does not enter
 the test. A deficit below the bound is still repaired; it only does not ask for a redo.
@@ -237,3 +237,9 @@ Python failure ctests, `test_fix_vapor_reports_failure_python`, `test_fix_vapor_
     `env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 ctest -R "^test_eos\.release|^test_fix_vapor_volume\.release|^test_forcing\.release|test_cycle_diagnostics\.release" -V`, in the build's `tests` directory of a Release build (`cmake -B build -DCMAKE_BUILD_TYPE=Release -DNETCDF=ON -DCUDA=OFF`), CPU, double (float32 cases as named), 1 process; GCC 13.3.1, CMake 3.26.5, Python 3.11.13, torch 2.10.0, kintera 2.6.6]. The printed lines are the test's own `printf` output.
 [^ch08-fixvapor-pyrun]: [sha: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f; deck: the columns the three scripts
     build; run: `env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 PYTHONPATH="$SITE" ctest -R "test_forcing_species_clip|test_fix_vapor_reports_failure_python|test_fix_vapor_counts_every_column|test_fix_vapor_stale_count_python" -V`, in the build's `tests` directory of a Release build (`cmake -B build -DCMAKE_BUILD_TYPE=Release -DNETCDF=ON -DCUDA=OFF`), CPU, double (float32 cases as named), 1 process; GCC 13.3.1, Python 3.11.13, torch 2.10.0, numpy 2.4.6, kintera 2.6.6; `$SITE` is the directory the build was installed into with `pip install --no-deps --no-build-isolation --target`]: 4 of 4 passed.
+
+<!-- reader glossary notes -->
+[^rg-31bbd5b6a214]: $l$ — stencil offset index ($\bar\rho_{i+l}$); never $k$, which is the $x_3$ index
+
+[^rg-9095721433a1]: $\rho$ — total density, dry plus every species that carries mass [kg m$^{-3}$]
+<!-- end reader glossary notes -->

@@ -10,7 +10,7 @@ status: draft
 
 A high-order reconstruction can overshoot into a negative face density or pressure even from a
 perfectly admissible cell state. These floors catch that at the face, before the Riemann solver sees it.
-The species faces are clamped at zero whenever the limiter is on, with or without `shock`, so a WENO undershoot cannot
+The species faces are clamped at zero whenever the limiter is on, with or without `shock`, so a WENO[^rg-150dd47d8e2e] undershoot cannot
 carry vapour up a gradient; the density and pressure floors run only with `shock` false.
 They belong to the reconstruction framework of @sec-ch04-framework and are described here because they
 are part of the positivity story rather than part of the interpolation.
@@ -127,7 +127,7 @@ density and pressure floors with the third argument of `forward`. The clamps are
 
 | test (ctest name) | what it asserts | tolerance | where the tolerance comes from |
 |---|---|---|---|
-| `tests/test_species_face_clamp.cpp` (`test_species_face_clamp.<b>`) | `shock_species_faces_are_floored`: under `shock: true` WENO5 faces of a one-cell dry slot undershoot with the limiter off; with it on every species face is $\ge 0$, the non-negative faces and the non-species rows are unchanged bit for bit | exact (`torch::equal`) | the contract ({{< code tests/test_species_face_clamp.cpp recon.shock_species_faces_are_floored >}}) |
+| `tests/test_species_face_clamp.cpp` (`test_species_face_clamp.<b>`) | `shock_species_faces_are_floored`: under `shock: true` WENO5[^rg-04b9929e35f9] faces of a one-cell dry slot undershoot with the limiter off; with it on every species face is $\ge 0$, the non-negative faces and the non-species rows are unchanged bit for bit | exact (`torch::equal`) | the contract ({{< code tests/test_species_face_clamp.cpp recon.shock_species_faces_are_floored >}}) |
 | none | no test isolates the density and pressure face floors; they fire inside every limited deck with `shock` false | not applicable | **missing evidence** |
 | this chapter's check | `[C9]` where `shock` is false, deck by deck | exact | `floors_check.py` `check_C9` ports the two readers and compares booleans |
 
@@ -138,7 +138,7 @@ without a `dynamics` or `reconstruct` block both directions keep `shock` true; w
 has `shock` false and $x_2$, $x_3$ keep it true; with both sections both are false.
 
 `test_species_face_clamp` reconstructs along $x_2$ a row of vapour mass fractions $10^{-16}$ with a slot of
-$4.7\times10^{-3}$, $2.5\times10^{-9}$, $1.9\times10^{-5}$, by WENO5 with `scale` and `shock` on.[^ch08-reconfloors-ctest]
+$4.7\times10^{-3}$, $2.5\times10^{-9}$, $1.9\times10^{-5}$, by WENO5 with `scale`[^rg-5ffbb1ee9f71] and `shock` on.[^ch08-reconfloors-ctest]
 The smallest vapour face is $-2.2162\times10^{-5}$ with the limiter off and $0$ with it on, and the test's two
 bitwise comparisons pass.
 
@@ -162,7 +162,13 @@ bitwise comparisons pass.
    scaling caveat of @sec-ch08-eoslimiter applies to them unchanged.
 
 <!-- reader glossary notes -->
+[^rg-150dd47d8e2e]: WENO — weighted essentially non-oscillatory
+
 [^rg-345bdb73b555]: reconstruct — reconstruction options
 
+[^rg-04b9929e35f9]: WENO5 — fifth-order weighted essentially non-oscillatory reconstruction
+
 [^rg-549637c96357]: vertical — options for the vertical reconstruction
+
+[^rg-5ffbb1ee9f71]: scale — scaling in the enclosing component: a reconstruction switch or values of a thermal-transport profile
 <!-- end reader glossary notes -->
