@@ -16,6 +16,16 @@ is never vacuous. A combined arm runs production's scheme 9 with relax-bot-comp 
 Limit: a UNIFORM tracer checks that tracer and dry air stay consistent; it cannot see a wrong donor
 or upwind choice in tracer transport.
 
+  donor    a NON-uniform tracer (one tracer cell, none elsewhere) under a pressure bump that drives
+           an upward implicit transfer of up to 0.886 cell masses through the near-empty cell above it.
+           The transfer carries the stage-start ratio, so without a tracer-side donor limit it
+           took more tracer than that cell held after the explicit update (min s ~ -7e-7).
+  through  a UNIFORM tracer in a one-column block (no lateral faces, so no tracer flux limiter)
+           under a wide pressure perturbation, with dt raised until the implicit solve moves 1.43
+           and 2.33 cell masses through a cell. Air arriving from below may leave through the top
+           in the same step; a tracer limit that credits only what the cell held before (and not
+           that inflow, as the dry pass does) changed r there by 22% and 50%.
+
   python test_tracer_dry_convention.py [--device cuda] [--yaml PATH]
 """
 import argparse
@@ -107,6 +117,64 @@ def run(config, device, moving, nlim):
     return v, dev, implicit_bug_scale
 
 
+def donor_run(config, device, nlim):
+    from snapy import kIDN, kIPR, kIV1
+
+    block = make_block(config, device)
+    w, r = initial_state(block, config, moving=False)
+    ng = config["geometry"]["cells"]["nghost"]
+    w[kIPR][..., ng + 14] *= 2.0  # the bump pushes air up through cell 13
+    r.zero_()
+    r[..., ng + 12] = R0  # tracer in cell 12 only: cell 13 is a near-empty donor
+    v, _ = block.initialize({"hydro_w": w, "scalar_r": r})
+    I = interior(config)
+    mass_corr = next(b for k, b in dict(block.named_buffers()).items() if k.endswith("mass_corr"))
+    vol = torch.ones((), dtype=torch.float64, device=w.device)
+    for d in (1, 2, 3):
+        g = config["geometry"]
+        vol = vol * float(g["bounds"][f"x{d}max"]) / g["cells"][f"nx{d}"]
+    total0 = float(v["scalar_s"][I].sum())
+    s_min, total_dev, moved = math.inf, 0.0, 0.0
+    for _ in range(nlim):
+        dt = block.max_time_step(v)
+        for stage in range(len(block.intg.stages)):
+            block.forward(v, dt, stage)
+            s_min = min(s_min, float(v["scalar_s"][I].min()))
+            total_dev = max(total_dev, abs(float(v["scalar_s"][I].sum()) / total0 - 1.0))
+            cell = v["hydro_u"][kIDN][I[1:]] * vol
+            moved = max(moved, float((mass_corr[kIV1 + 1][I[1:]].abs() / cell).max()))
+    return s_min, total_dev, moved
+
+
+def throughflow_run(config, device, dt_factor):
+    from snapy import kIDN, kIPR, kIV1
+
+    block = make_block(config, device)
+    w, r = initial_state(block, config, moving=False)
+    ng = config["geometry"]["cells"]["nghost"]
+    nx1 = config["geometry"]["cells"]["nx1"]
+    dz = float(config["geometry"]["bounds"]["x1max"]) / nx1
+    z = (torch.arange(w.size(-1), dtype=torch.float64, device=w.device) - ng + 0.5) * dz
+    w[kIPR] *= (1.0 + 2.0 * torch.exp(-(((z - 16.5 * dz) / (4.0 * dz)) ** 2) / 2)).view(1, 1, -1)
+    v, _ = block.initialize({"hydro_w": w, "scalar_r": r})
+    I = (slice(None), slice(None), slice(None), slice(ng, -ng))  # x1 is the only ghosted axis
+    mass_corr = next(b for k, b in dict(block.named_buffers()).items() if k.endswith("mass_corr"))
+    vol = dz
+    for d in (2, 3):
+        g = config["geometry"]
+        vol *= float(g["bounds"][f"x{d}max"]) / g["cells"][f"nx{d}"]
+    r_init = v["scalar_s"][I] / v["hydro_u"][kIDN][I[1:]]
+    # the implicit vertical solve is built for dt far above the explicit vertical limit
+    dt = block.max_time_step(v) * dt_factor
+    dev, moved = 0.0, 0.0
+    for stage in range(len(block.intg.stages)):
+        cell = v["hydro_u"][kIDN][I[1:]] * vol
+        block.forward(v, dt, stage)
+        moved = max(moved, float((mass_corr[kIV1 + 1][I[1:]].abs() / cell).max()))
+        dev = max(dev, float((v["scalar_s"][I] / (v["hydro_u"][kIDN][I[1:]] * r_init) - 1).abs().max()))
+    return dev, moved
+
+
 def main():
     from snapy import kIDN
 
@@ -191,6 +259,35 @@ def main():
     if not dev < TOL:
         failures.append(
             f"combined (scheme 9 + relax + limiter): uniform tracer departed by {dev:.3e}")
+
+    # ---- donor: the implicit tracer transfer never overdraws a near-empty donor ----
+    cfg = yaml.safe_load(yaml.safe_dump(base))
+    cfg["integration"]["implicit-scheme"] = 1
+    cfg["geometry"]["bounds"]["x2max"] = 4.0e4  # a longer dt: the transfer is up to 0.886 cell masses
+    s_min, total_dev, moved = donor_run(cfg, args.device, nlim=2)
+    print(f"donor   : min s={s_min:.3e}  |total tracer change|={total_dev:.3e}"
+          f"  max implicit transfer / cell mass={moved:.3e}")
+    if not s_min >= 0.0:
+        failures.append(f"donor: the implicit transfer drove a tracer negative (min s {s_min:.3e})")
+    if not total_dev < TOL:
+        failures.append(f"donor: total tracer changed by {total_dev:.3e}")
+    if not moved > 0.3:
+        failures.append(f"donor: the solve moved too little mass ({moved:.3e}); test cannot bite")
+
+    # ---- through: a uniform tracer stays uniform under more than a cell mass of through-flow ----
+    for dt_factor in (10.0, 30.0):
+        cfg = yaml.safe_load(yaml.safe_dump(base))
+        cfg["integration"]["implicit-scheme"] = 1
+        cfg["geometry"]["cells"]["nx2"] = 1
+        cfg["geometry"]["bounds"]["x2max"] = 1.0e4
+        dev, moved = throughflow_run(cfg, args.device, dt_factor)
+        print(f"through{dt_factor:.0f}: max|r/r_init-1|={dev:.3e}"
+              f"  max implicit transfer / cell mass={moved:.3e}")
+        if not dev < TOL:
+            failures.append(f"through (dt x{dt_factor:.0f}): uniform tracer departed by {dev:.3e}")
+        if not moved > 1.0:
+            failures.append(f"through (dt x{dt_factor:.0f}): the solve moved {moved:.3e} cell masses,"
+                            " not more than one; test cannot bite")
 
     if failures:
         for msg in failures:

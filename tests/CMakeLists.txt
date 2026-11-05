@@ -407,6 +407,9 @@ if(CUDA)
     TIMEOUT 300 LABELS "python;positivity;cubed-sphere;cuda")
   snapy_add_python_test(test_vic_moist_device
     TIMEOUT 120 LABELS "python;implicit;cuda")
+  snapy_add_python_test(test_tracer_dry_convention_cuda
+    SCRIPT test_tracer_dry_convention.py ARGS --device cuda
+    TIMEOUT 120 LABELS "python;scalar;implicit;forcing;cuda")
   snapy_add_python_test(test_wb_ref4_order_cuda
     SCRIPT test_wb_ref4_order.py ARGS --device cuda
     TIMEOUT 300 LABELS "python;hydro;cuda")
