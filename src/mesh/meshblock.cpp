@@ -699,6 +699,20 @@ void MeshBlockImpl::advance_local(Variables &vars, double dt, int stage) {
       auto r_below = torch::zeros_like(r);
       r_below.slice(-1, 1, nc1) = r.slice(-1, 0, nc1 - 1);
       auto P = torch::where(M > 0., r_below, r) * M;
+      // a donor gives at most the tracer it holds after the explicit update
+      // plus what the face below brought it, swept up the column as the dry
+      // pass does (vic_constituent_column); min/max leave P bitwise where
+      // nothing binds
+      auto held =
+          (scalar_s + fut_scalar_ds).clamp_min(0.) * pcoord->cell_volume();
+      int is = pcoord->il(), ie = pcoord->iu();
+      auto avail = held.select(-1, is);
+      for (int i = is + 1; i <= ie; ++i) {  // q: the face between i-1 and i
+        auto q = P.select(-1, i);
+        auto avail_up = held.select(-1, i);
+        q.copy_(torch::maximum(torch::minimum(q, avail), -avail_up));
+        avail = avail_up + q;
+      }
       auto P_above = torch::zeros_like(P);
       P_above.slice(-1, 0, nc1 - 1) = P.slice(-1, 1, nc1);
       fut_scalar_ds.add_((P - P_above) / pcoord->cell_volume());
