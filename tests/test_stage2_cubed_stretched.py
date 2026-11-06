@@ -17,7 +17,7 @@ def setup(arm, device):
     if arm == "tracer":
         cfg.pop("forcing")
         cfg["scalar"] = {"nvar": 1, "names": ["uniform_q"],
-                         "reconstruct": {"type": "weno5", "scale": True, "shock": False},
+                         "reconstruct": {"type": "weno5", "shock": False},
                          "riemann-solver": {"type": "upwind"}}
     with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
         yaml.safe_dump(cfg, f)
