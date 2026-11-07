@@ -165,7 +165,7 @@ void vic_solve_cpu(at::TensorIterator& iter, double dt, double grav, int dir) {
                               stride1, stride2, first_block, last_block,
                               N == 3))
               continue;
-            vic_backward_substitute(a, delta, 0, nlayer - 1);
+            vic_backward_substitute<scalar_t, N>(a, delta, 0, nlayer - 1);
           }
         },
         grain_size);
@@ -219,8 +219,8 @@ void vic_redistribute_cpu(at::TensorIterator& iter, double /*dt*/,
                     mass_fix + lo * stride2, vol + lo * stride2, hi - lo, dir,
                     stride1, stride2);
               for (int i = lo; i < hi; ++i)
-                vic_redistribute_cell(du, mass_fix, delta, i, dir, ny, stride1,
-                                      stride2);
+                vic_redistribute_cell<scalar_t, N>(du, mass_fix, delta, i, dir,
+                                                   ny, stride1, stride2);
               lo = hi;
             }
           }

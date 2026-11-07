@@ -142,11 +142,20 @@ void ImplicitHydroImpl::ensure_workspace(torch::Tensor const& w) {
       t.set_(torch::empty(shape, w.options()));
     }
   };
+  // CUDA: the same logical shape, stored column-fastest (vic_layout.h)
+  auto maybe_resize_vic = [&](torch::Tensor& t,
+                              std::vector<int64_t> const& shape) {
+    if (!w.is_cuda()) return maybe_resize(t, shape);
+    if (needs_reset(t, shape))
+      t.set_(torch::empty({shape[3], nx3, nx2}, w.options())
+                 .permute({1, 2, 0})
+                 .unsqueeze(0));
+  };
 
-  maybe_resize(_a, abc_shape);
-  maybe_resize(_b, abc_shape);
-  maybe_resize(_c, abc_shape);
-  maybe_resize(_delta, delta_shape);
+  maybe_resize_vic(_a, abc_shape);
+  maybe_resize_vic(_b, abc_shape);
+  maybe_resize_vic(_c, abc_shape);
+  maybe_resize_vic(_delta, delta_shape);
   maybe_resize(_du0, w.sizes().vec());
   maybe_resize(_corr, w.sizes().vec());
   maybe_resize(_mass_corr, w.sizes().vec());

@@ -38,14 +38,13 @@ namespace snap {
 // solid neighbour) carries cell i's v_t and q_t, as the mirror does. Exact
 // zeros (rest state) leave a, b, c and the right-hand side unchanged bit for
 // bit. Without du / rhs_corr the assembly is the frozen-m_t one.
-template <typename T>
+template <typename T, typename MA = Eigen::Matrix<T, 3, 3>*,
+          typename VD = Eigen::Matrix<T, 3, 1>*>
 void DISPATCH_MACRO vic_assemble_partial_impl(
-    Eigen::Matrix<T, 3, 3>* a, Eigen::Matrix<T, 3, 3>* b,
-    Eigen::Matrix<T, 3, 3>* c, T* w, T* gamma, T* area, T* vol, T* work_lo,
-    T* work_hi, int i, int is, int ie, double dt, double grav, int dir, int ny,
-    int stride1, int stride2, bool first_block, bool last_block,
-    bool solid_lower = false, bool solid_upper = false, T* du = nullptr,
-    Eigen::Matrix<T, 3, 1>* rhs_corr = nullptr) {
+    MA a, MA b, MA c, T* w, T* gamma, T* area, T* vol, T* work_lo, T* work_hi,
+    int i, int is, int ie, double dt, double grav, int dir, int ny, int stride1,
+    int stride2, bool first_block, bool last_block, bool solid_lower = false,
+    bool solid_upper = false, T* du = nullptr, VD rhs_corr = nullptr) {
   bool face_work = dir & kVicFaceWork;
   bool diffusive_cell = dir & kVicDiffusiveCell;
   bool cartesian_face = dir & kVicCartesianFaceWork;
@@ -197,8 +196,7 @@ void DISPATCH_MACRO vic_assemble_partial_impl(
   if (merged_lower) aT += bT;
   if (merged_upper) aT += cT;
 
-  auto fold_cell = [&](Eigen::Matrix<T, 3, 3>& blk,
-                       Eigen::Matrix<T, 3, 2> const& tb, int j) {
+  auto fold_cell = [&](auto&& blk, Eigen::Matrix<T, 3, 2> const& tb, int j) {
     T drho = du[IDN * stride1 + j * stride2];
     for (int n = 0; n < ny; ++n) drho += du[(ICY + n) * stride1 + j * stride2];
     for (int k = 0; k < 2; ++k) {

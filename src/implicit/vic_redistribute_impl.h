@@ -24,10 +24,9 @@ namespace snap {
 // (forward_sweep_impl.h). Backward substitution and the donor-upwinded
 // constituent transport both retain their required serial layer dependency;
 // the final per-cell update is exposed separately so CUDA can parallelize it.
-template <typename T, int N>
-void DISPATCH_MACRO vic_backward_substitute(Eigen::Matrix<T, N, N>* a,
-                                            Eigen::Matrix<T, N, 1>* delta,
-                                            int il, int iu) {
+template <typename T, int N, typename MA = Eigen::Matrix<T, N, N>*,
+          typename VD = Eigen::Matrix<T, N, 1>*>
+void DISPATCH_MACRO vic_backward_substitute(MA a, VD delta, int il, int iu) {
   // CUDA uses the shared failed-column sentinel instead of a second status
   // buffer. Do not back-substitute a rejected forward sweep on either device.
   for (int row = 0; row < N; ++row)
@@ -74,9 +73,8 @@ void DISPATCH_MACRO vic_backward_substitute(Eigen::Matrix<T, N, N>* a,
 //                       after the clamps [mass/step], gravity work; dir == 0
 // Assumes the whole column lives on this rank (implicit is nb1 = 1 by
 // decision; no distributed-column support planned).
-template <typename T, int N>
-void DISPATCH_MACRO vic_constituent_column(T* du, T* w, T* mass_fix,
-                                           Eigen::Matrix<T, N, 1>* delta,
+template <typename T, int N, typename VD = Eigen::Matrix<T, N, 1>*>
+void DISPATCH_MACRO vic_constituent_column(T* du, T* w, T* mass_fix, VD delta,
                                            T* vol, int nlayer, int dir, int ny,
                                            int stride1, int stride2) {
   // pass 1: per-cell mass increments and the column residual
@@ -187,9 +185,8 @@ void DISPATCH_MACRO vic_tangential_momentum_column(T* du, T* w, T* mass_fix,
 
 // Per-cell MS-VIC redistribution map. Reads delta and the precomputed
 // constituent increments from mass_fix, then writes the final tendencies DU.
-template <typename T, int N>
-void DISPATCH_MACRO vic_redistribute_cell(T* du, T* mass_fix,
-                                          Eigen::Matrix<T, N, 1>* delta, int i,
+template <typename T, int N, typename VD = Eigen::Matrix<T, N, 1>*>
+void DISPATCH_MACRO vic_redistribute_cell(T* du, T* mass_fix, VD delta, int i,
                                           int dir, int ny, int stride1,
                                           int stride2) {
   DU(IDN, i) += MASS(IDN, i);

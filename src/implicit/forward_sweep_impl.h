@@ -2,6 +2,8 @@
 
 // C/C++
 #include <cmath>
+#include <type_traits>
+#include <utility>
 
 // eigen
 #include <Eigen/Dense>
@@ -22,14 +24,14 @@
 
 namespace snap {
 
-template <typename T, int N>
-bool DISPATCH_MACRO ForwardSweep(Eigen::Matrix<T, N, N>* a,
-                                 Eigen::Matrix<T, N, N>* b,
-                                 Eigen::Matrix<T, N, N>* c,
-                                 Eigen::Matrix<T, N, 1>* delta, T* du,
-                                 double dt, int il, int iu, int dir, int ny,
-                                 int stride1, int stride2, bool first_block,
-                                 bool last_block, bool rhs_in_delta = false) {
+// MA / VD: Eigen::Matrix pointers, or VicStrided (vic_layout.h)
+template <
+    typename MA, typename VD, typename T,
+    int N = std::decay_t<decltype(std::declval<MA>()[0])>::RowsAtCompileTime>
+bool DISPATCH_MACRO ForwardSweep(MA a, MA b, MA c, VD delta, T* du, double dt,
+                                 int il, int iu, int dir, int ny, int stride1,
+                                 int stride2, bool first_block, bool last_block,
+                                 bool rhs_in_delta = false) {
   Eigen::Matrix<T, N, 1> rhs;
   // partial matrix: the assembly left the m_t right-hand-side correction in
   // delta[i] (vic_assemble_partial_impl); read it before delta[i] is solved

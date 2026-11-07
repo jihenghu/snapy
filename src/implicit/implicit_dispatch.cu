@@ -20,6 +20,7 @@
 #include "implicit_dispatch.hpp"
 #include "vic_assemble_full_impl.h"
 #include "vic_assemble_partial_impl.h"
+#include "vic_layout.h"
 #include "vic_redistribute_impl.h"
 
 namespace snap {
@@ -43,8 +44,8 @@ void vic_assemble_partial_cuda(at::TensorIterator &iter, double dt, double grav,
     bool first_block = true;
     bool last_block = true;
 
-    using Matrix = Eigen::Matrix<scalar_t, 3, 3>;
-    using Vector = Eigen::Matrix<scalar_t, 3, 1>;
+    using VicM = VicStrided<scalar_t, 3, 3>;
+    using VicV = VicStrided<scalar_t, 3, 1>;
 
     int64_t ncol = iter.numel();
     auto offset_calc = ::make_offset_calculator<13>(iter);
@@ -57,16 +58,16 @@ void vic_assemble_partial_cuda(at::TensorIterator &iter, double dt, double grav,
       int i = idx % nlayer;
       auto offsets = offset_calc.get(col);
       auto du = reinterpret_cast<scalar_t *>(data[0] + offsets[0]);
-      auto delta = reinterpret_cast<Vector *>(data[9] + offsets[9]);
+      auto delta = VicV{reinterpret_cast<scalar_t *>(data[9] + offsets[9]), ncol};
       auto w = reinterpret_cast<scalar_t *>(data[2] + offsets[2]);
       auto gamma = reinterpret_cast<scalar_t *>(data[3] + offsets[3]);
       auto area = reinterpret_cast<scalar_t *>(data[4] + offsets[4]);
       auto vol = reinterpret_cast<scalar_t *>(data[5] + offsets[5]);
       auto work_lo = reinterpret_cast<scalar_t *>(data[11] + offsets[11]);
       auto work_hi = reinterpret_cast<scalar_t *>(data[12] + offsets[12]);
-      auto a = reinterpret_cast<Matrix *>(data[6] + offsets[6]);
-      auto b = reinterpret_cast<Matrix *>(data[7] + offsets[7]);
-      auto c = reinterpret_cast<Matrix *>(data[8] + offsets[8]);
+      auto a = VicM{reinterpret_cast<scalar_t *>(data[6] + offsets[6]), ncol};
+      auto b = VicM{reinterpret_cast<scalar_t *>(data[7] + offsets[7]), ncol};
+      auto c = VicM{reinterpret_cast<scalar_t *>(data[8] + offsets[8]), ncol};
       auto solid = reinterpret_cast<scalar_t *>(data[10] + offsets[10]);
       if (solid[i * stride2] != 0) {
         a[i].setIdentity();
@@ -102,7 +103,7 @@ void vic_assemble_full_cuda(at::TensorIterator &iter, double dt, double grav,
     bool last_block = true;
     bool periodic = false;
 
-    using Matrix = Eigen::Matrix<scalar_t, 5, 5>;
+    using VicM = VicStrided<scalar_t, 5, 5>;
 
     int64_t ncol = iter.numel();
     auto offset_calc = ::make_offset_calculator<13>(iter);
@@ -120,9 +121,9 @@ void vic_assemble_full_cuda(at::TensorIterator &iter, double dt, double grav,
       auto vol = reinterpret_cast<scalar_t *>(data[5] + offsets[5]);
       auto work_lo = reinterpret_cast<scalar_t *>(data[11] + offsets[11]);
       auto work_hi = reinterpret_cast<scalar_t *>(data[12] + offsets[12]);
-      auto a = reinterpret_cast<Matrix *>(data[6] + offsets[6]);
-      auto b = reinterpret_cast<Matrix *>(data[7] + offsets[7]);
-      auto c = reinterpret_cast<Matrix *>(data[8] + offsets[8]);
+      auto a = VicM{reinterpret_cast<scalar_t *>(data[6] + offsets[6]), ncol};
+      auto b = VicM{reinterpret_cast<scalar_t *>(data[7] + offsets[7]), ncol};
+      auto c = VicM{reinterpret_cast<scalar_t *>(data[8] + offsets[8]), ncol};
       auto solid = reinterpret_cast<scalar_t *>(data[10] + offsets[10]);
       if (solid[i * stride2] != 0) {
         a[i].setIdentity();
@@ -156,22 +157,25 @@ void vic_solve_cuda(at::TensorIterator &iter, double dt, double grav, int dir) {
     bool first_block = true;
     bool last_block = true;
 
-    using Matrix = Eigen::Matrix<scalar_t, N, N>;
-    using Vector = Eigen::Matrix<scalar_t, N, 1>;
+    using VicM = VicStrided<scalar_t, N, N>;
+    using VicV = VicStrided<scalar_t, N, 1>;
 
+    int64_t ncol = iter.numel();
+    TORCH_CHECK(iter.tensor_base(6).stride(3) == ncol,
+                "vic_solve_cuda: the VIC workspace must be column-fastest");
     native::gpu_kernel<13>(
         iter, [=] GPU_LAMBDA(char *const data[13], unsigned int strides[13]) {
           auto du = reinterpret_cast<scalar_t *>(data[0] + strides[0]);
-          auto a = reinterpret_cast<Matrix *>(data[6] + strides[6]);
-          auto b = reinterpret_cast<Matrix *>(data[7] + strides[7]);
-          auto c = reinterpret_cast<Matrix *>(data[8] + strides[8]);
-          auto delta = reinterpret_cast<Vector *>(data[9] + strides[9]);
+          auto a = VicM{reinterpret_cast<scalar_t *>(data[6] + strides[6]), ncol};
+          auto b = VicM{reinterpret_cast<scalar_t *>(data[7] + strides[7]), ncol};
+          auto c = VicM{reinterpret_cast<scalar_t *>(data[8] + strides[8]), ncol};
+          auto delta = VicV{reinterpret_cast<scalar_t *>(data[9] + strides[9]), ncol};
 
           // partial: delta holds the assembly's m_t right-hand-side term
           if (!ForwardSweep(a, b, c, delta, du, dt, 0, nlayer - 1, dir, ny,
                             stride1, stride2, first_block, last_block, N == 3))
             return;
-          vic_backward_substitute(a, delta, 0, nlayer - 1);
+          vic_backward_substitute<scalar_t, N>(a, delta, 0, nlayer - 1);
         });
   });
 }
@@ -192,7 +196,7 @@ void vic_redistribute_cuda(at::TensorIterator &iter, double /*dt*/,
 
     int ny = nhydro - ICY;
 
-    using Vector = Eigen::Matrix<scalar_t, N, 1>;
+    using VicV = VicStrided<scalar_t, N, 1>;
 
     int64_t ncol = iter.numel();
     auto offset_calc = ::make_offset_calculator<13>(iter);
@@ -210,7 +214,7 @@ void vic_redistribute_cuda(at::TensorIterator &iter, double /*dt*/,
       auto mass_fix = reinterpret_cast<scalar_t *>(data[1] + offsets[1]);
       auto w = reinterpret_cast<scalar_t *>(data[2] + offsets[2]);
       auto vol = reinterpret_cast<scalar_t *>(data[5] + offsets[5]);
-      auto delta = reinterpret_cast<Vector *>(data[9] + offsets[9]);
+      auto delta = VicV{reinterpret_cast<scalar_t *>(data[9] + offsets[9]), ncol};
 
       auto solid = reinterpret_cast<scalar_t *>(data[10] + offsets[10]);
       for (int lo = 0; lo < nlayer;) {
@@ -239,11 +243,11 @@ void vic_redistribute_cuda(at::TensorIterator &iter, double /*dt*/,
       auto offsets = offset_calc.get(col);
       auto du = reinterpret_cast<scalar_t *>(data[0] + offsets[0]);
       auto mass_fix = reinterpret_cast<scalar_t *>(data[1] + offsets[1]);
-      auto delta = reinterpret_cast<Vector *>(data[9] + offsets[9]);
+      auto delta = VicV{reinterpret_cast<scalar_t *>(data[9] + offsets[9]), ncol};
 
       auto solid = reinterpret_cast<scalar_t *>(data[10] + offsets[10]);
       if (solid[i * stride2] == 0)
-        vic_redistribute_cell(du, mass_fix, delta, i, dir, ny, stride1,
+        vic_redistribute_cell<scalar_t, N>(du, mass_fix, delta, i, dir, ny, stride1,
                               stride2);
     });
   });
