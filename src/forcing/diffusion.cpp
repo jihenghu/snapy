@@ -373,12 +373,12 @@ void DiffusionImpl::reset() {
   auto coord = phydro->pmb->pcoord;
   auto enabled = options->nu_iso() > 0. || options->kappa_iso() > 0.;
   bool spherical = coord->options->type() == "gnomonic-equiangle";
-  // On a stretched cubed sphere, only explicit conduction is supported.
-  TORCH_CHECK(
-      !enabled || !coord->options->stretched_x1() || !spherical ||
-          (options->nu_iso() == 0. && !options->implicit_radial()),
-      "[Diffusion] a stretched cubed sphere supports only explicit conduction "
-      "(#280)");
+  // On a stretched cubed sphere, conduction (explicit or implicit radial) is
+  // supported; viscosity is not.
+  TORCH_CHECK(!enabled || !coord->options->stretched_x1() || !spherical ||
+                  options->nu_iso() == 0.,
+              "[Diffusion] a stretched cubed sphere supports only conduction, "
+              "not viscosity (nu_iso > 0) (#280)");
   TORCH_CHECK(!options->implicit_radial() ||
                   (spherical && phydro->peos->options->type() == "ideal-gas"),
               "[Diffusion] implicit_radial requires cubed sphere and dry "
