@@ -421,6 +421,217 @@ TEST(CubedSphereDiffusion, radial_implicit_conservation_stability_and_order) {
   EXPECT_GT(error[1] / error[2], 3.5);
 }
 
+namespace {
+// One cubed sphere on the stage-2 stretched x1 faces (30 cells), with the
+// implicit radial conduction solve on.
+Mesh make_stretched_radial_mesh(bool gpu, double kappa, bool dynamic,
+                                double t_inner, double t_outer,
+                                torch::Tensor scale = torch::Tensor()) {
+  auto f = YAML::LoadFile("test_stage2_cubed_stretched.yaml")["geometry"]["x1f"]
+               .as<std::vector<double>>();
+  auto op = MeshOptionsImpl::from_yaml("test_diffusion_cubed_sphere.yaml");
+  op->block()
+      ->coord()
+      ->nx1(30)
+      .global_nx1(30)
+      .nx2(4)
+      .global_nx2(4)
+      .nx3(4)
+      .global_nx3(4)
+      .nghost(3)
+      .x1min(f.front())
+      .x1max(f.back())
+      .global_x1min(f.front())
+      .global_x1max(f.back())
+      .x1f_interior(f);
+  op->block()->hydro()->recon1()->interp()->type("weno5");
+  auto d = op->block()->hydro()->diffusion();
+  d->nu_iso(0.)
+      .kappa_iso(kappa)
+      .dynamic(dynamic)
+      .implicit_radial(true)
+      .temperature_inner(t_inner)
+      .temperature_outer(t_outer);
+  if (scale.defined()) d->kappa_scale_x1(scale);
+  op->blocks_per_process(6);
+  auto mesh = Mesh(op);
+  if (gpu) {
+    for (auto block : mesh->blocks)
+      block->get_layout()->options->device("cuda");
+    mesh->to(torch::Device(torch::kCUDA));
+  }
+  return mesh;
+}
+// u for temperature t (on the x1 interior, broadcast in x2/x3) at density 1
+torch::Tensor stretched_state(MeshBlock b, torch::Tensor t) {
+  auto c = b->pcoord;
+  auto w =
+      torch::zeros({5, c->options->nc3(), c->options->nc2(), c->options->nc1()},
+                   torch::kFloat64);
+  w[IDN].fill_(1.);
+  double gas = b->phydro->peos->species_cv_ref() *
+               (b->phydro->peos->options->gammad() - 1.);
+  w[IPR].fill_(gas * 300.);
+  w[IPR].narrow(-1, c->il(), t.size(0)).copy_(gas * t.cpu().view({1, 1, -1}));
+  return b->phydro->peos->compute("W->U", {w.to(c->x1v.device())});
+}
+torch::Tensor stretched_temperature(MeshBlock b, torch::Tensor u) {
+  return b->phydro->peos
+      ->compute("W->T", {b->phydro->peos->compute("U->W", {u.clone()})})
+      .index(interior(b))
+      .cpu();
+}
+}  // namespace
+
+// #280: implicit radial conduction on the stretched cubed sphere (R19)
+TEST(CubedSphereDiffusion, stretched_radial_implicit) {
+  torch::set_num_threads(1);
+  auto f = YAML::LoadFile("test_stage2_cubed_stretched.yaml")["geometry"]["x1f"]
+               .as<std::vector<double>>();
+  double r0 = f.front(), r1 = f.back();
+  for (bool gpu : {false, true}) {
+    if (gpu && !snapy_cuda_test_enabled()) continue;
+    std::cout << (gpu ? "CUDA" : "CPU") << std::endl;
+    // (a) the discrete steady state T = A + B/r at the centres, walls on
+    {
+      double b_ = -10. / (1. / r0 - 1. / r1), a_ = 300. - b_ / r0;
+      auto mesh = make_stretched_radial_mesh(gpu, 1.e14, true, 300., 310.);
+      auto b = mesh->blocks[0];
+      auto c = b->pcoord;
+      auto r = c->x1v.cpu().slice(0, c->il(), c->iu() + 1);
+      auto t = a_ + b_ / r;
+      auto u = stretched_state(b, t);
+      for (double dt : {0.2, 0.2, 1.e3})
+        b->phydro->pdiffusion->radial_conduction_step(u, dt);
+      auto drift = ((stretched_temperature(b, u) - t.view({1, 1, -1})) /
+                    t.view({1, 1, -1}))
+                       .abs()
+                       .max()
+                       .item<double>();
+      std::cout << "stretched radial A+B/r max relative drift: " << drift
+                << std::endl;
+      EXPECT_LT(drift, 1.e-12);
+    }
+    // (b) energy and (c) SDIRK order, insulated walls, against the exact
+    // solution of the stretched discrete operator
+    {
+      double kappa = 1.e14;
+      auto mesh = make_stretched_radial_mesh(gpu, kappa, true, 0., 0.);
+      auto b = mesh->blocks[0];
+      auto c = b->pcoord;
+      auto d = b->phydro->pdiffusion;
+      int n = 30;
+      auto r = c->x1v.cpu().slice(0, c->il(), c->iu() + 1);
+      auto rf = c->x1f.cpu().slice(0, c->il(), c->iu() + 2);
+      double cv = b->phydro->peos->species_cv_ref();
+      auto t0 = 300. + 10. * torch::cos(M_PI * (r - r0) / (r1 - r0));
+      auto v = (rf.slice(0, 1) - rf.slice(0, 0, -1)) *
+               (rf.slice(0, 1).square() + rf.slice(0, 1) * rf.slice(0, 0, -1) +
+                rf.slice(0, 0, -1).square()) /
+               3.;
+      auto mat = torch::zeros({n, n}, torch::kFloat64);
+      for (int i = 0; i < n - 1; ++i) {
+        auto g = kappa / (1. / r[i] - 1. / r[i + 1]);
+        mat[i][i + 1] = g / (cv * v[i]);
+        mat[i][i] -= mat[i][i + 1];
+        mat[i + 1][i] = g / (cv * v[i + 1]);
+        mat[i + 1][i + 1] -= mat[i + 1][i];
+      }
+      double end = 0.2;
+      auto exact = 300. + torch::matrix_exp(end * mat).matmul(t0 - 300.);
+      std::vector<double> error;
+      for (int steps : {2, 4, 8}) {
+        auto u = stretched_state(b, t0);
+        auto vol = c->cell_volume().index(interior(b)).cpu();
+        auto e0 = (u[IPR].index(interior(b)).cpu() * vol).sum().item<double>();
+        for (int s = 0; s < steps; ++s)
+          d->radial_conduction_step(u, end / steps);
+        auto e1 = (u[IPR].index(interior(b)).cpu() * vol).sum().item<double>();
+        std::cout << "stretched radial energy relative change (" << steps
+                  << " steps): " << (e1 - e0) / e0 << std::endl;
+        EXPECT_NEAR(e1, e0, 1.e-12 * e0);
+        error.push_back((stretched_temperature(b, u) - exact.view({1, 1, -1}))
+                            .square()
+                            .mean()
+                            .sqrt()
+                            .item<double>());
+      }
+      std::cout << "stretched radial SDIRK errors: " << error[0] << ", "
+                << error[1] << ", " << error[2] << "; ratios "
+                << error[0] / error[1] << ", " << error[1] / error[2]
+                << std::endl;
+      EXPECT_GT(error[0] / error[1], 3.5);
+      EXPECT_GT(error[1] / error[2], 3.5);
+    }
+    // (d) the wall conductivity is k extrapolated linearly in position: with k
+    // linear in r, the steady wall flux carries k(r_wall) exactly
+    {
+      double kappa = 1.e11;
+      std::vector<double> rc(30);
+      for (int i = 0; i < 30; ++i) rc[i] = 0.5 * (f[i] + f[i + 1]);
+      auto lin = [&](double x) { return 1. + 2. * (x - r0) / (r1 - r0); };
+      auto scale = torch::empty({36}, torch::kFloat64);
+      for (int i = 0; i < 36; ++i)
+        scale[i] = lin(rc[std::min(std::max(i - 3, 0), 29)]);
+      auto mesh =
+          make_stretched_radial_mesh(gpu, kappa, false, 300., 310., scale);
+      auto b = mesh->blocks[0];
+      auto c = b->pcoord;
+      auto u = stretched_state(b, torch::full({30}, 305., torch::kFloat64));
+      for (int s = 0; s < 40; ++s)
+        b->phydro->pdiffusion->radial_conduction_step(u, 1.e9);
+      auto t = stretched_temperature(b, u)[0][0];
+      double cap = b->phydro->peos->species_cv_ref();  // density 1
+      auto k = [&](int i) { return kappa * cap * lin(rc[i]); };
+      auto g = [&](int i,
+                   int j) {  // interior conductance, as the solver forms it
+        return 0.5 * (k(i) + k(j)) * rc[i] * rc[j] / (rc[j] - rc[i]);
+      };
+      double flux = g(0, 1) * (t[0] - t[1]).item<double>();
+      double kin =
+          flux * (rc[0] - r0) / (r0 * rc[0] * (300. - t[0].item<double>()));
+      double flux_out = g(28, 29) * (t[28] - t[29]).item<double>();
+      double kout = flux_out * (r1 - rc[29]) /
+                    (r1 * rc[29] * (t[29].item<double>() - 310.));
+      double ein = kin / (kappa * cap * lin(r0)) - 1.,
+             eout = kout / (kappa * cap * lin(r1)) - 1.;
+      std::cout << "stretched radial wall k relative error: inner " << ein
+                << ", outer " << eout << std::endl;
+      EXPECT_LT(std::abs(ein), 1.e-9);
+      EXPECT_LT(std::abs(eout), 1.e-9);
+    }
+  }
+}
+
+// #280: viscosity on the stretched cubed sphere stays refused
+TEST(CubedSphereDiffusion, stretched_radial_implicit_refuses_viscosity) {
+  auto f = YAML::LoadFile("test_stage2_cubed_stretched.yaml")["geometry"]["x1f"]
+               .as<std::vector<double>>();
+  auto op = MeshOptionsImpl::from_yaml("test_diffusion_cubed_sphere.yaml");
+  op->block()
+      ->coord()
+      ->nx1(30)
+      .global_nx1(30)
+      .nghost(3)
+      .x1min(f.front())
+      .x1max(f.back())
+      .global_x1min(f.front())
+      .global_x1max(f.back())
+      .x1f_interior(f);
+  op->block()->hydro()->recon1()->interp()->type("weno5");
+  op->block()->hydro()->diffusion()->nu_iso(0.01).implicit_radial(true);
+  op->blocks_per_process(6);
+  try {
+    auto mesh = Mesh(op);
+    ADD_FAILURE() << "viscosity on a stretched cubed sphere was not refused";
+  } catch (c10::Error const &e) {
+    EXPECT_NE(
+        std::string(e.what()).find("a stretched cubed sphere supports only"),
+        std::string::npos)
+        << e.what();
+  }
+}
+
 // Rayleigh-Ritz onset using the actual C++ heat/stress operator. This isolates
 // diffusion accuracy; it is NOT an unconstrained compressible onset run.
 TEST(CubedSphereDiffusion, thin_shell_modal_onset) {
