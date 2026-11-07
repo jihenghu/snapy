@@ -54,8 +54,8 @@ void vic_assemble_partial_cuda(at::TensorIterator &iter, double dt, double grav,
 
     int64_t total = ncol * (int64_t)nlayer;
     at::native::launch_legacy_kernel<128, 1>(total, [=] __device__(int idx) {
-      int col = idx / nlayer;
-      int i = idx % nlayer;
+      int col = idx % ncol;  // neighbouring threads: neighbouring columns
+      int i = idx / ncol;
       auto offsets = offset_calc.get(col);
       auto du = reinterpret_cast<scalar_t *>(data[0] + offsets[0]);
       auto delta = VicV{reinterpret_cast<scalar_t *>(data[9] + offsets[9]), ncol};
@@ -112,8 +112,8 @@ void vic_assemble_full_cuda(at::TensorIterator &iter, double dt, double grav,
 
     int64_t total = ncol * (int64_t)nlayer;
     at::native::launch_legacy_kernel<128, 1>(total, [=] __device__(int idx) {
-      int col = idx / nlayer;
-      int i = idx % nlayer;
+      int col = idx % ncol;  // neighbouring threads: neighbouring columns
+      int i = idx / ncol;
       auto offsets = offset_calc.get(col);
       auto w = reinterpret_cast<scalar_t *>(data[2] + offsets[2]);
       auto gamma = reinterpret_cast<scalar_t *>(data[3] + offsets[3]);
