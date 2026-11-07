@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <yaml-cpp/yaml.h>
 
 #include <future>
 #include <snap/coord/coord_utils.hpp>
@@ -124,6 +125,36 @@ double harmonic_error(int n) {
   EXPECT_LT(diss, 0.);
   return std::sqrt(error / norm);
 }
+// a cubed sphere on the stage-2 stretched x1 faces (#280)
+MeshOptions stretched_cs_options(int nx2 = 24) {
+  auto f = YAML::LoadFile("test_stage2_cubed_stretched.yaml")["geometry"]["x1f"]
+               .as<std::vector<double>>();
+  auto op = MeshOptionsImpl::from_yaml("test_diffusion_cubed_sphere.yaml");
+  op->block()
+      ->coord()
+      ->nx1(30)
+      .global_nx1(30)
+      .nx2(nx2)
+      .global_nx2(nx2)
+      .nx3(nx2)
+      .global_nx3(nx2)
+      .nghost(3)
+      .x1min(f.front())
+      .x1max(f.back())
+      .global_x1min(f.front())
+      .global_x1max(f.back())
+      .x1f_interior(f);
+  op->block()->hydro()->recon1()->interp()->type("weno5");
+  op->blocks_per_process(6);
+  return op;
+}
+Mesh to_device(Mesh mesh, bool gpu) {
+  if (gpu) {
+    for (auto b : mesh->blocks) b->get_layout()->options->device("cuda");
+    mesh->to(torch::Device(torch::kCUDA));
+  }
+  return mesh;
+}
 }  // namespace
 TEST(CubedSphereDiffusion, constant_state_and_rigid_rotation) {
   torch::set_num_threads(1);
@@ -148,17 +179,48 @@ TEST(CubedSphereDiffusion, harmonic_convergence_and_heat_conservation) {
 }
 TEST(CubedSphereDiffusion, radial_conductive_equilibrium) {
   torch::set_num_threads(1);
-  auto mesh = make_mesh();
-  for (auto b : mesh->blocks) {
-    b->phydro->pdiffusion->options->temperature_inner() = 300. + 2. / 10.;
-    b->phydro->pdiffusion->options->temperature_outer() = 300. + 2. / 11.;
+  for (bool gpu : {false, true}) {
+    if (gpu && !snapy_cuda_test_enabled()) continue;
+    auto op = stretched_cs_options();
+    op->block()
+        ->hydro()
+        ->diffusion()
+        ->nu_iso(0.)
+        .kappa_iso(1.e9)
+        .dynamic(true)
+        .temperature_inner(300.)
+        .temperature_outer(310.);
+    auto mesh = Mesh(op);
+    auto s = states(mesh, 0);
+    // the discrete steady state A + B/r at the stretched centres
+    double r0 = op->block()->coord()->x1min(),
+           r1 = op->block()->coord()->x1max();
+    double bcoef = -10. / (1. / r0 - 1. / r1), acoef = 300. - bcoef / r0;
+    double cv = mesh->blocks[0]->phydro->peos->species_cv_ref();
+    double gas = cv * (mesh->blocks[0]->phydro->peos->options->gammad() - 1.);
+    for (size_t ib = 0; ib < s.size(); ++ib) {
+      s[ib].t.copy_(acoef +
+                    bcoef / mesh->blocks[ib]->pcoord->x1v.view({1, 1, -1}));
+      s[ib].w[IPR].copy_(gas * s[ib].t);
+      if (gpu) s[ib].w = s[ib].w.cuda(), s[ib].t = s[ib].t.cuda();
+    }
+    to_device(mesh, gpu);
+    auto du = apply_diffusion(mesh, s);
+    // a perturbed wall cell responds, so the zero tendency is not vacuous
+    int il = mesh->blocks[0]->pcoord->il();
+    s[0].t.select(-1, il).add_(0.1);
+    s[0].w[IPR].select(-1, il).add_(0.1 * gas);
+    auto response =
+        apply_diffusion(mesh, s)[0][IPR].index(interior(mesh->blocks[0]));
+    EXPECT_GT((response / cv).abs().max().item<double>(), 1.e-6);
+    for (size_t ib = 0; ib < s.size(); ++ib) {
+      EXPECT_LT((du[ib][IPR].index(interior(mesh->blocks[ib])) / cv)
+                    .abs()
+                    .max()
+                    .item<double>(),
+                1.e-12);
+    }
   }
-  auto s = states(mesh, 2);
-  auto du = apply_diffusion(mesh, s);
-  for (size_t i = 0; i < s.size(); ++i)
-    EXPECT_LT(
-        du[i][IPR].index(interior(mesh->blocks[i])).abs().max().item<double>(),
-        2.e-11);
 }
 TEST(CubedSphereDiffusion, viscous_energy_conservation_and_dissipation) {
   torch::set_num_threads(1);
