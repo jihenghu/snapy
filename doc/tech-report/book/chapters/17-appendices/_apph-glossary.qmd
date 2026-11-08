@@ -247,7 +247,7 @@
 - $\Delta\rho_i$: the total density change solved by the implicit step, after redistribution and clamps; never the plain stage change, which is $\Delta^{\mathrm{stg}}\rho_i$. Defined in [7. Time integration and the implicit solver](#sec-appa-7).
 - $\delta\rho_i$, $\delta E_i$: the total-mass and energy components of $\boldsymbol\delta_i$. Defined in [7. Time integration and the implicit solver](#sec-appa-7).
 - $\Delta t$: the step. Defined in [7. Time integration and the implicit solver](#sec-appa-7).
-- $\Delta t_c$: the time step handed to the implicit solve: $w_{2,s}\Delta t$ under rk3, $\Delta t$ otherwise. Defined in [7. Time integration and the implicit solver](#sec-appa-7).
+- $\Delta t_c$: the time step handed to the implicit solve: $w_{2,s}\Delta t$ under rk3 and rk3s4, $\Delta t$ under rk1 and rk2. Defined in [7. Time integration and the implicit solver](#sec-appa-7).
 - $\dot q$: time derivative of a cell average produced by one operator (stated each time); notation only; see @sec-appa. Defined in [4. Operators and averages](#sec-appa-4).
 - $d_q = q_i - q_{\mathrm{bg},i}$: the interior perturbation the characteristic split acts on; $d$ always carries the quantity it belongs to, because bare $d$ is not used; [source](https://github.com/chengcli/snapy/blob/c0c38593d3d3f37bebe204a590610fd7daa05a5f/src/bc/bc_func.cpp#L172-L176). Defined in [8a. Radiation and the radiating boundary](#sec-appa-8a).
 - $e$: specific internal energy [J kg$^{-1}$]; [source](https://github.com/chengcli/snapy/blob/c0c38593d3d3f37bebe204a590610fd7daa05a5f/src/eos/ideal_moist.cpp#L278-L281). Defined in [2. State, thermodynamics and species](#sec-appa-2).

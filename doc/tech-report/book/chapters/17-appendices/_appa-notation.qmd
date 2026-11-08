@@ -206,7 +206,7 @@ $p_{\mathrm{ref}}$ for $10^5$ Pa.
 | $w_0^{(s)}, w_1^{(s)}, w_2^{(s)}$ | the weights of RK stage $s$: $\mathbf U \leftarrow w_0^{(s)}\mathbf U^n + w_1^{(s)}\mathbf U + w_2^{(s)}\Delta t\,\mathcal L(\mathbf U)$ |  | {{< generated appa first-671af8eced07 >}} | `wght0()`, `wght1()`, `wght2()` |
 | $\mathcal L$ | the semi-discrete right-hand side (all explicit operators) |  | {{< generated appa first-efafd2e2862e >}} |  |
 | $\Delta\mathbf U^{(0)}$ | the explicit stage increment handed to the implicit solve |  | {{< generated appa first-76cc0b6e5efc >}} | `du0` |
-| $\Delta t_c$ | the time step handed to the implicit solve: $w_{2,s}\Delta t$ under rk3, $\Delta t$ otherwise |  | {{< generated appa first-afb556d46623 >}} | `dt_corr` |
+| $\Delta t_c$ | the time step handed to the implicit solve: $w_{2,s}\Delta t$ under rk3 and rk3s4, $\Delta t$ under rk1 and rk2 |  | {{< generated appa first-afb556d46623 >}} | `dt_corr` |
 | $\boldsymbol\delta_i$ | the implicit solve's unknown in cell $i$ (total mass, normal momentum, [tangential momenta], energy) | vector | {{< generated appa first-c380e9a25fb6 >}} | `delta` |
 | $\delta\rho_i$, $\delta E_i$ | the total-mass and energy components of $\boldsymbol\delta_i$ |  | {{< generated appa first-1086a96af1c2 >}} | `delta[...][0]`, `delta[...][m-1]` |
 | $\Delta\rho_i$ | the total density change solved by the implicit step, after redistribution and clamps; never the plain stage change, which is $\Delta^{\mathrm{stg}}\rho_i$ |  | {{< generated appa first-5cb1c6e28e9a >}} | `du[IDN] + sum du[ICY..]` |

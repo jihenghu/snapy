@@ -15,7 +15,7 @@
 
 - Choose between the pip install and a source build. See [Install and run](#sec-preface-install).
 - Understand what a finite-volume method is and why cell values are averages. See The finite-volume update and the flux divergence, @sec-ch04-divergence.
-- Find the time order of the combined implicit/explicit step and its derivation. See Stage-weighted implicit step: the correction runs with $w_2^{(s)}\Delta t$ under rk3, @sec-ch07-vic-stage.
+- Find the time order of the combined implicit/explicit step and its derivation. See Stage-weighted implicit step: the correction runs with $w_2^{(s)}\Delta t$ under rk3 and rk3s4, @sec-ch07-vic-stage.
 - List the reconstructions and limiters with stencil width, ghost count and defaults. See The reconstruction framework, @sec-ch04-framework.
 - Understand how the hydrostatic state is preserved and which reference is subtracted. See Well-balanced $x_1$ reconstruction: perturbations about a hydrostatic reference (gravity on), @sec-ch05-wbx1.
 - Check whether reconstruction accounts for stretched or curvilinear spacing and what order it reaches. See The reconstruction framework, @sec-ch04-framework.

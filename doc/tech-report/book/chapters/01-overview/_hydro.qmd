@@ -24,7 +24,7 @@ sections, so a reader can find where a scheme runs and what it hands to the next
 
 **Activation.** The `dynamics:` card and the switches of @sec-ch12; each piece is owned by its chapter.
 
-**Guarantee / limits.** A map; the implicit step is stage-weighted only for a three-stage integrator.
+**Guarantee / limits.** A map; the implicit step is stage-weighted only for an integrator of three or more stages.
 
 **Evidence.** No dedicated test of the whole pipeline (missing evidence); each section cites its own tests.
 :::
@@ -47,8 +47,8 @@ in their owning chapters.
    donor-factor exchange (@sec-ch08).
 5. The flux divergence with the geometric sources (@sec-ch04).
 6. The forcing and the gravity work (@sec-ch09, @sec-ch06).
-7. The implicit correction (@sec-ch07). Its time step is the stage weight times $\Delta t$ for a three-stage
-   integrator and $\Delta t$ otherwise, with a one-time warning when the caller never published a stage.
+7. The implicit correction (@sec-ch07). Its time step is the stage weight times $\Delta t$ for an integrator of
+   three or more stages (`rk3`, `rk3s4`) and $\Delta t$ for `rk1` and `rk2`, with a one-time warning when the caller never published a stage.
 
 The function ends by accumulating the gravity-work fix with the stage weight `cw` of @eq-ch01-stage-weight.
 Communication happens inside this pipeline as well as in the driver wrapper. The $x_1$ seam fluxes, the panel states

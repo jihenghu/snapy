@@ -1,9 +1,9 @@
-## Stage-weighted implicit step: the correction runs with $w_2^{(s)}\Delta t$ under rk3 (`dt_corr`) {#sec-ch07-vic-stage}
+## Stage-weighted implicit step: the correction runs with $w_2^{(s)}\Delta t$ under rk3 and rk3s4 (`dt_corr`) {#sec-ch07-vic-stage}
 
 <!-- PROVENANCE
-pin: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f (chengcli/snapy); pyharp@4721715855e937c1e8b218e964c0655f46e56e29
+pin: snapy@68f4e066974ede87e4379285c4fba895b970b7f1 (chengcli/snapy); pyharp@4721715855e937c1e8b218e964c0655f46e56e29
 sources: OUTLINE.md 7.8; src/hydro/hydro_forward.cpp; src/hydro/hydro.hpp; src/mesh/meshblock.cpp;
-         pyharp src/integrator/integrator.cpp; tests/test_forcing.cpp
+         pyharp src/integrator/integrator.cpp; tests/test_forcing.cpp; tests/test_implicit_face_work_operator.py
 status: draft
 -->
 
@@ -12,7 +12,8 @@ status: draft
 A stage of @eq-ch07-rk-stage adds $w_2^{(s)}\Delta t\,\mathcal L$. The VIC solves a linear system whose diagonal holds
 $\mathsf I/\Delta t_c$. Weighting the solved increment by $w_2^{(s)}$ afterwards is not the same as solving with
 $w_2^{(s)}\Delta t$, because the operator is not linear in the step. So snapy passes $\Delta t_c = w_2^{(s)}\Delta t$ into
-the solve and leaves the explicit tendency at the full step.
+the solve and leaves the explicit tendency at the full step. It does so for every integrator of three or more
+stages, `rk3` and `rk3s4`; `rk1` and `rk2` hand the solve the full step.
 
 The host function `HydroImpl::_apply_implicit_correction(torch::Tensor& du, torch::Tensor const& w,
 double dt, Variables const& other)` takes the mutable explicit increment, stage primitives, correction
@@ -26,11 +27,11 @@ interval and named auxiliary tensors together ({{< code src/hydro/hydro.cpp Hydr
 
 **Placement.** Every stage with a VIC, after the explicit increment.
 
-**Activation.** None; it applies when the integrator has three stages (`rk3`).
+**Activation.** None; it applies when the integrator has three or more stages (`rk3`, `rk3s4`).
 
 **Guarantee / limits.** The order is not changed by the weighting; the correction is a linearised backward Euler.
 
-**Evidence.** @tbl-ch07-vic-stage-tests; `test_forcing.release`, `vic_stage_check.py` `[C1]`–`[C5]`.
+**Evidence.** @tbl-ch07-vic-stage-tests; `test_forcing.release`, `test_implicit_face_work_operator_python`, `vic_stage_check.py` `[C1]`–`[C5]`.
 :::
 
 Local symbols: $\mathsf M$ is the column operator of @eq-ch07-vic-blocks without its $\mathsf I/\Delta t_c$ (the cell
@@ -62,12 +63,13 @@ w_2^{(s)}\,(\mathsf I + w_2^{(s)}\Delta t\,\mathsf M)^{-1}\,\Delta t\,\mathcal L
 $$ {#eq-ch07-vic-stage}
 
 which is one backward-Euler-linearised step of the stage's own length $w_2^{(s)}\Delta t$. The two sides agree
-within the $10^{-13}$ relative threshold in the check (`[C1]`). The factors per stage are 1, 1/4, 2/3 for rk3; every other integrator keeps
-the full step (`[C2]`).
+within the $10^{-13}$ relative threshold in the check (`[C1]`). The factors per stage are 1, 1/4, 2/3 for rk3 and 1/2, 1/2, 1/6, 1/2 for
+rk3s4, the $w_2^{(s)}$ column of @tbl-ch07-rk-weights; rk1 and rk2 keep the full step (`[C2]`).
 
 On a stiff decay $\mathrm d\mathcal Y/\mathrm dt = -\mathcal G \mathcal Y$ handled entirely by the correction
 ($\mathcal L=-\mathcal G\mathcal Y$, $\mathsf M=\mathcal G$), rk3 damps a mode with $\mathcal Z \to \infty$ to $1/12$ per step with
-the weighting and to $1/3$ without it (`[C3]`). Why $1/12$ and $1/3$:
+the weighting and to $1/3$ without it; rk3s4 damps it to $0$ with the weighting and to $17/48$ without it (`[C3]`).
+Why these four numbers:
 
 1. The solve returns $\boldsymbol\delta=-(1+\Delta t_c\mathcal G)^{-1}\mathcal Z\,\mathcal Y$, so as $\mathcal Z\to\infty$,
    $w_2^{(s)}\boldsymbol\delta\to-(w_2^{(s)}\Delta t/\Delta t_c)\,\mathcal Y$.
@@ -78,11 +80,19 @@ the weighting and to $1/3$ without it (`[C3]`). Why $1/12$ and $1/3$:
 3. Unweighted ($\Delta t_c=\Delta t$): $w_2^{(s)}\boldsymbol\delta\to-w_2^{(s)}\mathcal Y$, so a stage gives
    $w_0^{(s)}\mathcal Y^n+(w_1^{(s)}-w_2^{(s)})\mathcal Y$. rk3 has $w_1^{(s)}=w_2^{(s)}$, so
    $\mathcal Y^{(3)}=w_0^{(3)}\mathcal Y^n=\tfrac13\mathcal Y^n$.
-4. Steps 1 to 3 are exact (`[C5]`). Every integrator keeps $|\mathcal A(\mathcal Z)| \le 1$ on
+4. rk3s4, with the weights $(\tfrac12,\tfrac12,\tfrac12)$, $(0,1,\tfrac12)$, $(\tfrac23,\tfrac13,\tfrac16)$, $(0,1,\tfrac12)$
+   of @tbl-ch07-rk-weights. Weighted, the map of step 2 gives
+   $\mathcal Y^{(1)}=\tfrac12\mathcal Y^n-\tfrac12\mathcal Y^n=0$, $\mathcal Y^{(2)}=0\cdot\mathcal Y^{(1)}=0$,
+   $\mathcal Y^{(3)}=\tfrac23\mathcal Y^n-\tfrac23\mathcal Y^{(2)}=\tfrac23\mathcal Y^n$ and $\mathcal Y^{(4)}=0\cdot\mathcal Y^{(3)}=0$.
+   With the full step, the map of step 3 gives $\mathcal Y^{(1)}=\tfrac12\mathcal Y^n$,
+   $\mathcal Y^{(2)}=\tfrac12\mathcal Y^{(1)}=\tfrac14\mathcal Y^n$,
+   $\mathcal Y^{(3)}=\tfrac23\mathcal Y^n+\tfrac16\cdot\tfrac14\mathcal Y^n=\tfrac{17}{24}\mathcal Y^n$ and
+   $\mathcal Y^{(4)}=\tfrac12\mathcal Y^{(3)}=\tfrac{17}{48}\mathcal Y^n$.
+5. Steps 1 to 4 are exact (`[C5]`). Every integrator keeps $|\mathcal A(\mathcal Z)| \le 1$ on
    $\mathcal Z\in[10^{-3},10^8]$, and the decay converges at first order (`[C4]`).
-5. *Round-off.* $\Delta t_c$ is one product of $\Delta t$ and `wght2`; $\tfrac23$ is itself rounded when the weight is
-   set, so $\Delta t_c$ is within $2(\epsilon_{\mathrm m}/2)/(1-\epsilon_{\mathrm m})\approx\epsilon_{\mathrm m}$ of $w_2^{(s)}\Delta t$ relative,
-   and $\tfrac14$ is exact.
+6. *Round-off.* $\Delta t_c$ is one product of $\Delta t$ and `wght2`; $\tfrac23$ and $\tfrac16$ are themselves rounded when the
+   weights are set, so $\Delta t_c$ is within $2(\epsilon_{\mathrm m}/2)/(1-\epsilon_{\mathrm m})\approx\epsilon_{\mathrm m}$ of $w_2^{(s)}\Delta t$ relative,
+   and $\tfrac14$ and $\tfrac12$ are exact.
 
 In the code, the weighted step of @eq-ch07-vic-stage is `dt_corr` ({{< code src/hydro/hydro_forward.cpp HydroImpl::forward >}}).
 
@@ -111,7 +121,7 @@ combination itself is the integrator's, with `wght2` ([`pyharp integrator.cpp:10
 
 | what | code link | symbol | switch |
 |---|---|---|---|
-| weighted step | {{< code src/hydro/hydro_forward.cpp HydroImpl::forward >}} | `wght2` | three-stage integrator |
+| weighted step | {{< code src/hydro/hydro_forward.cpp HydroImpl::forward >}} | `wght2` | three or more stages |
 | fallback warning | {{< code src/hydro/hydro_forward.cpp HydroImpl::forward >}} | `TORCH_WARN_ONCE` | |
 | call | {{< code src/hydro/hydro_forward.cpp HydroImpl::forward >}} | `_apply_implicit_correction` | |
 | stage index | {{< code src/hydro/hydro.hpp HydroImpl::rk_stage >}} | `rk_stage` | |
@@ -119,20 +129,21 @@ combination itself is the integrator's, with `wght2` ([`pyharp integrator.cpp:10
 
 : Code map of the stage-weighted implicit step. {#tbl-ch07-vic-stage-code}
 
-**How to use it.** There is no key: the weighting follows from `integration/type: rk3` with a VIC
-(@sec-ch07-vic-options), and the other types run the correction with the full step. A driver must call
+**How to use it.** There is no key: the weighting follows from `integration/type: rk3` or `rk3s4` with a VIC
+(@sec-ch07-vic-options), and `rk1` and `rk2` run the correction with the full step. A driver must call
 `advance_local`, through `MeshBlock::forward` or `Mesh::forward`, so that the stage index is published; a direct
 call of `HydroImpl::forward` gets the warning and the full step. The weighting is these lines
 ({{< code src/hydro/hydro_forward.cpp HydroImpl::forward >}}):
 
 ```cpp
     double dt_corr = dt;
-    if (pmb->pintg->stages.size() == 3) {
+    if (pmb->pintg->stages.size() >= 3) {
       if (rk_stage >= 0 && rk_stage < pmb->pintg->stages.size()) {
         dt_corr *= pmb->pintg->stages[rk_stage].wght2();
 ```
 
-`dt_corr` is $\Delta t_c$ of @eq-ch07-vic-stage, and `stages.size() == 3` is the restriction to `rk3` (`[C2]`). Refused:
+`dt_corr` is $\Delta t_c$ of @eq-ch07-vic-stage, and `stages.size() >= 3` is the restriction to `rk3` and `rk3s4`
+(`[C2]`). Refused:
 nothing; a missing stage index is a warning, "rk_stage was not published before the implicit correction", not an
 error.
 
@@ -141,19 +152,25 @@ error.
 | test (ctest name) | what it asserts | tolerance | where the tolerance comes from |
 |---|---|---|---|
 | `tests/test_forcing.cpp` (`test_forcing.release`, CUDA twin), `implicit_gravity_work_holds_under_rk3_stage_weighting` | at every rk3 stage the column's mechanical energy change equals the boundary flux; stage 0 and stage 1 give different momentum, so the weight reaches the correction (face gravity work, see @sec-ch06) | $10^{-9}$ absolute; difference above $10^{-6}$ | round-off; a detection threshold |
+| `tests/test_implicit_face_work_operator.py` (`test_implicit_face_work_operator_python`, CUDA twin), rk3s4 arm | on the 45-cell column of the test with `implicit-scheme: 9`, an initial $w_0=10^{-3}$ m/s and the same end time, rk3 and rk3s4 at vertical acoustic Courant numbers $\tfrac14$ and $\tfrac18$ against rk3 at $\tfrac1{32}$: the observed order of rk3s4, $\log_2$ of its error ratio, is not below that of rk3 | order comparison | the test's own criterion; a full-step rk3s4 fails it |
 | this section's check, `vic_stage_check.py` | `[C1]`–`[C5]` | $10^{-13}$, $10^{-6}$, exact | stated in the check |
 
 : Tests of the stage-weighted implicit step (@tbl-ch07-ctest-run for the run at the pin). {#tbl-ch07-vic-stage-tests}
 
 `test_forcing.release` passes at the pin (@tbl-ch07-ctest-run), including
 {{< code tests/test_forcing.cpp forcing.implicit_gravity_work_holds_under_rk3_stage_weighting >}}; the CUDA twin is not
-registered in that build. `vic_stage_check.py` ports the stage weighting and the pyharp weights on a scalar
+registered in that build. `test_implicit_face_work_operator_python` passes at the pin too
+({{< code tests/test_implicit_face_work_operator.py main >}}). Its rk3s4 arm printed relative $w$ errors, against rk3 at
+Courant $\tfrac1{32}$, of $1.0141\times10^{-1}$ and $4.4859\times10^{-2}$ for rk3 and $6.5576\times10^{-2}$ and
+$2.6065\times10^{-2}$ for rk3s4 at Courant $\tfrac14$ and $\tfrac18$: observed orders 1.18 and 1.33. rk3s4 is the more
+accurate of the two at both steps, and both are near first order, as the linearised backward Euler of the
+correction predicts (`[C4]`). `vic_stage_check.py` ports the stage weighting and the pyharp weights on a scalar
 model.[^ch07-vic-stage-run] `[C1]` matches the two sides of @eq-ch07-vic-stage within $10^{-13}$ relative on 100 random
-systems; `[C2]` gives the factors 1, 0.25, 0.6667 for rk3 and 1 for every other stage; `[C3]` gives 0.083333 and
-0.333333 at $\mathcal Z=10^8$; `[C4]` gives $\max|\mathcal A|=0.9990$ and a fitted order of 1.00; `[C5]` checks steps 1 to 3
-exactly. Coverage: a scalar model only; no column run.
+systems; `[C2]` gives the factors 1, 0.25, 0.6667 for rk3, 0.5, 0.5, 0.1667, 0.5 for rk3s4 and 1 for every stage of rk1 and
+rk2; `[C3]` gives 0.083333 and 0.333333 for rk3, 0.000000 and 0.354167 for rk3s4, at $\mathcal Z=10^8$; `[C4]` gives $\max|\mathcal A|=0.9990$ and a fitted order of 1.00; `[C5]` checks steps 1 to 4
+exactly. Coverage: the check is a scalar model; the column run is the rk3s4 arm above, on CPU at the pin.
 
-[^ch07-vic-stage-run]: [sha: snapy@6fbb39750f62b83df096058a4746e77d0a634bc5 and
+[^ch07-vic-stage-run]: [sha: snapy@68f4e066974ede87e4379285c4fba895b970b7f1 and
     pyharp@4721715855e937c1e8b218e964c0655f46e56e29; deck: a scalar model, the
     check itself; run: `python3 src/snapy_report/ch07/checks/vic_stage_check.py`, CPU, double, 1 process; Python 3.11.13, numpy
     2.4.6, sympy 1.14.0; output identical to the committed `vic_stage_check.out`].
@@ -161,12 +178,13 @@ exactly. Coverage: a scalar model only; no column run.
 ### Limits
 
 ::: {.callout-warning title="Limits"}
-Only the three-stage integrator, rk3, is weighted. rk1, rk2 and rk3s4 run the correction with the full step in
-every stage; for rk3 that full-step operator has the stiff limit $1/3$ instead of $1/12$ (`[C3]`).
+rk1 and rk2 are not weighted: they run the correction with the full step in every stage. For rk3 and rk3s4 the
+weighting gives the stiff limits $1/12$ and $0$, where the full step would give $1/3$ and $17/48$ (`[C3]`).
 :::
 
 1. **First order.** The correction is a linearised backward Euler; on the decay the rk3 step with it converges at
    first order (`[C4]`). That the same holds for the other integrators is a hypothesis; the check does not test it.
+   On the column, the rk3s4 arm measures orders of 1.18 for rk3 and 1.33 for rk3s4 from two step sizes only.
 2. **Direct callers.** A caller of `HydroImpl::forward` outside the stage loop gets the full step, with a warning
    only once per process.
 

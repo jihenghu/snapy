@@ -1,7 +1,7 @@
 """Executable check of the stage-weighted implicit step (chapter 7, _vic-stage.qmd).
 
-What is checked: dt_corr = wght2 * dt for the three-stage integrator only (src/hydro/hydro_forward.cpp:1065-1080 at
-snapy@6fbb39750f62b83df096058a4746e77d0a634bc5), with the stage update u = w0 u0 + w1 u + w2 du of
+What is checked: dt_corr = wght2 * dt for an integrator of three or more stages (rk3, rk3s4), the full dt for rk1 and
+rk2 (HydroImpl::forward, src/hydro/hydro_forward.cpp at snapy@68f4e066974ede87e4379285c4fba895b970b7f1), with the stage update u = w0 u0 + w1 u + w2 du of
 pyharp src/integrator/integrator.cpp:101-122 and the VIC solve (I/dt_corr + M) delta = du/dt_corr. A scalar model: the explicit
 tendency is L(u) = -lam u and the operator Jacobian is M = lam, so z = lam dt. Claims C1-C5; C5 is exact (sympy).
 
@@ -28,8 +28,8 @@ WEIGHTS = {
 
 
 def dt_factor(kind, stage):
-    """hydro_forward.cpp:929-932: only a three-stage integrator weights the dt of the correction."""
-    return WEIGHTS[kind][stage][2] if len(WEIGHTS[kind]) == 3 else 1.
+    """HydroImpl::forward: an integrator of three or more stages weights the dt of the correction."""
+    return WEIGHTS[kind][stage][2] if len(WEIGHTS[kind]) >= 3 else 1.
 
 
 def amplification(kind, z, weighted=True):
@@ -59,19 +59,24 @@ def check_C1_weight_inside_equals_weight_outside():
                   "as weighting the right-hand side, once dt_corr carries w2", "max relative difference %.1e" % worst)
 
 
-def check_C2_only_three_stages_are_weighted():
+def check_C2_three_or_more_stages_are_weighted():
     f = {k: [dt_factor(k, s) for s in range(len(v))] for k, v in WEIGHTS.items()}
-    ok = f["rk3"] == [1., .25, 2. / 3.] and all(x == 1. for k in ("rk1", "rk2", "rk3s4") for x in f[k])
-    return report("C2", ok, "dt_corr / dt per stage: rk3 is weighted by wght2, the other integrators use the full dt",
+    ok = (f["rk3"] == [1., .25, 2. / 3.] and f["rk3s4"] == [.5, .5, 1. / 6., .5]
+          and all(x == 1. for k in ("rk1", "rk2") for x in f[k]))
+    return report("C2", ok, "dt_corr / dt per stage: rk3 and rk3s4 are weighted by wght2, rk1 and rk2 use the full dt",
                   "; ".join("%s %s" % (k, ", ".join("%.4g" % x for x in v)) for k, v in f.items()))
 
 
 def check_C3_stiff_limit():
     z = np.array([1e8])
     rw, rf = amplification("rk3", z)[0], amplification("rk3", z, weighted=False)[0]
-    ok = abs(rw - 1. / 12.) < 1e-6 and abs(rf - 1. / 3.) < 1e-6
-    return report("C3", ok, "rk3 on a stiff mode: the weighted correction damps to 1/12 per step, the full-dt one to 1/3",
-                  "R(z = 1e8): weighted %.6f, full dt %.6f" % (rw, rf))
+    sw, sf = amplification("rk3s4", z)[0], amplification("rk3s4", z, weighted=False)[0]
+    ok = (abs(rw - 1. / 12.) < 1e-6 and abs(rf - 1. / 3.) < 1e-6
+          and abs(sw) < 1e-6 and abs(sf - 17. / 48.) < 1e-6)
+    return report("C3", ok, "on a stiff mode the weighted correction damps rk3 to 1/12 per step and rk3s4 to 0; "
+                  "with the full dt they damp to 1/3 and 17/48",
+                  "R(z = 1e8): rk3 weighted %.6f, full dt %.6f; rk3s4 weighted %.6f, full dt %.6f"
+                  % (rw, rf, sw, sf))
 
 
 def check_C4_stable_and_first_order_on_the_decay():
@@ -90,28 +95,32 @@ def check_C4_stable_and_first_order_on_the_decay():
 
 
 def check_C5_stiff_limit_steps():
-    """Derivation steps 1-3 of _vic-stage.qmd in exact arithmetic: w2 delta as Z -> oo, then the rk3 stage product."""
+    """Derivation steps 1-4 of _vic-stage.qmd in exact arithmetic: w2 delta as Z -> oo, then the stage products."""
     Z, r, Y = sp.symbols("Z r Y", positive=True)       # r = dt_c / dt
     delta = -Z * Y / (1 + r * Z)                        # step 1: (1 + dt_c G)^-1 (-Z Y)
     R = sp.Rational
-    w3 = [(0, 1, 1), (R(3, 4), R(1, 4), R(1, 4)), (R(1, 3), R(2, 3), R(2, 3))]
+    tableaux = {"rk3": [(0, 1, 1), (R(3, 4), R(1, 4), R(1, 4)), (R(1, 3), R(2, 3), R(2, 3))],
+                "rk3s4": [(R(1, 2), R(1, 2), R(1, 2)), (0, 1, R(1, 2)), (R(2, 3), R(1, 3), R(1, 6)), (0, 1, R(1, 2))]}
     got = {}
-    for name, ratio in (("weighted", lambda w2: w2), ("full dt", lambda w2: 1)):
-        y, ys = sp.Integer(1), []
-        for w0, w1, w2 in w3:
-            lim = sp.limit(w2 * delta.subs(r, ratio(w2)), Z, sp.oo)   # -Y weighted, -w2 Y with the full dt
-            y = sp.nsimplify(w0 + w1 * y + lim.subs(Y, y))
-            ys.append(y)
-        got[name] = ys
-    stated = {"weighted": [0, R(3, 4), R(1, 12)], "full dt": [0, R(3, 4), R(1, 3)]}
+    for kind, stages in tableaux.items():
+        for name, ratio in (("weighted", lambda w2: w2), ("full dt", lambda w2: 1)):
+            y, ys = sp.Integer(1), []
+            for w0, w1, w2 in stages:
+                lim = sp.limit(w2 * delta.subs(r, ratio(w2)), Z, sp.oo)   # -Y weighted, -w2 Y with the full dt
+                y = sp.nsimplify(w0 + w1 * y + lim.subs(Y, y))
+                ys.append(y)
+            got[kind, name] = ys
+    stated = {("rk3", "weighted"): [0, R(3, 4), R(1, 12)], ("rk3", "full dt"): [0, R(3, 4), R(1, 3)],
+              ("rk3s4", "weighted"): [0, 0, R(2, 3), 0],
+              ("rk3s4", "full dt"): [R(1, 2), R(1, 4), R(17, 24), R(17, 48)]}
     ok = got == stated
     return report("C5", ok, "as Z -> oo the stage takes w0 Y^n + (w1 - 1) Y weighted and w0 Y^n + (w1 - w2) Y with the "
-                  "full dt; the rk3 stages then give 1/12 and 1/3 exactly",
-                  "weighted %s; full dt %s" % (", ".join(map(str, got["weighted"])), ", ".join(map(str, got["full dt"]))))
+                  "full dt; the rk3 stages then give 1/12 and 1/3, the rk3s4 stages 0 and 17/48, exactly",
+                  "; ".join("%s %s %s" % (k, n, ", ".join(map(str, v))) for (k, n), v in got.items()))
 
 
 def main():
-    checks = [check_C1_weight_inside_equals_weight_outside, check_C2_only_three_stages_are_weighted,
+    checks = [check_C1_weight_inside_equals_weight_outside, check_C2_three_or_more_stages_are_weighted,
               check_C3_stiff_limit, check_C4_stable_and_first_order_on_the_decay,
               check_C5_stiff_limit_steps]
     sys.exit(sum(not c() for c in checks))

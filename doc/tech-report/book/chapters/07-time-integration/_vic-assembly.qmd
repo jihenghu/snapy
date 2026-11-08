@@ -265,7 +265,7 @@ the stage used, so the implicit and explicit fluxes are not the same function.
 
 [^rg-7cbe60c8e9d5]: $\mathsf A_i, \mathsf B_i, \mathsf C_i$ — the diagonal, lower and upper blocks of row $i$ of the block-tridiagonal system
 
-[^rg-563491e91074]: $\Delta t_c$ — the time step handed to the implicit solve: $w_{2,s}\Delta t$ under rk3, $\Delta t$ otherwise
+[^rg-563491e91074]: $\Delta t_c$ — the time step handed to the implicit solve: $w_{2,s}\Delta t$ under rk3 and rk3s4, $\Delta t$ under rk1 and rk2
 
 [^rg-7f2b700e0b40]: $i, j, k$ — cell indices in $x_1, x_2, x_3$
 

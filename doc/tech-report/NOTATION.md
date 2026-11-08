@@ -188,7 +188,7 @@ $p_{\mathrm{ref}}$ for $10^5$ Pa.
 | $w_0^{(s)}, w_1^{(s)}, w_2^{(s)}$ | the weights of RK stage $s$: $\mathbf U \leftarrow w_0^{(s)}\mathbf U^n + w_1^{(s)}\mathbf U + w_2^{(s)}\Delta t\,\mathcal L(\mathbf U)$ | `wght0()`, `wght1()`, `wght2()` |
 | $\mathcal L$ | the semi-discrete right-hand side (all explicit operators) | |
 | $\Delta\mathbf U^{(0)}$ | the explicit stage increment handed to the implicit solve | `du0` |
-| $\Delta t_c$ | the time step handed to the implicit solve: $w_{2,s}\Delta t$ under rk3, $\Delta t$ otherwise | `dt_corr` |
+| $\Delta t_c$ | the time step handed to the implicit solve: $w_{2,s}\Delta t$ under rk3 and rk3s4, $\Delta t$ under rk1 and rk2 | `dt_corr` |
 | $\boldsymbol\delta_i$ | the implicit solve's unknown in cell $i$ (total mass, normal momentum, [tangential momenta], energy) | `delta` |
 | $\delta\rho_i$, $\delta E_i$ | the total-mass and energy components of $\boldsymbol\delta_i$ | `delta[...][0]`, `delta[...][m-1]` |
 | $\Delta\rho_i$ | the total density change solved by the implicit step, after redistribution and clamps; never the plain stage change, which is $\Delta^{\mathrm{stg}}\rho_i$ | `du[IDN] + sum du[ICY..]` |

@@ -17,7 +17,7 @@
 
 **Q-019.** What is a finite-volume method, and why are the cell values averages rather than point values? See The finite-volume update and the flux divergence, @sec-ch04-divergence.
 
-**Q-021.** What is the time order of the combined implicit/explicit step? Where is the stage coupling derived, and is the order measured by a convergence test? See Stage-weighted implicit step: the correction runs with $w_2^{(s)}\Delta t$ under rk3, @sec-ch07-vic-stage.
+**Q-021.** What is the time order of the combined implicit/explicit step? Where is the stage coupling derived, and is the order measured by a convergence test? See Stage-weighted implicit step: the correction runs with $w_2^{(s)}\Delta t$ under rk3 and rk3s4, @sec-ch07-vic-stage.
 
 **Q-023.** Which reconstructions and limiters exist (PLM, PPM, WENO5, WENO-Z…)? What stencil width and ghost-zone count does each need, and what are the defaults? See The reconstruction framework, @sec-ch04-framework.
 

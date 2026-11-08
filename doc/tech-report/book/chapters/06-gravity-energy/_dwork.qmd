@@ -447,7 +447,7 @@ exact with either seam slope.
 
 With `implicit-scheme` $\neq 0$, the vertical implicit correction (VIC, the vertical implicit solve) solves each column for a new
 stage increment $\boldsymbol\delta_i$. The explicit increment $\Delta\mathbf U^{(0)}$[^rg-83a8e2b01f50] is its right-hand side, and
-under rk3 the solve is handed $\Delta t_c = w_2^{(s)}\Delta t$, set as `dt_corr` in
+under rk3 and rk3s4 the solve is handed $\Delta t_c = w_2^{(s)}\Delta t$, set as `dt_corr` in
 {{< code src/hydro/hydro_forward.cpp HydroImpl::forward >}}.
 Row $i$ of the block-tridiagonal system reads
 
@@ -978,7 +978,7 @@ every $E_{\mathrm{tot}}+\mathrm{PE}_d$ check — including `gravity_work_defect(
 
 [^rg-477c78c44075]: $\mathsf S$ — the matrix of $s$: $(\mathsf S q)_i = s_i[q] = \sum_l\mathsf S_{il}q_l$ (row $i$: the weights of the cells $l$ in the slope of $i$; the code stores the transpose); $\tilde{\mathsf S}$ likewise for $\tilde s$; [source](https://github.com/chengcli/snapy/blob/c0c38593d3d3f37bebe204a590610fd7daa05a5f/src/implicit/implicit_hydro.cpp#L349-L374)
 
-[^rg-f6811c76094b]: $\Delta t_c$ — the time step handed to the implicit solve: $w_{2,s}\Delta t$ under rk3, $\Delta t$ otherwise
+[^rg-f6811c76094b]: $\Delta t_c$ — the time step handed to the implicit solve: $w_{2,s}\Delta t$ under rk3 and rk3s4, $\Delta t$ under rk1 and rk2
 
 [^rg-db3e7925d5ab]: $\boldsymbol\delta_i$ — the implicit solve's unknown in cell $i$ (total mass, normal momentum, [tangential momenta], energy)
 
