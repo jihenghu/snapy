@@ -1,8 +1,9 @@
 ## Step acceptance and redo: six causes, one collective decision, halving up to `max_redo` (`check_redo`) {#sec-ch07-redo}
 
 <!-- PROVENANCE
-pin: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f (chengcli/snapy); pyharp@4721715855e937c1e8b218e964c0655f46e56e29
-sources: OUTLINE.md 7.4; src/mesh/meshblock.cpp; src/mesh/mesh.cpp; examples/run_hydro.cpp;
+pin: snapy@68f4e066974ede87e4379285c4fba895b970b7f1 (chengcli/snapy); pyharp@4721715855e937c1e8b218e964c0655f46e56e29
+sources: OUTLINE.md 7.4; src/mesh/meshblock.cpp; src/mesh/mesh.cpp; src/eos/equation_of_state.cpp; examples/run_hydro.cpp;
+         tests/test_check_redo_vapor_deficit.cpp; tests/test_fix_vapor_stale_count.py;
          sources/canoe__POSITIVITY_TECH_REPORT.md §9-10; sources/gh__ISSUE_THREADS_251-294.md (#263)
 status: draft
 -->
@@ -11,6 +12,7 @@ status: draft
 
 A step is rejected when any rank finds one of six causes: a cell at or near a floor, a VIC dry-gas clamp that
 emptied a cell, a limiter patch, a NaN, a saturation solve that failed, or a VIC solve that rejected a column.
+A vapour column that the limiter could not repair during the step counts as a limiter patch.
 The causes come from @sec-ch08, the phase adjustment and part 7B; this section is the consumer. A rejected step is
 restored to its start, primitive and passive-scalar state included, and retried with the step halved; an
 accepted step resets the halving. After `max_redo` retries the run stops and exits with status 1.
@@ -18,7 +20,7 @@ accepted step resets the halving. After `max_redo` retries the run stops and exi
 ::: {.callout-note title="At a glance"}
 **Purpose.** After the step, keeps it, redoes it from its start at half the step, or stops the run; @eq-ch07-redo-dt.
 
-**Data.** Reads each block's floor test, marks, saturation count and solve latch; on redo restores $\mathbf U$ and scalars.
+**Data.** Reads each block's floor test, marks, vapour-repair count, saturation count and solve latch; on redo restores $\mathbf U$ and scalars.
 
 **Placement.** Once per step, after the stages and any step-end sources, in `check_redo`.
 
@@ -26,7 +28,7 @@ accepted step resets the halving. After `max_redo` retries the run stops and exi
 
 **Guarantee / limits.** One decision on every rank; a policy, not a discretisation.
 
-**Evidence.** @tbl-ch07-redo-tests; `test_check_redo_floor_python`, `test_check_redo_parallel.release`, `redo_check.py` `[C1]`–`[C4]`.
+**Evidence.** @tbl-ch07-redo-tests; `test_check_redo_floor_python`, `test_check_redo_vapor_deficit.release`, `redo_check.py` `[C1]`–`[C5]`.
 :::
 
 Local symbols: $n_{\mathrm{redo}}$ [count] is the redo count of the current step, $n_{\mathrm{redo}}^{\max}$ = `max_redo`,
@@ -49,7 +51,7 @@ $$ {#eq-ch07-redo-dt}
 1. **How often.** A step that never passes is tried $n_{\mathrm{redo}}^{\max}+1=6$ times, the last at $\Delta t_0/32$
    (`[C2]`), and an acceptance sets $n_{\mathrm{redo}}=0$ again (`[C3]`).
 2. **One decision.** Each rank forms six flags and the step's vapour-repair failure count on the device, reads them
-   back once (a nonzero count raises the limiter's error), `MAX`-reduces the six flags, and
+   back once (a nonzero count sets the limiter flag, `[C5]`), `MAX`-reduces the six flags, and
    encodes the result as a bit mask with bits 1, 2, 4, 8, 16, 32 for floor, clamp, limiter, NaN, saturation and
    VIC solve. For 0/1 flags `MAX` is OR, so every rank sees the same mask and takes the same branch (`[C1]`).
 3. **Full restore.** A redo copies the step-start state back into `hydro_u`, recomputes `hydro_w` from it,
@@ -83,8 +85,9 @@ make_fig()
 
 The six flags are one device tensor, `local_redo_flag_tensor` ({{< code src/mesh/meshblock.cpp MeshBlockImpl::local_redo_flag_tensor >}}), read to the host once by
 `read_redo_flags` ({{< code src/mesh/meshblock.cpp MeshBlockImpl::read_redo_flags >}}). A seventh entry carries the vapour-repair
-failures counted on the device during the step (@sec-ch08-fixvapor); the copy zeroes the count, and
-`read_redo_flags` raises the limiter's error when it is nonzero. The floor test recomputes the primitives from a copy of `hydro_u`
+failures counted during the step, on the CPU and on CUDA alike (@sec-ch08-fixvapor); the copy zeroes the count. When
+it is nonzero, `read_redo_flags` sets the limiter flag and writes "[MeshBlock] rank=… vapor repair failed;
+check_redo will redo the step." to the error stream, so the step is redone at half the step (`[C5]`). The floor test recomputes the primitives from a copy of `hydro_u`
 into `hydro_w`, which keeps them for the output and the next step (a rejected step restores both fields in
 `apply_redo`), and compares them with $1.001$ times the floors in a negated form, so a NaN counts as a hit. The clamp flag is the VIC dry-clamp mark, the limiter and NaN flags are the
 two limiter marks, the saturation flag drains kintera's failure count, and the VIC flag is the solve latch, taken as a tensor without a read of its own. A Mesh
@@ -99,7 +102,7 @@ example driver calls `check_redo` after the kinetics, so a redo also rolls the k
 | what | code link | symbol | switch |
 |---|---|---|---|
 | the six flags and the vapour-repair count on the device, floor test included | {{< code src/mesh/meshblock.cpp MeshBlockImpl::local_redo_flag_tensor >}} | `local_redo_flag_tensor` | `density-floor`, `pressure-floor` |
-| one device-to-host read | {{< code src/mesh/meshblock.cpp MeshBlockImpl::read_redo_flags >}} | `read_redo_flags` | |
+| one device-to-host read; a vapour failure joins the limiter flag | {{< code src/mesh/meshblock.cpp MeshBlockImpl::read_redo_flags >}} | `read_redo_flags` | |
 | decision, restore, stop | {{< code src/mesh/meshblock.cpp MeshBlockImpl::apply_redo >}} | `apply_redo` | `max_redo` |
 | local flags | {{< code src/mesh/meshblock.cpp MeshBlockImpl::local_redo_flags >}} | `local_redo_flags` | |
 | collective bit mask | {{< code src/mesh/meshblock.cpp MeshBlockImpl::reduce_redo_flags >}} | `reduce_redo_flags` | |
@@ -163,23 +166,28 @@ The card and both refusals were run on a build of the pin with these messages.[^
 | `tests/test_check_redo_parallel.cpp` (`test_check_redo_parallel.release`, 2 ranks) | one decision across ranks; both roll back; an accepted step refreshes `hydro_w` on every rank and keeps the cycle the caller set | exact | contract |
 | `tests/test_check_redo_saturation.py` (`test_check_redo_saturation_python`, CUDA twin) | a saturation failure alone redoes with cause 16; a failure counted between steps is not the step's | logical | contract |
 | `tests/test_forcing.cpp` (`test_forcing.release`), limiter cases | NaN or patch marks redo; a round-off repair does not | logical | see @sec-ch08 |
+| `tests/test_check_redo_vapor_deficit.cpp` (`test_check_redo_vapor_deficit.release`) | a sink after the stages that takes 1.5 times the column's vapour at $\Delta t_0$ is redone (`check_redo` returns 1) and accepted at $\Delta t_0/2$ (returns 0), with no exception; the vapour left is $0.25$ of the start value | exact decisions and steps; $10^{-12}$ absolute on the vapour | the sink at $\Delta t_0/2$ takes 0.75 of the vapour, and the repair leaves $0.25$ |
+| `tests/test_fix_vapor_stale_count.py` (`test_fix_vapor_stale_count_python`, CUDA twin) | a direct conversion of an unrepairable column raises at once; `check_redo` on it returns 1 (a redo); a later healthy `check_redo` returns 0 | exact | contract |
 | `tests/test_uranus_cycle1_abort.cpp` (`test_uranus_cycle1_abort.release`) | a pressure floor above the initial pressure ends the run with a non-zero exit | exit status | contract |
 | `tests/run_straka_redo.cmake` (`test_straka_redo`) | the Straka case at `cfl` 1.6 redoes steps and still reaches $t=60$ s | exit status | regression |
-| this section's check, `redo_check.py` | `[C1]`–`[C4]` | exact | integer logic |
+| this section's check, `redo_check.py` | `[C1]`–`[C5]` | exact | integer logic |
 
 : Tests of step acceptance and redo (@tbl-ch07-ctest-run for the run at the pin). {#tbl-ch07-redo-tests}
 
-Every ctest in the table that the CPU build registers passes at the pin (@tbl-ch07-ctest-run); the CUDA twin of the
-saturation case is not registered there. The test bodies are {{< code tests/test_check_redo_floor.py main >}},
+Every ctest in the table that the CPU build registers passes at the pin (@tbl-ch07-ctest-run); the CUDA twins of the
+saturation and stale-count cases are not registered there. `test_check_redo_vapor_deficit` printed a first attempt
+at $\Delta t=0.00240535$ s with `check_redo` 1, a redo, and a second at $0.00120268$ s, half of it, with `check_redo` 0
+({{< code tests/test_check_redo_vapor_deficit.cpp MeshBlock.check_redo_redoes_an_uncoverable_vapor_deficit >}}). The test bodies are {{< code tests/test_check_redo_floor.py main >}},
 {{< code tests/test_check_redo_parallel.cpp Mesh.check_redo_is_one_decision_across_ranks >}} and
 {{< code tests/test_check_redo_saturation.py main >}}. `redo_check.py` ports the redo logic and the `max_redo`
 default line for line.[^ch07-redo-run] `[C1]` ORs rank flags into the mask 37 (floor, limiter, VIC solve) on every
 rank; `[C2]` tries a failing step 6 times, at factors 1 down to 0.03125, then stops; `[C3]` resets the count to 0
-after an acceptance; `[C4]` restores 6 of 6 attempts for the VIC cause and 5 of 6 for a floor.
+after an acceptance; `[C4]` restores 6 of 6 attempts for the VIC cause and 5 of 6 for a floor; `[C5]` turns a vapour
+failure alone into the cause 4 and a redo, and with a floor on the same rank into 5.
 
-[^ch07-redo-run]: [sha: snapy@6fbb39750f62b83df096058a4746e77d0a634bc5 and
+[^ch07-redo-run]: [sha: snapy@68f4e066974ede87e4379285c4fba895b970b7f1 and
     pyharp@4721715855e937c1e8b218e964c0655f46e56e29; deck: the check itself;
-    run: `python3 src/snapy_report/ch07/checks/redo_check.py`, CPU, 1 process; Python 3.12.10, numpy 2.5.3; output identical
+    run: `python3 src/snapy_report/ch07/checks/redo_check.py`, CPU, 1 process; Python 3.11.13, numpy 2.4.6; output identical
     to the committed `redo_check.out`].
 
 ### Limits
@@ -191,9 +199,10 @@ state.
 
 1. **Gentle events only.** A cell that erupts past the floor test and floors on the next step is not
    caught.[^ch07-redo-pos]
-2. **Hard aborts.** An unrepairable vapour column stops the run instead of requesting a redo: on the CPU from
-   inside the limiter, on CUDA within a stage at `check_redo`, which reads the count; the floor test's conversion
-   can raise it too.[^ch07-redo-pos]
+2. **Vapour failures redo, they do not cure.** An unrepairable vapour column inside a stage or the floor test's
+   conversion requests a redo as a limiter cause. If no smaller step removes the deficit, the run stops after
+   `max_redo` retries without a restore, as for any cause but the VIC solve (step 5). Outside those two scopes, a
+   direct conversion for example, the failure still raises at once.
 3. **Bad start states.** A species repair of a bad initial state requests a redo that no step can
    cure.[^ch07-redo-start]
 4. **Signals.** Only the Mesh path checks signals, with `CheckSignalFlags`; the single-block path does not

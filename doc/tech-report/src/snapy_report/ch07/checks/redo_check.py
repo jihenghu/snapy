@@ -4,7 +4,8 @@ What is checked: the cause encoding of MeshBlockImpl::reduce_redo_flags (src/mes
 the retry and termination logic of MeshBlockImpl::apply_redo (:1229-1276) and the redo factor of
 MeshBlockImpl::max_time_step (:528) at snapy@e894700ff7aee30b52882e5202b16461413780b0, with the default
 max_redo = 5 of pyharp@4721715855e937c1e8b218e964c0655f46e56e29 (src/integrator/integrator.hpp:58),
-ported line for line. Claims C1-C4.
+ported line for line. C5 ports MeshBlockImpl::read_redo_flags at snapy@68f4e066974ede87e4379285c4fba895b970b7f1:
+the seventh entry, the step's vapour-repair failures, joins the limiter flag. Claims C1-C5.
 
 Run: python3 redo_check.py   (numpy only; exits with the number of failed claims)
 """
@@ -91,9 +92,28 @@ def check_C4_vic_failure_restores_before_stopping():
                   "restores: floor-only %d, vic-solve %d, of 6 attempts" % (a.restored, v.restored))
 
 
+def read_redo_flags(entries):  # MeshBlockImpl::read_redo_flags: six flags, a vapour failure joins the limiter
+    out = [a > 0. for a in entries[:6]]
+    if len(entries) > 6 and entries[6] > 0.:
+        out[2] = True
+    return out
+
+
+def check_C5_vapour_failure_is_a_limiter_redo():
+    alone = reduce_redo_flags([read_redo_flags([0, 0, 0, 0, 0, 0, 1])])
+    with_floor = reduce_redo_flags([read_redo_flags([1, 0, 0, 0, 0, 0, 1]), read_redo_flags([0] * 7)])
+    healthy = reduce_redo_flags([read_redo_flags([0] * 7)])
+    b = Block()
+    decisions = [b.apply_redo(alone), b.apply_redo(healthy)]
+    ok = alone == 4 and with_floor == 5 and healthy == 0 and decisions == [1, 0]
+    return report("C5", ok, "a nonzero vapour-repair count sets the limiter flag (4), so the step is redone, not raised",
+                  "causes: vapour alone %d, vapour and a floor on one of two ranks %d, none %d; decisions %s"
+                  % (alone, with_floor, healthy, decisions))
+
+
 def main():
     checks = [check_C1_cause_bitmask, check_C2_retry_schedule, check_C3_acceptance_resets,
-              check_C4_vic_failure_restores_before_stopping]
+              check_C4_vic_failure_restores_before_stopping, check_C5_vapour_failure_is_a_limiter_redo]
     sys.exit(sum(not c() for c in checks))
 
 

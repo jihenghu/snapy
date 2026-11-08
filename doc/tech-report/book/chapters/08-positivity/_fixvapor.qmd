@@ -1,7 +1,7 @@
 ## The vapour column repair {#sec-ch08-fixvapor}
 
 <!-- PROVENANCE
-pin: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f (chengcli/snapy)
+pin: snapy@68f4e066974ede87e4379285c4fba895b970b7f1 (chengcli/snapy)
 sources: OUTLINE.md 8, lifted out of scheme 8.5 as the outline recommends; chengcli/snapy#332 (PR body and squash-merge
          commit message)
 status: draft
@@ -26,7 +26,7 @@ redo.[^ch08-fixvapor-alias]
 
 **Activation.** With the limiter, where a vapour row is negative, or a parentless cloud after the borrow.
 
-**Guarantee / limits.** Conserves the column mass it sees; donors move by the deficit only; vapour throws, clouds clamp.
+**Guarantee / limits.** Conserves the column mass it sees; donors move by the deficit only; an unrepairable vapour column redoes the step inside a step and throws outside one; clouds clamp.
 
 **Evidence.** `test_fix_vapor_deficit.<b>` (run at the pin), `test_fix_vapor_volume.<b>`, the failure ctests; no report check.
 :::
@@ -103,13 +103,16 @@ column, so on a split axis their column-mass conservation holds per block piece.
 The two callers are deliberately different, and the comment at `repair_column`
 ({{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}) says why. Clouds tolerate a
 column that cannot be repaired and fall back to a clamp at `clamp_min_`
-({{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}). Vapour must throw rather
-than copy a bad gathered column back, which is the check at `err`
-({{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}). A failure in the vapour
-path is therefore a hard stop, not a silent repair. On CUDA, inside a MeshBlock stage and in the conversion of
-`check_redo`, the count is not read back at the call: the repair adds it to a 0-d device count, `vapor_failures_`,
-which `check_redo` carries in its one device-to-host copy and raises there (@sec-ch07-redo); stage 0 zeroes it.
-Every other call, and every call on the CPU, raises at once.
+({{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}). Outside a step, vapour must
+throw rather than copy a bad gathered column back, which is the check at `err`
+({{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}). Inside a MeshBlock stage
+and in the conversion of `check_redo`, on the CPU and on CUDA alike, the failure is not raised at the call. The
+repair adds its count to a 0-d count, `vapor_failures_`: on CUDA the kernel adds it on the device with no read back,
+and on the CPU the kernel returns it and the caller adds it. The column is copied back as the kernel left it.
+`check_redo` carries the count in its one device-to-host copy and turns a nonzero count into a redo of the step,
+which restores the step's start state (@sec-ch07-redo); stage 0 zeroes it. Every other call raises at once. A
+failure in the vapour path is therefore never a silent repair: it redoes the step inside one and stops the caller
+outside one.
 
 **The mark is on the deficit.** With marks enabled, the conserved pass copies the interior species rows before any
 species repair (`species_before`, {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}).
@@ -126,8 +129,9 @@ the test. A deficit below the bound is still repaired; it only does not ask for 
    ({{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}).
 2. When the $x_1$ axis is split across ranks the column is gathered first only for `whole_column` true, which the two
    stage calls pass. The conversions' calls repair the block's piece of the column, and conserve its mass there.
-3. Clouds tolerate an unrepairable column and fall back to a clamp. Vapour must not copy a bad column back, so its
-   caller passes `require_success` and the kernel's error becomes a hard stop.
+3. Clouds tolerate an unrepairable column and fall back to a clamp. Vapour must not keep a bad column, so its
+   caller passes `require_success`: the kernel's error stops the caller outside a step, and inside one it redoes the
+   step, which discards the column the kernel left.
 4. The redo mark tests the deficit before the repair against $4096\,\epsilon_{\mathrm m}$ of the total gas density
    (`species_before`, {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}), so a
    step is asked to be redone only when it left a species deficit above round-off, however the repair then spread it.
@@ -143,17 +147,19 @@ the test. A deficit below the bound is still repaired; it only does not ask for 
 | the mark on the deficit | {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}} | `species_before` | marks enabled |
 | the mark's bound | {{< code src/hydro/flux_positivity.cpp species_repair_mark >}} | `species_repair_mark` | |
 | vapour must succeed | {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}} | `TORCH_CHECK` | `require_success` |
-| the count deferred to `check_redo` | {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}} | `vapor_failures_` | CUDA, in a stage |
+| the count deferred to `check_redo` | {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}} | `vapor_failures_` | in a stage or `check_redo`, CPU and CUDA |
+| the count becomes a redo | {{< code src/mesh/meshblock.cpp MeshBlockImpl::read_redo_flags >}} | `read_redo_flags` | count > 0 |
 | clouds clamp instead | {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}} | `clamp_min_` | parentless or unrepairable |
 
 : Code map of the vapour column repair. {#tbl-ch08-fixvapor-code}
 
-**How to use it.** There is no switch of its own. The vapour caller is this line, and the check after the
-kernel is the failure a run sees
+**How to use it.** There is no switch of its own. The vapour caller is the second excerpt below; the first is the
+kernel's count added in a step (`defer`) and the error raised outside one
 ({{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}):
 
 ```cpp
-      TORCH_CHECK(!require_success || err == 0,
+      if (defer && err > 0) vapor_failures_ += err;  // the CPU returns it
+      TORCH_CHECK(!require_success || defer || err == 0,
                   "[EquationOfState] apply_conserved_limiter_: "
                   "Failed to fix vapor mass fractions.");
 ```
@@ -194,7 +200,8 @@ clamped at zero instead.
 | `tests/test_eos.cpp` (`test_eos.<b>`) | `downward_branch_borrows_the_deficit`: the window's donor gives up $D/Q$ of its vapour, whatever the dry density | `EXPECT_DOUBLE_EQ`, 4 ulp | the gtest default ({{< code tests/test_eos.cpp >}}) |
 | `tests/test_fix_vapor_reports_failure.py` (`test_fix_vapor_reports_failure_python`, `_cuda_python`) | an unrepairable column raises `Failed to fix vapor` | exact (an exception) | the contract ({{< code tests/test_fix_vapor_reports_failure.py main >}}) |
 | `tests/test_fix_vapor_counts_every_column.py` (`test_fix_vapor_counts_every_column_python`) | a broken column at 32 positions, with several CPU threads, is reported every time | exact | the contract ({{< code tests/test_fix_vapor_counts_every_column.py main >}}) |
-| `tests/test_fix_vapor_stale_count.py` (`test_fix_vapor_stale_count_python`, `_cuda_python`) | a failure is reported once and never resurfaces: after a failed direct U->W, a reported `check_redo` failure and an abandoned failed step, `check_redo` on a healthy state returns 0 | exact | the contract ({{< code tests/test_fix_vapor_stale_count.py main >}}) |
+| `tests/test_fix_vapor_stale_count.py` (`test_fix_vapor_stale_count_python`, `_cuda_python`) | a failure is reported once and never resurfaces: after a failed direct U->W (raises), a `check_redo` on an unrepairable state (returns 1, a redo) and an abandoned failed step, `check_redo` on a healthy state returns 0 | exact | the contract ({{< code tests/test_fix_vapor_stale_count.py main >}}) |
+| `tests/test_check_redo_vapor_deficit.cpp` (`test_check_redo_vapor_deficit.<b>`) | a vapour deficit no donor covers at $\Delta t_0$ is redone and accepted at $\Delta t_0/2$, with no exception | exact decisions; $10^{-12}$ absolute on the vapour | the contract ({{< code tests/test_check_redo_vapor_deficit.cpp MeshBlock.check_redo_redoes_an_uncoverable_vapor_deficit >}}) |
 
 : Tests of the vapour column repair. {#tbl-ch08-fixvapor-tests}
 
@@ -209,13 +216,15 @@ $1.82\times10^{-13}$, a quarter of the bound $7.28\times10^{-13}$, the donor mov
 step is not marked. The second command of the footnote ran `test_fix_vapor_volume`, `test_eos` and `test_forcing`
 on the same build: every CPU case passed, in float32 and float64, and their CUDA cases were skipped. The three CPU
 Python failure ctests, `test_fix_vapor_reports_failure_python`, `test_fix_vapor_counts_every_column_python` and
-`test_fix_vapor_stale_count_python`, passed on the same build; their CUDA arms were not run.[^ch08-fixvapor-pyrun]
+`test_fix_vapor_stale_count_python`, and `test_check_redo_vapor_deficit.release` passed at the pin; of the CUDA arms
+only the stale-count one was run, and it passed.[^ch08-fixvapor-pyrun]
 
 ### Limits
 
 ::: {.callout-warning title="Limits"}
-- The vapour path throws when the column cannot be repaired (on CUDA within a stage, at `check_redo`). That is a crash, not a degraded run, and
-  it is the intended behaviour rather than a defect.
+- An unrepairable vapour column inside a step redoes the step at half the step; a column no smaller step repairs
+  stops the run after `max_redo` retries (@sec-ch07-redo). Outside a step, a direct conversion for example, it
+  throws at once. Neither is a degraded run, and both are the intended behaviour rather than a defect.
 - The repair sees the whole column only on the two stage calls, which pass `whole_column` true. On a split $x_1$
   axis those calls gather across ranks, so they are a collective operation inside what is otherwise a local limiter.
   The calls inside the equation-of-state conversions repair only the block's piece of a split column: a vapour
@@ -235,8 +244,8 @@ Python failure ctests, `test_fix_vapor_reports_failure_python`, `test_fix_vapor_
 [^ch08-fixvapor-run]: [sha: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f; deck:
     `tests/test_fix_vapor_deficit.yaml` and the column set in `tests/test_fix_vapor_deficit.cpp`; run: `env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 ctest -R "test_fix_vapor_deficit|test_species_face_clamp" -V` and
     `env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 ctest -R "^test_eos\.release|^test_fix_vapor_volume\.release|^test_forcing\.release|test_cycle_diagnostics\.release" -V`, in the build's `tests` directory of a Release build (`cmake -B build -DCMAKE_BUILD_TYPE=Release -DNETCDF=ON -DCUDA=OFF`), CPU, double (float32 cases as named), 1 process; GCC 13.3.1, CMake 3.26.5, Python 3.11.13, torch 2.10.0, kintera 2.6.6]. The printed lines are the test's own `printf` output.
-[^ch08-fixvapor-pyrun]: [sha: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f; deck: the columns the three scripts
-    build; run: `env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 PYTHONPATH="$SITE" ctest -R "test_forcing_species_clip|test_fix_vapor_reports_failure_python|test_fix_vapor_counts_every_column|test_fix_vapor_stale_count_python" -V`, in the build's `tests` directory of a Release build (`cmake -B build -DCMAKE_BUILD_TYPE=Release -DNETCDF=ON -DCUDA=OFF`), CPU, double (float32 cases as named), 1 process; GCC 13.3.1, Python 3.11.13, torch 2.10.0, numpy 2.4.6, kintera 2.6.6; `$SITE` is the directory the build was installed into with `pip install --no-deps --no-build-isolation --target`]: 4 of 4 passed.
+[^ch08-fixvapor-pyrun]: [sha: snapy@68f4e066974ede87e4379285c4fba895b970b7f1; deck: the columns the scripts and the
+    C++ test build; run: `env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 PYTHONPATH="$SITE" ctest -R "test_forcing_species_clip|test_fix_vapor_reports_failure_python|test_fix_vapor_counts_every_column|test_fix_vapor_stale_count_python|test_check_redo_vapor_deficit" -V`, in the build's `tests` directory of a Release build (`cmake -B build -DCMAKE_BUILD_TYPE=Release -DNETCDF=ON -DCUDA=OFF`), CPU, double (float32 cases as named), 1 process; GCC 13.3.1, Python 3.11.13, torch 2.10.0, numpy 2.4.6, kintera 2.6.6; `$SITE` is the directory the build was installed into with `pip install --no-deps --no-build-isolation --target`]: 5 of 5 passed. The CUDA arm `test_fix_vapor_stale_count_cuda_python` passed on a CUDA source build of the same commit (`-DCUDA=ON`, torch 2.10.0+cu126, one device of compute capability 6.1).
 
 <!-- reader glossary notes -->
 [^rg-31bbd5b6a214]: $l$ — stencil offset index ($\bar\rho_{i+l}$); never $k$, which is the $x_3$ index

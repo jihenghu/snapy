@@ -1,7 +1,7 @@
 ## Column vapour and cloud repair (`limiter`) {#sec-ch10-fixvapor}
 
 <!-- PROVENANCE
-pin: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f (chengcli/snapy, code_pin.yml)
+pin: snapy@68f4e066974ede87e4379285c4fba895b970b7f1 (chengcli/snapy, code_pin.yml)
 sources: OUTLINE.md 10.4 and 10.5 (two inventories of the same kernel, merged as the chapter note asks);
          src/eos/fix_vapor_impl.h, src/eos/eos_dispatch.cpp, src/eos/eos_dispatch.cu, src/eos/equation_of_state.cpp,
          src/layout/layout.cpp and the tests below at the pin; sources/canoe__POSITIVITY_TECH_REPORT.md section 6;
@@ -29,7 +29,7 @@ zero, which creates exactly the missing mass.
 
 **Activation.** EOS `limiter: true` (default false); the split-column gather runs only for the stage-update call.
 
-**Guarantee / limits.** Vapour: $\sum_iV_i\rho_{n,i}$ kept, an unrepairable column throws; cloud in net deficit is clamped.
+**Guarantee / limits.** Vapour: $\sum_iV_i\rho_{n,i}$ kept, an unrepairable column redoes the step (throws outside a step); cloud in net deficit is clamped.
 
 **Evidence.** @tbl-ch10-fixvapor-tests; `test_fix_vapor_deficit.release`, `fixvapor_check.py` `[C1]`–`[C9]`.
 :::
@@ -120,11 +120,13 @@ the full column with the dry density and the volumes, repairs it and keeps its o
 Failures are counted with `std::atomic` on CPU on every call
 ({{< code src/eos/eos_dispatch.cpp call_fix_vapor_cpu >}}). On CUDA they are counted with `atomicAdd` only when the
 caller needs the count, that is when it requires success (`count`); otherwise no counter is allocated and nothing is
-read. Inside a block's stage and in the floor test's conversion of `check_redo`, the vapour count is added to a 0-d
-device counter of the equation of state, `vapor_failures_`, with no read
-({{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}); `check_redo` carries it
-as a seventh flag in its one device-to-host copy and raises there, and stage 0 zeroes it (@sec-ch10-redo). Any other
-call reads its count back, one device synchronisation, and raises at once. A limiter call with parentless clouds runs
+read. Inside a block's stage and in the floor test's conversion of `check_redo`, on both devices, the vapour count is added
+to a 0-d counter of the equation of state, `vapor_failures_`, instead of raising: on CUDA with no read, on the CPU
+from the count the kernel returns
+({{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}). `check_redo` carries it
+as a seventh flag in its one device-to-host copy and turns a nonzero count into the limiter cause, so the step is
+redone; stage 0 zeroes it (@sec-ch10-redo). Any other call reads its count back, on CUDA one device
+synchronisation, and raises at once. A limiter call with parentless clouds runs
 the kernel twice (`nerr`, {{< code src/eos/eos_dispatch.cu call_fix_vapor_cuda >}}).
 
 After the repair, the conserved limiter marks the step for a redo only where a species density was below
@@ -166,13 +168,15 @@ make_fig()
    {{< code src/layout/layout.cpp LayoutImpl::gather_x1 >}}).
 3. Run the kernel per column, `call_fix_vapor`
    ({{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}).
-4. Throw for vapour, `require_success` ({{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}).
+4. For vapour, `require_success`: in a step add the count to `vapor_failures_`, otherwise throw (`defer`,
+   {{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}).
 5. Copy back this block's slice, `copy_` ({{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}).
 6. Mark the limiter only for a pre-repair deficit above `species_repair_mark` of the gas density, `species_before`
    ({{< code src/eos/equation_of_state.cpp EquationOfStateImpl::apply_conserved_limiter_ >}}).
 
-A user can hit one message: "[EquationOfState] apply_conserved_limiter_: Failed to fix vapor mass fractions."; on
-CUDA within a step it ends "(counted on the device in the step, reported at check_redo)."
+A user can meet two lines. Outside a step the error "[EquationOfState] apply_conserved_limiter_: Failed to fix vapor
+mass fractions." stops the caller. Within a step `check_redo` writes "[MeshBlock] rank=… vapor repair failed;
+check_redo will redo the step." and redoes it
 ({{< code src/mesh/meshblock.cpp MeshBlockImpl::read_redo_flags >}}).
 
 **How to use it.** The same card as @sec-ch10-borrow: `limiter: true`. The column gather needs no key; it runs when
@@ -192,9 +196,10 @@ where `true` requires success, and @eq-ch10-fixvapor-borrow is these lines of th
       vapor[j] = vapor[j] < 0. ? T(0.) : vapor[j] - vapor[j] * share;
     }
 ```
- Refused at run time: an unrepairable vapour column,
-with "[EquationOfState] apply_conserved_limiter_: Failed to fix vapor mass fractions.", because a negative column
-total cannot be made non-negative without creating mass.
+ Refused at run time, outside a step: an unrepairable
+vapour column, with "[EquationOfState] apply_conserved_limiter_: Failed to fix vapor mass fractions.", because a
+negative column total cannot be made non-negative without creating mass. Within a step the same column redoes the
+step instead (@sec-ch10-redo).
 
 ### Tests
 
@@ -206,6 +211,7 @@ total cannot be made non-negative without creating mass.
 | `test_parentless_cloud.release` | cloud kept, clamped, zero column | $10^{-12}$; $10^{-6}$ f32 | test thresholds |
 | `test_vapor_column_nb1.release` | split column equals one block | bitwise | test threshold |
 | `test_fix_vapor_reports_failure_python` | unrepairable column throws | n/a | message match |
+| `test_check_redo_vapor_deficit.release` | in a step, an uncoverable deficit redoes, then passes at half the step | exact; $10^{-12}$ | the halving is exact |
 
 : Tests of the column repair; all pass at the pin.[^fix-ctest] {#tbl-ch10-fixvapor-tests}
 
@@ -223,7 +229,8 @@ The split-column test requires every vapour cell of a two-block column to equal 
 ({{< code tests/test_vapor_column_nb1.cpp DeviceTest.vapor_repair_keeps_the_mass_with_nb1_2 >}}).
 Also registered: `test_parentless_cloud_nb1.release`, the 2-rank `test_parentless_cloud_nb1_mp` (rain and total
 mass to $10^{-12}$), `test_fix_vapor_counts_every_column_python` (one broken column in 16384 is reported),
-`test_fix_vapor_stale_count_python` (a reported failure never resurfaces in a later `check_redo`) and the CUDA
+`test_fix_vapor_stale_count_python` (`check_redo` on an unrepairable state returns a redo, and the count never
+resurfaces in a later `check_redo`) and the CUDA
 arms `test_fix_vapor_reports_failure_cuda_python` and `test_fix_vapor_stale_count_cuda_python`. Every ctest named
 here that the CPU build registers passed at the pin, the two-process and Gloo arms of `test_parentless_cloud_nb1_mp`
 included; the CUDA arms are not registered in that build and were not run.[^fix-ctest]
@@ -231,15 +238,15 @@ included; the CUDA arms are not registered in that build and were not run.[^fix-
 ### Limits
 
 ::: {.callout-warning title="Limits"}
-A vapour column whose total is negative stops the run. A cloud column whose total is negative is clamped, creating
-the missing mass.
+A vapour column whose total is negative redoes the step at half the step, and stops the run if no step down to
+`max_redo` halvings repairs it. A cloud column whose total is negative is clamped, creating the missing mass.
 :::
 
 - The downward branch takes the deficit from every donor of the window in proportion to its vapour, so a donor far
   below the negative cell gives as large a fraction as the one next to it. Nothing measures whether a nearest-first
   borrow would change a run.
 - A failure below an already repaired window leaves that window rewritten (`fixvapor_check.py` `[C7]`, port only).
-  For vapour the run stops anyway; for parentless clouds the rewrite stays, mass kept.
+  For vapour the step is redone from its start, which discards it; for parentless clouds the rewrite stays, mass kept.
 - When the blocks of one column live in one process, `gather_x1` waits until every one of them has posted its
   piece, so they must call the limiter concurrently; a caller that steps them one after another waits at the first
   block's gather. No registered test runs the cross-process gather on CUDA: `test_parentless_cloud_nb1_mp` has no
@@ -255,8 +262,8 @@ the missing mass.
     U->W conversion once, which repairs the column in place; it writes `data/fixvapor_column.csv` and the log
     `evidence/logs/fixvapor_column_run.log`: cells 0, 1, 39 and 40 changed, relative column-mass change
     $2.88\times10^{-18}$, volume ratio top to bottom $8.634$.
-[^fix-ctest]: [sha: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f; deck: the tests' own cards; run: `env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 PYTHONPATH="$SITE" ctest -R "^test_eos\.release|^test_fix_vapor|^test_parentless_cloud|^test_vapor_column_nb1|^test_check_redo|^test_forcing\.release|^test_uranus_cycle1_abort"`,
-    in the build's `tests` directory of a Release build (`cmake -B build -DCMAKE_BUILD_TYPE=Release -DNETCDF=ON -DCUDA=OFF`), CPU, double, 1 process (2 for the `_mp` arms); GCC 13.3.1, Python 3.11.13, torch 2.10.0, kintera 2.6.6; `$SITE` as in the run above]: 16 of 16 passed.
+[^fix-ctest]: [sha: snapy@68f4e066974ede87e4379285c4fba895b970b7f1; deck: the tests' own cards; run: `env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 PYTHONPATH="$SITE" ctest -R "^test_eos\.release|^test_fix_vapor|^test_parentless_cloud|^test_vapor_column_nb1|^test_check_redo|^test_forcing\.release|^test_uranus_cycle1_abort"`,
+    in the build's `tests` directory of a Release source build of that commit (`cmake -B build -DCMAKE_BUILD_TYPE=Release -DNETCDF=ON -DCUDA=OFF`), CPU, double, 1 process (2 for the `_mp` arms); GCC 13.3.1, Python 3.11.13, torch 2.10.0, kintera 2.6.6; `$SITE` that build installed with `pip install --no-deps --no-build-isolation --target`]: 17 of 17 passed, `test_check_redo_vapor_deficit.release` among them.
 
 <!-- reader glossary notes -->
 [^rg-431e5643024d]: $x_1, x_2, x_3$ — the three coordinate directions; $x_1$ is always the vertical (radial) direction

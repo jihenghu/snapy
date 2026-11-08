@@ -74,11 +74,11 @@ count and $C$ the CFL[^rg-e0adecef2ed5] number ({{< code src/mesh/mesh.cpp MeshI
 
 **Redo.** `MeshImpl::check_redo` first checks signals. Each local block then forms its six flags as one float64
 tensor on its device: density or pressure floor hit, VIC dry clamp, the two limiter marks, saturation-adjustment
-failure and implicit solve failure. A seventh entry carries the vapour-repair failures counted on the device during
+failure and implicit solve failure. A seventh entry carries the vapour-repair failures counted during
 the step (`local_redo_flag_tensor`,
 {{< code src/mesh/meshblock.cpp MeshBlockImpl::local_redo_flag_tensor >}}). When the local blocks share a device,
 the mesh stacks the tensors, takes their element-wise maximum on the device and reads it to the host once;
-otherwise it reads each block's tensor and ORs them. The read raises the vapour repair's error when the seventh
+otherwise it reads each block's tensor and ORs them. The read sets the limiter flag when the seventh
 entry is set, and returns the six flags (`read_redo_flags`,
 {{< code src/mesh/meshblock.cpp MeshBlockImpl::read_redo_flags >}}; {{< code src/mesh/mesh.cpp MeshImpl::check_redo >}}).
 `reduce_redo_flags` all-reduces the six values with MAX and packs the result into a cause bit mask
