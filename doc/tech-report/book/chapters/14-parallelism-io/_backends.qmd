@@ -1,8 +1,8 @@
 ## Communication backends: Gloo, UCX through commux, an external group (`BACKEND`) {#sec-ch14-backends}
 
 <!-- PROVENANCE
-pin: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f (chengcli/snapy); kintera@c55b13b2204997d2d09e04498558ab9495d8ee77
-sources: src/layout/process_group.hpp, src/layout/process_group.cpp, src/layout/process_group_ucx.cpp, src/layout/distributed.cpp, src/layout/layout.cpp, CMakeLists.txt, tests/CMakeLists.txt, tests/test_gloo_one_tensor.cpp, tests/run_seam_backends.py
+pin: snapy@68f4e066974ede87e4379285c4fba895b970b7f1 (chengcli/snapy); kintera@c55b13b2204997d2d09e04498558ab9495d8ee77
+sources: src/layout/process_group.hpp, src/layout/process_group.cpp, src/layout/process_group_ucx.cpp, src/layout/distributed.cpp, src/layout/layout.cpp, CMakeLists.txt, tests/CMakeLists.txt, tests/test_gloo_one_tensor.cpp, tests/run_seam_backends.py, tests/expect_gloo_invalid_interface.py
 status: draft
 -->
 
@@ -20,7 +20,7 @@ several tensors can travel in one message.
 
 **Placement.** Created by the first block of a process; used by every exchange, relay and collective.
 
-**Activation.** Environment `BACKEND`; CMake `UCX`. Default: `ucx` on Linux with UCX, else `gloo`.
+**Activation.** Environment `BACKEND` (and `GLOO_SOCKET_IFNAME` for Gloo's interface); CMake `UCX`. Default: `ucx` on Linux with UCX, else `gloo`.
 
 **Guarantee / limits.** Bytes arrive unchanged; no NCCL[^rg-324fc5a0c563]; CUDA tensors only over UCX built with CUDA.
 
@@ -69,8 +69,11 @@ is also keyed by its pointer. Contexts are cached through weak pointers, so all 
 then holds the processes at a barrier ({{< code src/layout/process_group.cpp ProcessGroupContext::_init >}}). The
 three backends differ as follows:
 
-1. **Gloo** (`_init_gloo`) registers a `ProcessGroupGloo` with the default device as the CPU backend of a c10d
-   `ProcessGroup` ({{< code src/layout/process_group.cpp ProcessGroupContext::_init_gloo >}}).
+1. **Gloo** (`_init_gloo`) registers a `ProcessGroupGloo` as the CPU backend of a c10d `ProcessGroup`
+   ({{< code src/layout/process_group.cpp ProcessGroupContext::_init_gloo >}}). Its one device is bound to the network
+   interface named by the environment variable `GLOO_SOCKET_IFNAME` when that is set and not empty
+   (`createDeviceForInterface`), and is Gloo's default device otherwise (`createDefaultDevice`). Every rank reads
+   its own environment, so a launcher that sets the variable for all ranks makes them all use that interface.
 2. **UCX** (`_init_ucx`) creates a `commux::ProcessGroupUCX` on the same store. It sets `COMMUX_COALESCE=1` and
    `COMMUX_GROUP=1` unless they are already set, and on CPU also excludes the CUDA transports from `UCX_TLS`
    ({{< code src/layout/process_group_ucx.cpp ProcessGroupContext::_init_ucx >}}). A build without UCX has a stub
@@ -100,7 +103,9 @@ The CMake option `UCX` is ON by default on Linux and OFF on macOS; `PNETCDF` fol
 BACKEND=gloo torchrun --no-python --nproc-per-node=2 --master-port=29511 ./straka.release straka_proc2.yaml   # any free port
 ```
 
-`test_process_group` case 2 checks that a `distribute: backend` key is ignored.
+`test_process_group` case 2 checks that a `distribute: backend` key is ignored. To pin Gloo to one network
+interface, set `GLOO_SOCKET_IFNAME=<interface>` in the same environment as `BACKEND=gloo`.
+
 
 **What is refused, and why.**
 
@@ -111,6 +116,9 @@ BACKEND=gloo torchrun --no-python --nproc-per-node=2 --master-port=29511 ./strak
 4. *More than one tensor per message on Gloo*: the error names the fix, one message per tensor.
 5. *An external group whose backend is not `BACKEND`*: "external process group backend mismatch". The two would
    disagree on how messages travel.
+6. *`GLOO_SOCKET_IFNAME` naming an interface the host does not have*: with `BACKEND=gloo` every rank stops while
+   the group is set up, with Gloo's "Unable to find address for: <name>" (`test_gloo_invalid_interface`). A rank
+   cannot talk over an interface it does not have.
 
 **The excerpt.** The routing of steps 2 and 3, in `ProcessGroupContext::send`:
 
@@ -133,6 +141,7 @@ for (auto const& tensor : tensors) {
 | one CPU tensor per message | {{< code src/layout/process_group.cpp ProcessGroupContext::send >}} | `send` | not UCX |
 | external group | {{< code src/layout/process_group.cpp ProcessGroupContext::_init_external >}} | `_init_external` | `set_process_group` |
 | Gloo | {{< code src/layout/process_group.cpp ProcessGroupContext::_init_gloo >}} | `_init_gloo` | `BACKEND=gloo` |
+| Gloo interface | {{< code src/layout/process_group.cpp ProcessGroupContext::_init_gloo >}} | `GLOO_SOCKET_IFNAME` | environment |
 | coalescing | {{< code src/layout/process_group.cpp ProcessGroupContext::supports_coalescing >}} | `supports_coalescing` | UCX |
 | UCX through commux | {{< code src/layout/process_group_ucx.cpp ProcessGroupContext::_init_ucx >}} | `_init_ucx` | `BACKEND=ucx` |
 | registration | {{< code src/layout/distributed.cpp set_process_group >}} | `set_process_group` | Python `snapy.distributed` |
@@ -149,6 +158,7 @@ for (auto const& tensor : tensors) {
 | `test_exchange_ucx_cuda` (UCX and CUDA builds) | the same exchange with CUDA tensors; exits 125 (skip) without commux CUDA support or GPUs | value bounds | as above |
 | `test_sedimentation_cubed_seam_gloo` (UCX builds) | two Gloo ranks finish with one result line, and it equals the UCX run's line | exact (17 digits) | string compare |
 | `test_parentless_cloud_nb1_mp_gloo` (UCX builds) | the two-rank `test_parentless_cloud_nb1_mp` passes on Gloo | the test's own | `test_parentless_cloud_nb1_mp.cpp` |
+| `test_gloo_invalid_interface` (every build) | two Gloo ranks of `test_output_barrier` with `GLOO_SOCKET_IFNAME=snapy_no_such_interface` exit non-zero, and the output holds the line "Unable to find address for: snapy_no_such_interface" exactly twice, once per rank | exact (count of 2, non-zero exit) | the selected interface reaches the device on both ranks |
 
 : Tests of the backends. C++ entries carry the build suffix (`.release`). {#tbl-ch14-backends-tests}
 
@@ -170,9 +180,12 @@ The registrations use `setup_parallel_test` and `add_test` {{< code tests/CMakeL
 
 ::: {.callout-warning title="Limits"}
 - No NCCL path. Multi-GPU exchange needs UCX built with CUDA; Gloo with `DEVICE=cuda` stops at the first send.
-- Linux CI[^rg-9d639278ba00] runs UCX by default; Gloo is reached on Linux only by the explicit `_gloo` entries above. The
+- Linux CI[^rg-9d639278ba00] runs UCX by default; Gloo is reached on Linux only by the explicit `_gloo` entries above and
+  `test_gloo_invalid_interface`. The
   maintainer's position is that Gloo is the macOS backend and is not guaranteed elsewhere.[^ch14-backends-gloo]
 - `cmake/ucx.cmake` carries site-specific search paths for UCX; they are not part of the method.
+- One Gloo interface: `GLOO_SOCKET_IFNAME` is handed whole to `createDeviceForInterface`, so it names one
+  interface; a comma-separated list is not split into several devices.
 :::
 
 [^ch14-backends-gloo]: Stated in the discussions of chengcli/snapy#237 and #240.
