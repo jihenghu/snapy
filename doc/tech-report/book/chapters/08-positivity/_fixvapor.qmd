@@ -241,7 +241,7 @@ only the stale-count one was run, and it passed.[^ch08-fixvapor-pyrun]
 
 [^ch08-fixvapor-alias]: Source: chengcli/snapy#332 (closes chengcli/snapy#330), the PR body and the commit message
     of its squash-merge, which is this book's pin.
-[^ch08-fixvapor-run]: [sha: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f; deck:
+[^ch08-fixvapor-run]: [sha: snapy@68f4e066974ede87e4379285c4fba895b970b7f1; deck:
     `tests/test_fix_vapor_deficit.yaml` and the column set in `tests/test_fix_vapor_deficit.cpp`; run: `env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 ctest -R "test_fix_vapor_deficit|test_species_face_clamp" -V` and
     `env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 ctest -R "^test_eos\.release|^test_fix_vapor_volume\.release|^test_forcing\.release|test_cycle_diagnostics\.release" -V`, in the build's `tests` directory of a Release build (`cmake -B build -DCMAKE_BUILD_TYPE=Release -DNETCDF=ON -DCUDA=OFF`), CPU, double (float32 cases as named), 1 process; GCC 13.3.1, CMake 3.26.5, Python 3.11.13, torch 2.10.0, kintera 2.6.6]. The printed lines are the test's own `printf` output.
 [^ch08-fixvapor-pyrun]: [sha: snapy@68f4e066974ede87e4379285c4fba895b970b7f1; deck: the columns the scripts and the

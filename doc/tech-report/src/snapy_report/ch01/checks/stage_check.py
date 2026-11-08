@@ -1,6 +1,6 @@
 """Check Chapter 1 stage algebra without snapy.
 
-Formula pin: snapy@6fbb39750f62b83df096058a4746e77d0a634bc5 (C1-C3); snapy@68f4e066974ede87e4379285c4fba895b970b7f1 (C4).
+Formula pin: snapy@68f4e066974ede87e4379285c4fba895b970b7f1 (C1-C3 unchanged from snapy@6fbb39750f62b83df096058a4746e77d0a634bc5; C4 new).
 Run: python3 stage_check.py from any working directory.
 C1 checks the coefficient product cw in HydroImpl::forward (src/hydro/hydro_forward.cpp).
 C2 mirrors the upwind/shift/difference of MeshBlockImpl::advance_local (src/mesh/meshblock.cpp).
