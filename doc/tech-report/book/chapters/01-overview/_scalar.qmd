@@ -21,7 +21,7 @@ just computed. This section follows that call, which runs after the hydro call i
 
 **Placement.** After the hydro call in every stage; the parent block combines the result.
 
-**Activation.** `scalar/names` or `scalar/nvar` (default 0); `upper-bound`[^rg-0ed3cc23ed9a] default $-1$ (off).
+**Activation.** `scalar/names` or `scalar/nvar` (default 0); `upper-bound` default $-1$ (off).
 
 **Guarantee / limits.** A map; the ratio divides by the conserved dry density, so that density must be positive.
 
@@ -148,8 +148,6 @@ established by the cited tests. The upper-bound and positivity mechanisms are do
 :::
 
 <!-- reader glossary notes -->
-[^rg-0ed3cc23ed9a]: upper-bound — upper bound for the scalar ratio; a negative value disables the bound
-
 [^rg-0d8fe044c8ef]: $\rho_n$ — density of passive scalar $n$, $\rho_{\mathrm d} r_n$ (`scalar_s`)
 
 [^rg-5f6c85feb7ba]: names — names of the passive scalars, one per scalar (in the `scalar` block)

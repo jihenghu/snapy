@@ -58,7 +58,7 @@ the target `btemp`; $T^{\mathrm{tgt}}$ [K] the temperature that is relaxed (the 
 `at-face`); $\alpha_{\mathrm f}$ [-] the at-face extrapolation weight (code `a`); cells $0$ and $1$ the bottom interior
 cell and the one above it; $\mathbf v_{\mathrm b}$ [m s$^{-1}$] the target `bvx`, `bvy`, `bvz` of $(v^1,v^2,v^3)$;
 $y^{\mathrm{tgt}}_n$ [-] the target mass fractions; $U(\cdot,T)$ [J m$^{-3}$] kintera's volumetric internal energy at fixed
-$T$; $g_{ab}$ the panel metric of @sec-ch03-gnomonic, $g_{23}=\cos\psi$. $\rho$, $c_v$, $y_n$[^rg-b518aee12bfe], $N_y$, $m_a$, $x_{1,i}$[^rg-7a33e3661515] and $\epsilon_{\mathrm m}$
+$T$; $g_{ab}$ the panel metric of @sec-ch03-gnomonic, $g_{23}=\cos\psi$. $\rho$, $c_v$, $y_n$[^rg-b518aee12bfe], $N_y$, $m_a$, $x_{1,i}$ and $\epsilon_{\mathrm m}$
 are defined in @sec-appa.
 
 `relax-bot-velo` leaves the total energy $E$ untouched, so the kinetic energy it removes becomes internal energy density, as
@@ -306,8 +306,6 @@ run**.
 [^rg-f7967230748b]: species — species definitions or selection in the enclosing thermodynamic block
 
 [^rg-b518aee12bfe]: $y_n$ — mass fraction of species $n$ **per unit total mass**, $\rho_n = \rho y_n$, dimensionless [-]; this is snapy's composition variable and the only one the state vector carries
-
-[^rg-7a33e3661515]: $x_{1,i}$ — cell volume centroid ($r_{c,i}$ on spherical-polar)
 
 [^rg-5e230d00f362]: $n_g$ — ghost cells on each side
 

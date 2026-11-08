@@ -26,7 +26,7 @@ their marks.
 | Operator split at the step boundary (@sec-ch07-split) | `thermo.reactions` | none | 1 (Lie) | `test_wall_saturation` |
 | VIC options and activation (@sec-ch07-vic-options) | `integration/implicit-scheme` | 0 (off) | — | `test_implicit_options_type_python` |
 | VIC block-tridiagonal assembly (@sec-ch07-vic-assembly) | as above | off | linearised | `test_backward_substitution`, `test_vic_partial_tangential` |
-| Stage-weighted implicit step (@sec-ch07-vic-stage) | rk3 only | on with VIC | 1 | `test_forcing` |
+| Stage-weighted implicit step (@sec-ch07-vic-stage) | rk3, rk3s4 | on with VIC | 1 | `test_forcing`, `test_implicit_face_work_operator_python` |
 | Block Thomas sweep and back substitution (@sec-ch07-vic-sweep) | as above | off | direct | `test_lu_failure` |
 | LU[^rg-3af720c3dfee] pivot tolerance (@sec-ch07-vic-pivot) | none | $\epsilon_{\mathrm{piv}}=8N\epsilon_{\mathrm m}$ | — | `test_lu_failure` |
 | VIC rejection and rollback (@sec-ch07-vic-reject) | none | on with VIC | — | `test_lu_failure` |
@@ -39,21 +39,23 @@ their marks.
 |---|---|
 | `test_forcing.release`, `test_wall_saturation.release`, `test_diffusion.release` | passed |
 | `test_implicit_cfl.release`, `test_implicit_advection_cfl_python`, `test_shear_cfl_python` | passed |
-| `test_check_redo_floor_python`, `test_check_redo_saturation_python`, `test_uranus_cycle1_abort.release`, `test_straka_redo` | passed |
+| `test_check_redo_floor_python`, `test_check_redo_saturation_python`, `test_check_redo_vapor_deficit.release`, `test_fix_vapor_stale_count_python`, `test_uranus_cycle1_abort.release`, `test_straka_redo` | passed |
 | `test_check_redo_parallel.release`, `test_mesh_multi_block.release` (two processes each) | passed |
-| `test_implicit_options_type_python`, `test_hydro_options.release`, `test_backward_substitution.release`, `test_lu_failure.release`, `test_vic_partial_tangential.release` | passed |
-| `test_straka` (two processes) | not evaluated: the run finished in 73.7 s, then the post-processing step `pd-combine` failed because NCO[^rg-aded3fe902a7]'s `ncrcat` is not installed on the run host, so ctest reports a failure and the comparison with the reference was not made |
+| `test_implicit_options_type_python`, `test_hydro_options.release`, `test_backward_substitution.release`, `test_lu_failure.release`, `test_vic_partial_tangential.release`, `test_implicit_face_work_operator_python` | passed |
+| `test_straka` (two processes) | passed |
 
 : The ctest entries this chapter cites, run at the pin.[^ch07-ctest] {#tbl-ch07-ctest-run}
 
-[^ch07-ctest]: [sha: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f; run: `ctest -j1 -R <names>` on a Release build of
-    snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f (`cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DNETCDF=ON
-    -DPNETCDF=OFF -DSNAPY_TEST_PYTHONPATH=<site>`, `cmake --build build --parallel 3`; the Python entries import this
-    commit's snapy, installed with `pip install --no-build-isolation --no-deps --target <site> .`), CPU[^rg-9dfff25f07b9]
-    only (CMake `CUDA=OFF`), double, Intel Xeon E-2236, one process unless stated; GCC 11.5.0, CMake/CTest 4.4.4,
-    torch 2.10.0, kintera 2.6.4, Python 3.12.10; scope: each entry's own ctest run; reps: 1]. 17 of 18 passed in
-    24.8 s and 82.1 s of ctest time. The build has no CUDA[^rg-2238129cb896], so the CUDA twins of `test_forcing`,
-    `test_check_redo_saturation` and `test_lu_failure` are not registered and were not run.
+[^ch07-ctest]: [sha: snapy@68f4e066974ede87e4379285c4fba895b970b7f1; run: `env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1
+    PYTHONPATH=<site> PATH=<site>/bin:$PATH ctest -j1 -R <names>` on a Release source build of snapy@68f4e066974ede87e4379285c4fba895b970b7f1 (`cmake -B build
+    -DCMAKE_BUILD_TYPE=Release -DNETCDF=ON -DSNAPY_TEST_PYTHONPATH=<site>`, `cmake --build build --parallel 8`; the Python
+    entries import this commit's snapy, installed with `pip install --no-build-isolation --no-deps --target <site> .`),
+    CPU[^rg-9dfff25f07b9] only (CMake `CUDA=OFF`), double, AMD Ryzen Threadripper PRO 5975WX, one process unless stated;
+    GCC 13.3.1, CMake/CTest 3.26.5, torch 2.10.0, kintera 2.6.6, Python 3.11.13; scope: each entry's own ctest run;
+    reps: 1]. 21 of 21 passed in 104.1 s of ctest time; `test_straka` needs the package's `pd-combine`, hence the
+    `PATH` and `PYTHONPATH`. The build has no CUDA[^rg-2238129cb896], so the CUDA twins of `test_forcing`,
+    `test_check_redo_saturation`, `test_lu_failure` and `test_implicit_face_work_operator` are not registered there and
+    were not run in it.
 
 ## 7A. Explicit stages, time step and step acceptance {.unnumbered .unlisted}
 
@@ -103,8 +105,6 @@ The limits this chapter states are collected with those of the other chapters in
 [^rg-99aed0617573]: shear-cfl — Courant limit associated with shear
 
 [^rg-3af720c3dfee]: LU — lower–upper matrix factorisation
-
-[^rg-aded3fe902a7]: NCO — NetCDF Operators
 
 [^rg-9dfff25f07b9]: CPU — central processing unit
 
