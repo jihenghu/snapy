@@ -1,3 +1,4 @@
 [C1] PASS supplied-stage coefficients: residuals=[0, 0, 0]
 [C2] PASS telescoping closed/open ends: max_residual=0; tolerance=1.4210854715202004e-14
 [C3] PASS dry-source ratio and branches: symbolic_residual=0; max_error=0; tolerance=1.4210854715202004e-14
+[C4] PASS donor cap: no cell below zero, column conserved, pre-test exact, uniform ratio unchanged: columns_capped=2000/2000; deficit/max_held=0; column_change=4.34e-16; skip_equal=True; uniform_ratio_change=3.13e-16

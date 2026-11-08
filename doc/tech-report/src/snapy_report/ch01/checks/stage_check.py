@@ -1,10 +1,12 @@
 """Check Chapter 1 stage algebra without snapy.
 
-Formula pin: snapy@6fbb39750f62b83df096058a4746e77d0a634bc5.
+Formula pin: snapy@6fbb39750f62b83df096058a4746e77d0a634bc5 (C1-C3); snapy@68f4e066974ede87e4379285c4fba895b970b7f1 (C4).
 Run: python3 stage_check.py from any working directory.
 C1 checks the coefficient product cw in HydroImpl::forward (src/hydro/hydro_forward.cpp).
 C2 mirrors the upwind/shift/difference of MeshBlockImpl::advance_local (src/mesh/meshblock.cpp).
 C3 checks carry_dry_source in MeshBlockImpl::advance_local, including its zero-base fallback.
+C4 ports the donor cap of the implicit tracer transfer, donor_cap_cpu and donor_cap_cuda
+(src/implicit/implicit_dispatch.cpp, .cu) at snapy@68f4e066974ede87e4379285c4fba895b970b7f1.
 These are symbolic identities and numpy formula checks, not C++ runtime tests.
 All cited ranges are at the full formula pin above.
 """
@@ -69,8 +71,54 @@ def check_C3_dry_source():
     return ok
 
 
+def donor_cap(P, held, skip_test=True):
+    """donor_cap_cpu on one column; P[i] is the transfer through the face between cells i-1 and i."""
+    P = P.copy()
+    n = len(held)
+    if skip_test:  # the CPU pre-test: sweep only when some face would bind
+        cap = held[:-1].copy()
+        cap[1:] += P[1:-1]
+        if not (np.any(P[1:] > cap) or np.any(P[1:] < -held[1:])):
+            return P
+    avail = held[0]
+    for i in range(1, n):
+        P[i] = max(min(P[i], avail), -held[i])
+        avail = held[i] + P[i]
+    return P
+
+
+def check_C4_donor_cap():
+    rng = np.random.default_rng(4)
+    worst_neg, worst_sum, same, binds = 0., 0., True, 0
+    for _ in range(2000):
+        n = 12
+        held = rng.uniform(0., 1., n) * (rng.uniform(size=n) > 0.3)
+        P = np.r_[0., rng.normal(0., 1., n - 1)]
+        Q = donor_cap(P, held)
+        binds += not np.array_equal(Q, P)
+        same &= np.array_equal(Q, donor_cap(P, held, skip_test=False))
+        after = held + Q - np.r_[Q[1:], 0.]
+        worst_neg = max(worst_neg, -after.min() / max(held.max(), 1e-300))
+        worst_sum = max(worst_sum, abs(after.sum() - held.sum()) / held.sum())
+    # a uniform ratio r through a dry transfer that obeys the same cap: the tracer cap never binds
+    worst_ratio = 0.
+    for _ in range(2000):
+        hd = rng.uniform(0.1, 1., 12)
+        M = donor_cap(np.r_[0., rng.normal(0., 3., 11)], hd, skip_test=False)
+        r = rng.uniform(0.1, 2.)
+        Q = donor_cap(r * M, r * hd)
+        worst_ratio = max(worst_ratio, np.abs(Q - r * M).max() / np.abs(r * M).max())
+    eps = np.finfo(np.float64).eps
+    ok = worst_neg <= 4 * eps and worst_sum <= 64 * eps and same and binds > 0 and worst_ratio <= 4 * eps
+    print(f"[C4] {'PASS' if ok else 'FAIL'} donor cap: no cell below zero, column conserved, pre-test exact, "
+          f"uniform ratio unchanged: columns_capped={binds}/2000; deficit/max_held={worst_neg:.3g}; "
+          f"column_change={worst_sum:.3g}; skip_equal={same}; uniform_ratio_change={worst_ratio:.3g}")
+    return ok
+
+
 def main():
-    return sum(not check() for check in (check_C1_weights, check_C2_transfer, check_C3_dry_source))
+    return sum(not check() for check in (check_C1_weights, check_C2_transfer, check_C3_dry_source,
+                                         check_C4_donor_cap))
 
 
 if __name__ == '__main__':

@@ -1,9 +1,10 @@
 ## Accumulate and combine one stage (`user_stage_forcings`) {#sec-ch01-stage}
 
 <!-- PROVENANCE
-pin: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f (chengcli/snapy, code_pin.yml)
-sources: OUTLINE.md entry 1.4; src/mesh/meshblock.cpp; src/hydro/hydro_forward.cpp; tests/test_user_output.cpp;
-         tests/test_jit_user_forcing.py
+pin: snapy@68f4e066974ede87e4379285c4fba895b970b7f1 (chengcli/snapy, code_pin.yml)
+sources: OUTLINE.md entry 1.4; src/mesh/meshblock.cpp; src/hydro/hydro_forward.cpp; src/implicit/implicit_dispatch.cpp;
+         src/implicit/implicit_dispatch.cu; tests/test_user_output.cpp; tests/test_jit_user_forcing.py;
+         tests/test_tracer_dry_convention.py; tests/test_scalar_upper_bound_donor.py
 status: draft
 author: Jiheng Hu
 reviewer:
@@ -70,8 +71,9 @@ not assert their values from a snapy call site. Check `[C1]` expands a generic t
 symbolically [check `src/snapy_report/ch01/checks/stage_check.py`, output `stage_check.out`].
 
 The tracer transfer and its dry-source complement are derived in @sec-ch10-tracer; this section keeps the call
-interface and the three identities the code evaluates. The transfer of tracer $n$ through an $x_1$ face is the
-clamped dry transfer $J^{\mathrm{d}}$ of the implicit mass-correction buffer times the ratio of the donor cell,
+interface, the three identities the code evaluates and the donor cap. Before the cap, the transfer of tracer $n$
+through an $x_1$ face is the clamped dry transfer $J^{\mathrm{d}}$ of the implicit mass-correction buffer times the
+ratio of the donor cell,
 
 $$
 J^{\mathrm{tr}}_{n,i+1/2} = J^{\mathrm{d}}_{i+1/2}
@@ -81,8 +83,27 @@ r_{n,i+1}, & J^{\mathrm{d}}_{i+1/2}\le 0,
 \end{cases}
 $$ {#eq-ch01-stage-upwind}
 
-the upwind tensor `P` of {{< code src/mesh/meshblock.cpp MeshBlockImpl::advance_local >}}; the increment of a
-cell is the net transfer over its volume $V_i$[^rg-902e93eb3066] [$\mathrm{m^3}$],
+the upwind tensor `P` of {{< code src/mesh/meshblock.cpp MeshBlockImpl::advance_local >}}. Each transfer is then
+capped by what its donor holds, the `donor_cap` sweep ({{< code src/implicit/implicit_dispatch.cpp donor_cap_cpu >}},
+{{< code src/implicit/implicit_dispatch.cu donor_cap_cuda >}}). Let $H_{n,i}$ [kg] be the tracer mass cell $i$[^rg-3f39479eeb50] holds
+after the stage's explicit update, $V_i(\rho_{\mathrm d}r_n)_i$ with a negative value counted as zero. Up one column, from
+the lowest interior cell $i_l$:
+
+1. *Start.* $A_{i_l}=H_{n,i_l}$, what the lowest cell can give.
+2. *Clamp the face above cell $i$.* $J^{\mathrm{tr}}_{n,i+1/2}\leftarrow\min\big(\max(J^{\mathrm{tr}}_{n,i+1/2},-H_{n,i+1}),\,A_i\big)$:
+   an upward transfer takes at most $A_i$, a downward one at most what cell $i+1$ holds.
+3. *Carry up.* $A_{i+1}=H_{n,i+1}+J^{\mathrm{tr}}_{n,i+1/2}$: what cell $i+1$ holds plus what entered it from below,
+   never negative because of step 2.
+4. *No cell goes negative.* Cell $i$ ends with $H_{n,i}+J^{\mathrm{tr}}_{n,i-1/2}-J^{\mathrm{tr}}_{n,i+1/2}=A_i-J^{\mathrm{tr}}_{n,i+1/2}$.
+   An upward $J^{\mathrm{tr}}_{n,i+1/2}$ is at most $A_i$, and a downward one adds mass, so the result is $\ge0$.
+5. *Conservation.* Each face value is used by both of its cells, so the column total is unchanged.
+6. *A uniform ratio is untouched.* The VIC[^rg-828441330efe] clamps the dry transfer by the same rule (@sec-ch07-vic-redistribute).
+   With one ratio $r_n$ everywhere, $J^{\mathrm{tr}}=r_nJ^{\mathrm{d}}$ and $H_n=r_nH_{\mathrm d}$, so every tracer bound is
+   $r_n$ times a dry bound the dry transfer already meets, and the cap does not bind (the `through` test measures it).
+
+The CPU first tests every face against $H_{n,i}$ plus the unclamped inflow and runs the sweep only if one binds,
+which gives the same result; CUDA[^rg-28386113293d] runs the sweep in one thread per column with no host read. Check `[C4]` ports the
+sweep. The increment of a cell is the net capped transfer over its volume $V_i$[^rg-902e93eb3066] [$\mathrm{m^3}$],
 
 $$
 \Delta\rho_{n,i} = \frac{J^{\mathrm{tr}}_{n,i-1/2}-J^{\mathrm{tr}}_{n,i+1/2}}{V_i},
@@ -139,6 +160,8 @@ $\delta_{\mathrm{mach}}(|J^{\mathrm{tr}}_{n,i-1/2}| + |J^{\mathrm{tr}}_{n,i+1/2}
 subtraction itself is exact only when the two transfers have the same sign and lie within a factor of two of each
 other. Otherwise it rounds once more, by at most $\delta_{\mathrm{mach}}$ of the difference. The division adds one
 rounding of the result. When the two transfers nearly cancel, the product errors are not small relative to the result.
+A capped transfer is a bound instead of the product: $A_i$ is one addition, one rounding, and the clamps themselves
+are exact.
 
 ### Code
 
@@ -147,6 +170,8 @@ rounding of the result. When the two transfers nearly cancel, the product errors
 | stage | {{< code src/mesh/meshblock.cpp MeshBlockImpl::advance_local >}} | `advance_local` | none |
 | dry carry | {{< code src/mesh/meshblock.cpp MeshBlockImpl::advance_local >}} | `carry_dry_source` | none |
 | transfer | {{< code src/mesh/meshblock.cpp MeshBlockImpl::advance_local >}} | `mass_corr` | `implicit-scheme` |
+| donor cap, CPU | {{< code src/implicit/implicit_dispatch.cpp donor_cap_cpu >}} | `donor_cap` | `implicit-scheme` with scalars |
+| donor cap, CUDA | {{< code src/implicit/implicit_dispatch.cu donor_cap_cuda >}} | `donor_cap` | as above |
 | user | {{< code src/mesh/meshblock.cpp MeshBlockImpl::advance_local >}} | `user_stage_forcings` | callbacks installed |
 | combine | {{< code src/mesh/meshblock.cpp MeshBlockImpl::advance_local >}} | `pintg` | `integration:` |
 | last stage | {{< code src/mesh/meshblock.cpp MeshBlockImpl::advance_local >}} | `pthermo` | the reaction list |
@@ -195,7 +220,9 @@ The comment is @eq-ch01-stage-combine, the two assignments are the two factors o
 | `test_user_output.<b>` | scripted callbacks add their hydro and scalar increments in list order | `allclose`, rtol = atol = $10^{-12}$ | test constants |
 | `test_user_output.<b>` | one scripted module is shared by parallel blocks; an unsupported key throws | `allclose` defaults; expected exception | the API contract |
 | `test_jit_user_forcing_python` | a nested scripted module adds its increment | `assert_close` defaults | library defaults |
-| this chapter's check, `stage_check.py` | `[C1]`-`[C3]`: the weight product, the upwind transfer, the dry carry | exact | logic port |
+| `tests/test_tracer_dry_convention.py` (`test_tracer_dry_convention_python`, CUDA twin), `donor` and `through` arms | `donor`: one tracer cell under a pressure bump with `implicit-scheme: 1`; no tracer density goes below 0 and the total tracer is kept; `through`: a uniform tracer at ten times the time-step bound, over a cell mass through a cell, keeps its ratio | $s\ge0$; total $10^{-12}$ relative; ratio $10^{-14}$, moved $>1$ cell mass | the claim is a bound; round-off; non-vacuity |
+| `tests/test_scalar_upper_bound_donor.py` (`test_scalar_upper_bound_donor_python`, CUDA twin) | with `upper-bound`[^rg-0ed3cc23ed9a] and `implicit-scheme: 1`, three steps of a tracer at the bound in one cell leave no tracer density below 0 | $s\ge0$ | the claim is a bound |
+| this chapter's check, `stage_check.py` | `[C1]`-`[C4]`: the weight product, the upwind transfer, the dry carry, the donor cap | exact; round-off | logic port |
 
 : Source assertions for the stage. {#tbl-ch01-stage-tests}
 
@@ -207,21 +234,37 @@ The assertions are {{< code tests/test_user_output.cpp UserForcing.scripted_stag
 The check is symbolic and numeric, with no snapy import.[^ch01-stage-run] `[C1]`: the supplied-stage
 coefficients of a generic three-stage recurrence equal @eq-ch01-stage-weight, residuals 0. `[C2]`: the
 upwind transfer telescopes over closed and open ends with residual 0 against a tolerance of
-$1.4\times10^{-14}$. `[C3]`: the dry-source carry matches @eq-ch01-stage-dry on both branches, symbolic residual 0.
+$1.4\times10^{-14}$. `[C3]`: the dry-source carry matches @eq-ch01-stage-dry on both branches, symbolic residual 0. `[C4]`: on
+2000 random columns of 12 cells, all of which the cap binds, no cell ends below zero, the column changes by at most
+$4.34\times10^{-16}$ relative, the CPU pre-test gives the sweep's result exactly, and a uniform ratio through a dry
+transfer that obeys the same cap moves by at most $3.13\times10^{-16}$ relative.
 
-The ctests run on CPU, one rank; `test_user_output.<b>` also runs the parallel-block case in one process. None
-has been run for this report at the pin: **pending a pinned ctest run**.
+The ctests run on CPU, one rank; `test_user_output.<b>` also runs the parallel-block case in one process. The two
+donor-cap tests passed at the pin.[^ch01-stage-cap] `donor` printed a minimum tracer density of $0$ and a total
+change of $2.22\times10^{-16}$; `through` a ratio change of $5.55\times10^{-16}$ with $1.433$ cell masses moved through a
+cell; the upper-bound case a minimum of $0$. The callback tests have not been run for this report at the pin:
+**pending a pinned ctest run**.
 
-[^ch01-stage-run]: [sha: snapy@6fbb39750f62b83df096058a4746e77d0a634bc5; deck: the check itself; run:
+[^ch01-stage-run]: [sha: snapy@6fbb39750f62b83df096058a4746e77d0a634bc5 for `[C1]`-`[C3]`,
+    snapy@68f4e066974ede87e4379285c4fba895b970b7f1 for `[C4]`; deck: the check itself; run:
     `python3 src/snapy_report/ch01/checks/stage_check.py`,
     CPU, double, 1 process; Python 3.11.13, numpy 2.4.6, sympy 1.14.0; output identical to the committed file].
-    Output `stage_check.out`, lines `[C1]` to `[C3]`.
+    Output `stage_check.out`, lines `[C1]` to `[C4]`.
+
+[^ch01-stage-cap]: [sha: snapy@68f4e066974ede87e4379285c4fba895b970b7f1; deck: `tests/test_tracer_dry_convention.yaml` as
+    each arm modifies it; run: `env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 ctest -j1 -V -R
+    '^(test_tracer_dry_convention_python|test_scalar_upper_bound_donor_python)$'` in `build/tests` of a Release source
+    build of the pin (`cmake -B build -DCMAKE_BUILD_TYPE=Release -DNETCDF=ON`, GCC 13.3.1, CMake 3.26.5), snapy
+    installed from that build with `pip install --no-build-isolation --no-deps --target <site>` and passed as
+    `-DSNAPY_TEST_PYTHONPATH=<site>`; CPU, double, 1 process; Python 3.11.13, torch 2.10.0, kintera 2.6.6]: 2 of 2 passed.
 
 ### Limits
 
 ::: {.callout-warning title="Limits"}
 The stage algebra proves neither positivity after arbitrary user increments nor accuracy after nonlinear
-limiting or phase adjustment. Switch combinations remain subject to @sec-ch12-matrix; no new CPU, CUDA[^rg-28386113293d] or
+limiting or phase adjustment. The donor cap keeps the implicit tracer transfer from overdrawing a donor; where it
+binds, the tracer no longer moves with the ratio of the dry transfer, so a non-uniform ratio is changed there
+(first order, donor-limited). Switch combinations remain subject to @sec-ch12-matrix; no new CPU, CUDA or
 multi-rank snapy run is claimed.
 :::
 
@@ -230,9 +273,15 @@ multi-rank snapy run is claimed.
 
 [^rg-e6248a941ab9]: $\Delta\mathbf U^{(0)}$ — the explicit stage increment handed to the implicit solve
 
+[^rg-3f39479eeb50]: $i, j, k$ — cell indices in $x_1, x_2, x_3$
+
+[^rg-828441330efe]: VIC — vertically implicit correction
+
+[^rg-28386113293d]: CUDA — NVIDIA's parallel computing platform
+
 [^rg-902e93eb3066]: $V_i$ — cell volume
 
 [^rg-4ddc775769de]: implicit_radial — whether radial heat conduction on the cubed sphere is solved implicitly, split around the explicit step (default false)
 
-[^rg-28386113293d]: CUDA — NVIDIA's parallel computing platform
+[^rg-0ed3cc23ed9a]: upper-bound — upper bound for the scalar ratio; a negative value disables the bound
 <!-- end reader glossary notes -->

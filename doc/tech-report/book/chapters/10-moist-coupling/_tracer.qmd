@@ -49,7 +49,9 @@ Write $\rho_{\mathrm d}r_n$ for the tracer density, so the code's `r = u / rho` 
 ({{< code src/scalar/scalar.cpp ScalarImpl::forward >}}). The $x_1$ transport flux is
 $F_n=F_{\mathrm d}\,r_n^{\mathrm{up}}$ with the upwind ratio, so a uniform ratio stays uniform under it; under the
 implicit dry transfer the tracer increment is $r_n$ times the dry increment (`[C3]`),[^trc-c] so it stays uniform
-there too. On $x_2$ and $x_3$ faces the face-flux covariance, on by default, changes the flux: the scalar is
+there too. The donor cap on that transfer (@sec-ch01-stage) limits each tracer transfer to what its donor holds plus
+its inflow from below; for a uniform ratio it does not bind, and where a ratio is not uniform it keeps every tracer
+density non-negative. On $x_2$ and $x_3$ faces the face-flux covariance, on by default, changes the flux: the scalar is
 upwinded with the dry-mass flux less its covariance row and adds its own tracer row, the row of a hydro species with
 the same mass fraction, `scalar_flux_covariance`
 ({{< code src/hydro/hydro_forward.cpp HydroImpl::scalar_flux_covariance >}}; @sec-ch04-fluxcov).
