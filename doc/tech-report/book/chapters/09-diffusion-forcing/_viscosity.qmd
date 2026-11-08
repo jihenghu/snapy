@@ -1,9 +1,9 @@
 ## Isotropic viscosity and heat conduction (`forcing/diffusion`) {#sec-ch09-viscosity}
 
 <!-- PROVENANCE
-pin: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f (chengcli/snapy, code_pin.yml); pyharp@4721715855e937c1e8b218e964c0655f46e56e29
+pin: snapy@68f4e066974ede87e4379285c4fba895b970b7f1 (chengcli/snapy, code_pin.yml); pyharp@4721715855e937c1e8b218e964c0655f46e56e29
 sources: OUTLINE.md 9.4; src/forcing/diffusion.cpp, src/hydro/hydro.cpp, src/mesh/meshblock.cpp, tests/test_diffusion.cpp,
-         tests/test_diffusion_moist.cpp at the pin; sources/canoe__diffusion_ghost_TECH_REPORT.md
+         tests/test_diffusion_moist.cpp, tests/test_stretched_x1_ref.cpp at the pin; sources/canoe__diffusion_ghost_TECH_REPORT.md
 status: draft
 -->
 
@@ -74,7 +74,8 @@ wall insulating. The keys `wall_velocity`[^rg-78156b20840f] and `implicit_radial
 
 ### Derivation
 
-All quantities in this layer are per unit volume; $h$ is the cell width, uniform in each direction (this operator
+All quantities in this layer are per unit volume; $h$ is the cell width, uniform in $x_2$ and $x_3$, and in $x_1$
+unless $x_1$ is stretched (`geometry/x1f` or `cells/x1rat`), where the widths $h_i$[^rg-83f672728ba8] [m] vary from cell to cell (this operator
 runs on Cartesian grids only; the module refuses every grid but Cartesian and the cubed sphere). Units: $\mathbf v$ [$\mathrm{m\,s^{-1}}$], $T$ [$\mathrm{K}$], momentum fluxes
 [$\mathrm{Pa}$], energy fluxes [$\mathrm{W\,m^{-2}}$].
 
@@ -146,6 +147,29 @@ Three properties follow, and a line-by-line port of the module checks them:[^vis
    $4\nu\sin^2\vartheta/h^2 = \nu(2\pi/\lambda_w)^2[1+O(\vartheta^2)]$, with $\vartheta=\pi h/\lambda_w$: second
    order (`[C2]`). The normal-stress row acts with the effective coefficient $\tfrac43\nu$, again second order; its
    stencil is wider because the divergence is a centred difference averaged to the face (`[C3]`).
+
+**On a stretched $x_1$.** Two pieces of @eq-ch09-viscosity-stencil change, on $x_1$ only; $x_2$, $x_3$ and every
+uniform $x_1$ keep the forms above. Write $h_{i-1}$ and $h_i$ for the widths of the cells below and above the face
+$i-\tfrac12$ and $x_{1,i}$[^rg-7a33e3661515] [m] for the cell centres.
+
+1. *The face mean.* `face_mean` takes $\overline q_{i-1/2}=(h_iq_{i-1}+h_{i-1}q_i)/(h_{i-1}+h_i)$.
+2. *It is the face value of a linear profile.* For $q=a+bx_1$ the centre values are $q_{i-1}=q_f-bh_{i-1}/2$ and
+   $q_i=q_f+bh_i/2$, with $q_f$ the value at the face. Then
+   $h_iq_{i-1}+h_{i-1}q_i=(h_{i-1}+h_i)q_f+b(h_{i-1}h_i-h_ih_{i-1})/2=(h_{i-1}+h_i)q_f$, so $\overline q_{i-1/2}=q_f$.
+   With $h_{i-1}=h_i$ it is $\tfrac12(q_{i-1}+q_i)$, the form above (`[C1]`).[^vis-x1]
+3. *The centred difference.* `centered_derivative` along $x_1$ divides by the distance between the two centres,
+   $(q_{i+1}-q_{i-1})/(x_{1,i+1}-x_{1,i-1})$. That is $b$ for $q=a+bx_1$ on any spacing, and the $2\Delta x_1$ form
+   above on equal widths (`[C2]`).
+4. *Where they enter.* The face mean gives the $x_1$ face divergence `div_face`, the face velocity of the viscous
+   work, the face coefficient of the conduction (@sec-ch09-wallcoef), and, on an $x_1$ face, the mean of the two
+   tangential differences of the cross term. The face-normal difference already divides by the centre distance.
+5. *Hence* a velocity linear in $x_1$ has the exact stress on every interior $x_1$ face, and so does a
+   conductivity linear in $x_1$ on its face coefficient.
+
+[^vis-x1]: `python3 src/snapy_report/ch09/checks/stretched_x1_check.py`, output `stretched_x1_check.out`, lines
+    `[C1]`–`[C4]`; a sympy and numpy port of `face_mean`, `centered_derivative`, `extrapolate_to_wall` and the
+    cubed-sphere `weights` at snapy@68f4e066974ede87e4379285c4fba895b970b7f1, exact (`[C1]`–`[C3]`) and double
+    (`[C4]`); Python 3.11.13, numpy 2.4.6, sympy 1.14.0; the output matches the committed file.
 
 [^vis-c]: `python3 src/snapy_report/ch09/checks/viscosity_check.py`, output `viscosity_check.out`, lines `[C1]`–`[C8]`; a
     numpy port of `src/forcing/diffusion.cpp` at the pin, double precision.
@@ -321,13 +345,16 @@ The derived round-off checks [D4, D5, D5n] pass.[^ch09-roundoff]
 | same, `dynamic_coefficients_carry_no_density` | with `dynamic: true` the fluxes are $\mu$ and the conductivity $\kappa$ times the gradients; the bound uses $\rho_{\min}$ | $10^{-12}$ relative | closed form in double |
 | `tests/test_diffusion_moist.cpp` (`test_diffusion_moist.release`), `moist_conduction_uses_local_mixture_specific_heat` | the conductive coefficient uses the local mixture $c_v$ | $10^{-5}$; $10^{-3}$ | float32 arm |
 | same, `dynamic_conduction_timestep_uses_local_volumetric_heat_capacity` | the dynamic bound uses $(\rho c_v)_{\min}$ | $10^{-12}$ relative | closed form |
+| `tests/test_stretched_x1_ref.cpp` (`test_stretched_x1_ref.release`), `viscous_heating_exact_on_linear_velocity` | on a stretched $x_1$, $v_1=10^{-3}x_1$ with `dynamic: true`, $\mu=2$ and $\Delta t=0.5$ raises the energy of every interior cell by $\Delta t\,\mu\,\tfrac43(10^{-3})^2=\tfrac43\times10^{-6}$ | $10^{-16}$ absolute | round-off on a value of order $10^{-6}$ |
+| same, `viscous_cross_term_exact_at_x1_faces` | on a stretched $x_1$, $v_1=(2+10^{-3}x_1)(1+0.3x_2)$ gives $\Delta m_2=\Delta t\,\mu\,(10^{-3})(0.3)/3=10^{-4}$ on the interior | $10^{-12}$ relative | round-off |
 | this section's check, `viscosity_check.py` | `[C1]`–`[C8]` | per claim | stated in the check |
+| `stretched_x1_check.py` | `[C1]`–`[C3]`: the stretched face mean, centred difference and wall extrapolation | exact | sympy |
 
 : Tests of the isotropic viscosity and heat conduction. {#tbl-ch09-viscosity-tests}
 
 ::: {.callout-important title="Check"}
 **Evidence.** The check numbers come from the port named in the footnote. ctest cases: `test_diffusion.release`
-passes at the pin.[^vis-ctest] A data figure of the sine-mode decay against $e^{-\nu t}$ from the ctest is **pending** the same run.
+and `test_stretched_x1_ref.release` pass at the pin.[^vis-ctest] A data figure of the sine-mode decay against $e^{-\nu t}$ from the ctest is **pending** the same run.
 **Coverage.** The `DeviceTest` cases run on CPU in float32 and float64 and on CUDA in both when a device is present
 (`tests/device_testing.hpp`). No multi-rank test of the module.
 :::
@@ -354,11 +381,14 @@ coefficient by a factor of about 500 (@sec-ch09-wallcoef). No species or tracer 
    grows toward the wall. The default `cfl` of 0.9 leaves a margin; not measured at the pin.
 6. **Untested combinations.** Diffusion with an implicit scheme, with sedimentation, or on several ranks is not run
    by any ctest listed here. See the switch coverage matrix, @sec-ch12-matrix.
+7. **Stretched $x_1$.** The weighted face mean and the centred difference are exact for profiles linear in $x_1$
+   (Derivation); the order of the operator on a stretched $x_1$ is not measured, and conduction on a stretched
+   Cartesian $x_1$ has no ctest of its own: the two `test_stretched_x1_ref` cases test the viscous terms.
 
 
 [^env-viscosity]: Recorded run environment: Python 3.11.13, numpy 2.4.6, sympy 1.14.0.
 
-[^vis-ctest]: [sha: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f; deck: `tests/test_diffusion.yaml` as each case modifies it; run: `ctest -j1 -V -R '^test_diffusion\.release$'` in `build/tests` of the Release build at the pin described in @sec-ch09-csdiffusion's footnote (snapy 2.12.6.dev0, torch 2.10.0+cu126, CUDA 12.6); 57 cases pass, the `DeviceTest` cases on CPU and CUDA in float32 and float64, one process]
+[^vis-ctest]: [sha: snapy@68f4e066974ede87e4379285c4fba895b970b7f1; deck: `tests/test_diffusion.yaml` as each case modifies it, and the stretched card of `tests/test_stretched_x1_ref.cpp`; run: `env CUDA_VISIBLE_DEVICES=0 ctest -j1 -V -R '^(test_diffusion|test_stretched_x1_ref)\.release$'` in `build/tests` of the Release source build at the pin described in @sec-ch09-csdiffusion's footnote (snapy 2.12.7.dev2+g68f4e066, torch 2.10.0+cu126, nvcc 12.9); 57 cases of `test_diffusion` pass, the `DeviceTest` cases on CPU and CUDA in float32 and float64, and every case of `test_stretched_x1_ref`, one process]
 
 <!-- reader glossary notes -->
 [^rg-8453b354c365]: nu_iso — isotropic viscosity coefficient, interpreted according to dynamic
@@ -388,6 +418,10 @@ coefficient by a factor of about 500 (@sec-ch09-wallcoef). No species or tracer 
 [^rg-900e6f628025]: temperature_outer — prescribed temperature of the outer x1 wall for heat conduction, in K; 0 (default) leaves the wall insulating
 
 [^rg-78156b20840f]: wall_velocity — viscous condition at the radial walls on the cubed sphere: stress-free (default) or no-slip
+
+[^rg-83f672728ba8]: $h_i$ — $x_1$ width of cell $i$, $x_{1,i+1/2}-x_{1,i-1/2}$; written $\Delta x_1$ where the direction must be explicit
+
+[^rg-7a33e3661515]: $x_{1,i}$ — cell volume centroid ($r_{c,i}$ on spherical-polar)
 
 [^rg-b169a835b08c]: cfl — Courant-number limit for the time step
 

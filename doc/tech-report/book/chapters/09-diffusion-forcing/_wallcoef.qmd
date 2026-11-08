@@ -1,7 +1,7 @@
 ## Diffusion face coefficient at a wall: one-sided extrapolation instead of the ghost (automatic) {#sec-ch09-wallcoef}
 
 <!-- PROVENANCE
-pin: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f (chengcli/snapy, code_pin.yml)
+pin: snapy@68f4e066974ede87e4379285c4fba895b970b7f1 (chengcli/snapy, code_pin.yml)
 sources: OUTLINE.md 9.5; src/forcing/diffusion.cpp, src/mesh/meshblock_options.cpp, src/bc/internal_boundary.hpp,
          tests/test_diffusion.cpp at the pin; sources/canoe__diffusion_ghost_TECH_REPORT.md §§3-5, 7
 status: draft
@@ -196,8 +196,11 @@ The derived round-off checks [D3b] pass.[^ch09-roundoff]
 **Evidence.** The check numbers come from the port named in the footnote. The error of the mirror average through
 the solver on a stratified column is **not measured at the pin**: no committed deck runs it. ctest cases:
 **pending a pinned ctest run**.
-**Coverage.** CPU float32/float64 and CUDA when present for the `DeviceTest` cases; no multi-rank test; no
-stretched grid, because snapy has none, so the general weight $\alpha_{\mathrm f}\ne\tfrac12$ is covered only by `[C1]`.
+**Coverage.** CPU float32/float64 and CUDA when present for the `DeviceTest` cases; no multi-rank test. A
+stretched $x_1$ (`geometry/x1f` or `cells/x1rat`) gives the general weight $\alpha_{\mathrm f}\ne\tfrac12$; no Cartesian ctest
+runs it, so on the Cartesian grid it is covered only by `[C1]` here and `[C3]` of `stretched_x1_check.py`
+(@sec-ch09-viscosity). The same weight on the cubed-sphere radial walls is tested by
+`stretched_radial_implicit_wall_k` (@sec-ch09-csdiffusion).
 :::
 
 ### Limits

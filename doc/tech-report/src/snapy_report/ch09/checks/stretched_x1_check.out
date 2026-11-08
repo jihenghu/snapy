@@ -1,0 +1,4 @@
+[C1] PASS the distance-weighted x1 face mean is the face value of any linear q, and the two-cell average on equal widths: mean - q(x_f) = 0: True; hd = hu gives (q_i-1 + q_i)/2: True
+[C2] PASS the x1 centred difference over the centre distance is exact for a linear q on any spacing and is the 2h form on equal widths: exact: True; equal widths: True
+[C3] PASS the wall coefficient is linear in position over the two widths, exact for a linear k, and g = 1/2 (1.5, -0.5) on equal widths: exact: True; g(h, h) = 1/2: True; k = 1 + 2x, widths 1 and 1.5: the 1.5/-0.5 form gives 0.7500 at the wall for 1
+[C4] PASS four-point weights on the actual x1 centres reproduce a cubic and its derivative at a face; index-space weights on the same cells do not: errors on the radii: value 0.0e+00, derivative 1.0e-13; in index space: value 2.52e-03, derivative 1.87e-01

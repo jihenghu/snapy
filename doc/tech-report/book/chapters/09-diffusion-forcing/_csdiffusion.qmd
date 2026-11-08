@@ -1,10 +1,10 @@
 ## Viscosity and heat conduction on the cubed sphere (`diffusion` keys on `gnomonic-equiangle`) {#sec-ch09-csdiffusion}
 
 <!-- PROVENANCE
-pin: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f (chengcli/snapy, code_pin.yml)
+pin: snapy@68f4e066974ede87e4379285c4fba895b970b7f1 (chengcli/snapy, code_pin.yml)
 sources: src/forcing/diffusion_cubed_sphere.cpp, src/forcing/diffusion_radial.cpp, src/forcing/diffusion.cpp,
          src/forcing/forcing.hpp, src/mesh/meshblock.cpp, tests/test_diffusion_cubed_sphere.cpp,
-         tests/test_diffusion_cubed_sphere.yaml, tests/test_diffusion_cubed_sphere_two_gpu.cpp, tests/CMakeLists.txt,
+         tests/test_diffusion_cubed_sphere.yaml, tests/test_stage2_cubed_stretched.yaml, tests/test_diffusion_cubed_sphere_two_gpu.cpp, tests/CMakeLists.txt,
          examples/cubed_sphere_convection.yaml at the pin; re-derived from the code
 status: draft
 -->
@@ -136,6 +136,20 @@ Times the face area, $r_f^2$ times the solid angle of the cell, it is the same o
 radial divergence vanishes. A prescribed wall temperature $T_w>0$ uses the same form between the wall and the first
 centre ({{< code src/forcing/diffusion_cubed_sphere.cpp DiffusionImpl::forward_cubed_sphere >}}).
 
+The conductivity on that wall face is extrapolated from the two nearest cells, the wall cell $0$ and the next one,
+linearly in position, which also holds on a stretched $x_1$:
+
+1. *The weight.* With $h_0$ and $h_1$ [m] the radial widths of the two cells, $g=h_0/(h_0+h_1)$ [-].
+2. *The extrapolation.* $K_{\mathrm c,w}=(1+g)K_{\mathrm c,0}-gK_{\mathrm c,1}$, and $K_{\mathrm c,0}$ instead when that is negative.
+3. *Why it is linear in position.* The centres sit $h_0/2$ and $h_0+h_1/2$ from the wall. For $K_{\mathrm c}=a+br$ the
+   step from centre 1 to centre 0 is $-b(h_0+h_1)/2$, and $g$ times it, $-bh_0/2$, is the step from centre 0 to the
+   wall. So $K_{\mathrm c,w}$ is the wall value of a linear $K_{\mathrm c}$ on any widths.
+4. *Equal widths.* $g=\tfrac12$, the $\tfrac32K_{\mathrm c,0}-\tfrac12K_{\mathrm c,1}$ of a uniform grid (`[C3]` of
+   `stretched_x1_check.py`, @sec-ch09-viscosity).
+
+The explicit operator and the implicit radial step (`radial_conduction_step`,
+{{< code src/forcing/diffusion_radial.cpp DiffusionImpl::radial_conduction_step >}}) both use this $g$.
+
 #### Angular heat flux
 
 On the equiangular panel, with $X=\tan x_2$, $Y=\tan x_3$ and $D=1+X^2+Y^2$, the metric of the unit sphere in the two angles is
@@ -230,6 +244,14 @@ the centred interior rows and $O(h^3)$ on the shifted edge rows and on the tange
 whose four cells are never centred. The measured order of the whole heat operator is in the Tests layer. The
 radial step is second order in time, and it is split from the explicit step with a half step on each side.
 
+*On a stretched $x_1$* (`geometry/x1f` or `cells/x1rat`), `weights` builds the $x_1$ rows on the actual radii: the
+nodes are the four cell centres $x_{1,i}$ and the rows are evaluated at the faces $x_{1,i\pm1/2}$[^rg-6c8f7a42b6af] or at the centres,
+with the scale $h=1$ because the nodes already carry lengths. The $x_2$ and $x_3$ rows, and every row of a uniform
+$x_1$, keep the index-space weights. The cubic through four cells is then the cubic in $r$[^rg-c9fdf7ec5393], so value and derivative
+keep the orders above on unequal widths; index-space weights on the same cells do not reproduce a cubic (`[C4]` of
+`stretched_x1_check.py`: on five cells growing by a factor 1.3 the face value and derivative of a cubic are off
+by $0$ and $1.0\times10^{-13}$ on the radii, and by $2.52\times10^{-3}$ and $1.87\times10^{-1}$ in index space).
+
 ### Numerical method
 
 @fig-ch09-csdiffusion-stencil shows which cells each face row uses along one direction of a block.
@@ -246,9 +268,10 @@ make_fig()
 Where things live: the seven fields of the operator ($T$, the Cartesian velocity and the Cartesian position) are
 cell averages taken as centre values; face values, face derivatives and the face coefficient are point values at the
 face centre; fluxes are face-averaged by multiplication with the face area in `divergence`. The operator reads the
-interior cells of the block only. The face coefficient is the two-cell average inside the block and, at every block
-edge, the linear extrapolation $\tfrac32q_0-\tfrac12q_1$ from the two nearest cells, falling back to $q_0$ when the
-extrapolation is negative. Angular block edges are joined by `share_fluxes`, which calls the scalar block exchange
+interior cells of the block only. The face coefficient inside the block is the two-cell mean weighted by the $x_1$ widths,
+$(h_rq_l+h_lq_r)/(h_l+h_r)$ for the cells $l$[^rg-adf81aa699d0] and $r$ of a radial face, and the plain average on $x_2$ and $x_3$ faces.
+At every block edge it is the linear extrapolation $(1+g)q_0-gq_1$ from the two nearest cells with $g=h_0/(h_0+h_1)$,
+$\tfrac32q_0-\tfrac12q_1$ on equal widths, falling back to $q_0$ when the extrapolation is negative. Angular block edges are joined by `share_fluxes`, which calls the scalar block exchange
 four times, once per side, through one 12-channel buffer (outward flux, trace, coefficients and distance); radial
 edges are walls. It runs in every stage of the explicit Runge–Kutta scheme, in the forcing loop
 (@sec-ch09-framework). The implicit radial step runs as a half step at the start of stage 0, before the stage's
@@ -257,8 +280,8 @@ from before the first half step (`begin_step`, `finish_step`, `restore_step`,
 {{< code src/mesh/meshblock.cpp MeshBlockImpl::advance_local >}}, {{< code src/mesh/meshblock.cpp MeshBlockImpl::apply_redo >}}).
 
 Order of accuracy: the measured convergence of the heat operator on a degree-2 harmonic, the second-order
-convergence of the radial step, and the modal onset in a thin shell are in the Tests layer; the order of the
-viscous operator alone and the order through the full solver are **not measured**.
+convergence of the radial step, the modal onset in a thin shell and the viscous operator on a stretched radial grid
+are in the Tests layer; the viscous order on a uniform grid and the order through the full solver are **not measured**.
 
 ### Code
 
@@ -362,7 +385,9 @@ the conductive flux of @eq-ch09-csdiffusion-radial or of the angular formula.
 |---|---|---|---|
 | `tests/test_diffusion_cubed_sphere.cpp` (`test_diffusion_cubed_sphere.release`), `constant_state_and_rigid_rotation` | rest and rigid rotation give no tendency on the six panels at $n=12$ | $2\times10^{-11}$ absolute | round-off of the stencil sums on $T=300$ K, $p=10^5$ Pa |
 | same, `harmonic_convergence_and_heat_conservation` | for the degree-2 harmonic $T=300+xy/r^2$ the relative $L_2$ error of the energy tendency falls by more than 2.5 per doubling of $n$ (12, 24, 48); heat sums to zero; dissipation is negative | ratio $>2.5$; $10^{-11}$ | an order above 1.32; round-off |
-| same, `radial_conductive_equilibrium` | $T=300+2/r$ with matching wall temperatures gives no energy tendency | $2\times10^{-11}$ | round-off |
+| same, `radial_conductive_equilibrium` | $T=300+2/r$ with matching wall temperatures gives no energy tendency, explicit and in one implicit radial step of $\Delta t=10^3$ ($(u_1-u_0)/\Delta t$), on the uniform mesh and on the stretched faces of `test_stage2_cubed_stretched.yaml` mapped onto $r\in[10,11]$, CPU and CUDA | $2\times10^{-11}$ | round-off |
+| same, `stretched_x1_viscosity` | on those faces (widths up to 5.07 times apart), split at their midpoints 0, 1, 2 times with 12, 24, 48 cells per panel edge, the viscous tendency of $v=z\sin(2\pi(r-10))$ against $\nu(\nabla^2\mathbf v+\nabla(\nabla\cdot\mathbf v)/3)$, three cells off each wall: the relative $L_2$ error falls by more than 3, then more than 3.8 | ratios $>3$, $>3.8$ | second order gives 4 |
+| same, `stretched_radial_implicit_wall_k` | on the stretched faces with $K_{\mathrm c}$ linear in $r$, 40 implicit radial steps of $10^9$ to the steady state carry $K_{\mathrm c}(r_{\mathrm{wall}})$ through both wall fluxes, CPU and CUDA | $10^{-9}$ relative | round-off of the steady state |
 | same, `viscous_energy_conservation_and_dissipation` | a smooth shear conserves total energy and does negative work | $10^{-10}$; sign | round-off |
 | same, `split_panels_preserve_constants_and_rotation` | rigid rotation on four blocks per panel gives no tendency | $2\times10^{-10}$ | round-off |
 | same, `piecewise_constant_panels_exchange_heat` | one panel 1 K warmer loses heat to its neighbours; the total is conserved | sign; $10^{-11}$ | the penalty; round-off |
@@ -382,15 +407,26 @@ the conductive flux of @eq-ch09-csdiffusion-radial or of the angular formula.
 three resolutions.[^csd-run] `[C2]` The closed-shell spectrum printed a spectral abscissa and a largest energy eigenvalue that are
 round-off, both of magnitude below $10^{-14}$ and so below the $10^{-10}$ bound: the operator has no growing mode. `[C3]` The radial step printed errors $0.1115$, $0.0252$ and $6.05\times10^{-3}$ K at 2, 4
 and 8 steps: ratios 4.43 and 4.16, slope 2.10: second order in time. `[C4]` The modal onset printed $Ra=652.25$ at $n=48$ and $658.89$ at $n=96$ against the thin-shell value
-657.649, relative differences $-0.82\,\%$ and $+0.19\,\%$ within the 2 % tolerance.
+657.649, relative differences $-0.82\,\%$ and $+0.19\,\%$ within the 2 % tolerance. `[C5]` On the stretched faces the viscous test printed relative
+$L_2$ errors $3.06\times10^{-3}$, $8.63\times10^{-4}$ and $2.18\times10^{-4}$ at 12, 24 and 48 cells per panel edge:
+ratios 3.55 and 3.96, second order on widths up to 5.07 times apart. `stretched_radial_implicit_wall_k` and the
+stretched and implicit arms of `radial_conductive_equilibrium` passed on CPU and CUDA in the same run.
 
-[^csd-run]: [sha: snapy@c0c38593d3d3f37bebe204a590610fd7daa05a5f; deck: `tests/test_diffusion_cubed_sphere.yaml` as each case modifies it; run:
-    `ctest -j1 -V -R '^(test_diffusion_cubed_sphere|test_diffusion_cubed_sphere_mp|test_diffusion_cubed_sphere_two_gpu|test_diffusion)\.release$'` in `build/tests` of a Release build at the pin with `-DCUDA=ON -DUCX=OFF -DNETCDF=ON` (snapy reports version 2.12.6.dev0 of the pin), CPU and one CUDA device of compute capability 6.1, double precision, one process (the `_mp` case two processes, Gloo); torch 2.10.0+cu126, CUDA 12.6, kintera 2.6.7; all four ctests pass, the two-GPU case skips. Slopes are least-squares fits of $\log$ error on $\log n$ (or $\log$ steps), Python 3.11.13, numpy 2.4.6]
+[^csd-run]: [sha: snapy@68f4e066974ede87e4379285c4fba895b970b7f1; deck: `tests/test_diffusion_cubed_sphere.yaml` and
+    `tests/test_stage2_cubed_stretched.yaml` as each case modifies them; run: `env CUDA_VISIBLE_DEVICES=0 ctest -j1 -V -R
+    '^(test_diffusion_cubed_sphere|test_diffusion_cubed_sphere_mp|test_diffusion_cubed_sphere_two_gpu|test_diffusion)\.release$'`
+    in `build/tests` of a Release source build of the pin with `-DCUDA=ON -DNETCDF=ON` (UCX on, the Linux default; snapy
+    reports 2.12.7.dev2+g68f4e066), CPU and one CUDA device of compute capability 6.1, double precision, one process
+    (the `_mp` case two processes, Gloo); GCC 13.3.1, nvcc 12.9, torch 2.10.0+cu126, kintera 2.6.6; the four ctests pass,
+    16 of 16 cases of `test_diffusion_cubed_sphere` and 57 of 57 of `test_diffusion`, and the two-GPU case skips because
+    it needs two ranks with two visible devices. Slopes are least-squares fits of $\log$ error on $\log n$ (or $\log$
+    steps), Python 3.11.13, numpy 2.4.6]
 
 ::: {.callout-important title="Check"}
 **Evidence.** The numbers above come from the ctest runs in the footnote. **Coverage.** All cases run on CPU in double
 precision; the two `cuda_*` cases compare CUDA with CPU; three cases run on two processes; the UCX two-GPU case
-needs a build with UCX and two local processes; it skipped in the run above, which was built with `-DUCX=OFF`, and is **not run** here.
+needs a build with UCX, two local processes and two visible devices; it skipped in the run above, which exposed one
+device, and is **not run** here.
 :::
 
 ### Limits
@@ -405,8 +441,9 @@ of the Cartesian bound. Conduction acts on $T$. The implicit radial step needs t
 2. **Time step.** The explicit bound is the Cartesian one times $1/8$, a margin, not a derived stability limit; the
    bound with `implicit_radial` is likewise a stated factor. Neither is measured against the operator's spectrum on
    a production grid.
-3. **Order.** The measured order is that of the heat operator on one smooth harmonic; the viscous operator's order and
-   the order through the solver are **not measured**.
+3. **Order.** The measured orders are those of the heat operator on one smooth harmonic and of the viscous operator
+   on one stretched radial grid (`[C5]`); the viscous order on a uniform grid and the order through the solver are
+   **not measured**.
 4. **Conduction on $T$**, as in @sec-ch09-viscosity: a resting adiabat drifts.
 5. **The implicit radial step** freezes density and uses the dry ideal-gas $c_v$ over the half step. It is split
    symmetrically, a half step before and a half step after the explicit step; the splitting error with the full
@@ -422,6 +459,12 @@ of the Cartesian bound. Conduction acts on $T$. The implicit radial step needs t
 [^rg-a2ea0b344b78]: flux — prescribed heat flux
 
 [^rg-e6323cad5c0b]: $\Delta q$ — the change of $q$ over one RK stage, stated each time as "per stage" or "per step"; on a state variable in an implicit context write $\Delta^{\mathrm{stg}}\rho$ for the stage change and keep $\Delta\rho_i$ for the solved change of the row below; notation only; see @sec-appa
+
+[^rg-6c8f7a42b6af]: $x_{1,i\pm1/2}$ — face positions
+
+[^rg-c9fdf7ec5393]: $r$ — $x_1$ on a spherical-polar grid (radius) [m]
+
+[^rg-adf81aa699d0]: $l$ — stencil offset index ($\bar\rho_{i+l}$); never $k$, which is the $x_3$ index
 
 [^rg-a70646e99981]: EOS — equation of state
 
