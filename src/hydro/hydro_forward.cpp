@@ -1109,23 +1109,21 @@ torch::Tensor HydroImpl::forward(double dt, torch::Tensor u,
     //
     // Scale ONLY the dt handed to the correction. du, the flux divergence and
     // the forcings stay at the full dt, or this becomes a different operator.
-    // Applied only for the 3-stage integrator, matching the behaviour
-    // already in production; generalising would change rk1/rk2 results.
+    // b is the stage's du weight wght2, for any integrator (rk3: 1, 1/4, 2/3;
+    // rk3s4: 1/2, 1/2, 1/6, 1/2).
     double dt_corr = dt;
-    if (pmb->pintg->stages.size() == 3) {
-      if (rk_stage >= 0 && rk_stage < pmb->pintg->stages.size()) {
-        dt_corr *= pmb->pintg->stages[rk_stage].wght2();
-      } else {
-        // Loud, but not fatal: some callers drive HydroImpl::forward directly
-        // without the stage loop (tests/test_forcing.cpp), and those must keep
-        // working. A silent fallback here would restore the full-dt operator
-        // this commit exists to remove, so say so.
-        TORCH_WARN_ONCE(
-            "[Hydro] rk_stage was not published before the implicit "
-            "correction, so it is running with the FULL dt -- the operator "
-            "this fix replaces. MeshBlockImpl::advance_local publishes it; a "
-            "caller invoking HydroImpl::forward directly will see this.");
-      }
+    if (rk_stage >= 0 && rk_stage < pmb->pintg->stages.size()) {
+      dt_corr *= pmb->pintg->stages[rk_stage].wght2();
+    } else {
+      // Loud, but not fatal: some callers drive HydroImpl::forward directly
+      // without the stage loop (tests/test_forcing.cpp), and those must keep
+      // working. A silent fallback here would restore the full-dt operator
+      // this commit exists to remove, so say so.
+      TORCH_WARN_ONCE(
+          "[Hydro] rk_stage was not published before the implicit "
+          "correction, so it is running with the FULL dt -- the operator "
+          "this fix replaces. MeshBlockImpl::advance_local publishes it; a "
+          "caller invoking HydroImpl::forward directly will see this.");
     }
     // gravity-work-fixer: the implicit block's E+PE change (its mass transfer
     // and the cell gravity work it linearises; its other energy flux sums to
