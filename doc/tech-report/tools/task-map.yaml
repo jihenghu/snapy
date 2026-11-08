@@ -150,10 +150,9 @@ tasks:
   lookup_grade: PARTIAL
 - id: Q-025
   question: Is the halo width tied to the reconstruction order and checked, or does the order drop silently when the halo is too narrow?
-  status: partly documented
+  status: answered
   dest: sec-ch04-framework
-  missing: whether a too-small nghost is refused or silently degrades the order
-  lookup_grade: PARTIAL
+  lookup_grade: FULL
 - id: Q-026
   question: How does the scheme behave at low Mach number, the normal atmospheric regime? Does the Riemann solver over-dissipate there, and is there a low-Mach fix? How are shocks and carbuncles handled when they do occur?
   status: partly documented

@@ -2,8 +2,8 @@
 
 | status | questions |
 |---|---|
-| answered | 17 |
-| partly documented | 62 |
+| answered | 18 |
+| partly documented | 61 |
 | undocumented | 8 |
 | unsupported by the code | 0 |
 | outside scope | 8 |
@@ -20,6 +20,8 @@
 **Q-021.** What is the time order of the combined implicit/explicit step? Where is the stage coupling derived, and is the order measured by a convergence test? See Stage-weighted implicit step: the correction runs with $w_2^{(s)}\Delta t$ under rk3 and rk3s4, @sec-ch07-vic-stage.
 
 **Q-023.** Which reconstructions and limiters exist (PLM, PPM, WENO5, WENO-Z…)? What stencil width and ghost-zone count does each need, and what are the defaults? See The reconstruction framework, @sec-ch04-framework.
+
+**Q-025.** Is the halo width tied to the reconstruction order and checked, or does the order drop silently when the halo is too narrow? See The reconstruction framework, @sec-ch04-framework.
 
 **Q-027.** How is the hydrostatic state preserved? Which reference state is subtracted, and does it still work for moist or non-isothermal profiles? See Well-balanced $x_1$ reconstruction: perturbations about a hydrostatic reference (gravity on), @sec-ch05-wbx1.
 
@@ -84,8 +86,6 @@
 **Q-022.** Which Riemann solvers exist (exact, HLLC, Roe, LMARS, Rusanov…)? What are the key names and the default, and which ones support a moist or multi-component EOS? See The Riemann solver framework and the face-local frame, @sec-ch04-riemann. Not covered: moist/multi-component support per solver in one place.
 
 **Q-024.** What do reconstruction, Riemann solver, limiter and CFL mean in the input file, and what happens if I pick the wrong one? See YAML scheme selection and setup guards, @sec-ch12-yaml. Not covered: plain-word meanings in one place; consequences of a wrong choice.
-
-**Q-025.** Is the halo width tied to the reconstruction order and checked, or does the order drop silently when the halo is too narrow? See The reconstruction framework, @sec-ch04-framework. Not covered: whether a too-small nghost is refused or silently degrades the order.
 
 **Q-026.** How does the scheme behave at low Mach number, the normal atmospheric regime? Does the Riemann solver over-dissipate there, and is there a low-Mach fix? How are shocks and carbuncles handled when they do occur? See LMARS, @sec-ch04-lmars. Not covered: measured low-Mach behaviour; carbuncle treatment.
 

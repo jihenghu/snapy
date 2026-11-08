@@ -1,0 +1,19 @@
+snapy 2.12.7.dev2+g68f4e066
+dc     nghost 1: built
+dc     nghost 2: built
+dc     nghost 3: built
+plm    nghost 1: refused: [MeshBlock] plm reconstruction needs nghost >= 2, got 1
+plm    nghost 2: built
+plm    nghost 3: built
+cp3    nghost 1: refused: [MeshBlock] cp3 reconstruction needs nghost >= 2, got 1
+cp3    nghost 2: built
+cp3    nghost 3: built
+weno3  nghost 1: refused: [MeshBlock] weno3 reconstruction needs nghost >= 2, got 1
+weno3  nghost 2: built
+weno3  nghost 3: built
+cp5    nghost 1: refused: [MeshBlock] cp5 reconstruction needs nghost >= 3, got 1
+cp5    nghost 2: refused: [MeshBlock] cp5 reconstruction needs nghost >= 3, got 2
+cp5    nghost 3: built
+weno5  nghost 1: refused: [MeshBlock] weno5 reconstruction needs nghost >= 3, got 1
+weno5  nghost 2: refused: [MeshBlock] weno5 reconstruction needs nghost >= 3, got 2
+weno5  nghost 3: built
