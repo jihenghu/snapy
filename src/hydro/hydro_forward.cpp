@@ -376,17 +376,21 @@ torch::Tensor HydroImpl::forward(double dt, torch::Tensor u,
       return out;
     };
     // per cell, keep the second-order w where the fourth-order state is not
-    // admissible: rho or p not above the floor (limiter on) or zero, or
-    // non-finite, in u - L u, in its primitives or in w, or a state the
-    // limiter would repair (a 1:1000 jump makes u - L u negative next to it).
-    // Those cells hand u, not u - L u, to the EOS; the limiter's redo marks
-    // and vapor failures from this call are dropped. Trips are counted per
-    // cell and stage, x1 ghosts included
+    // admissible: rho or p not above the floor (limiter on) or zero, a
+    // negative species (limiter on), or non-finite, in u - L u, in its
+    // primitives or in w, or a state the limiter would still repair (a 1:1000
+    // jump makes u - L u negative next to it; a species step makes it
+    // negative next to the zeros). Those cells hand u, not u - L u, to the
+    // EOS, so the limiter and the moist EOS see admissible states only; the
+    // limiter's redo marks and vapor failures from this call are dropped.
+    // Trips are counted per cell and stage, x1 ghosts included
     bool lim = peos->options->limiter();
     double df = lim ? peos->options->density_floor() : 0.;
     double pf = lim ? peos->options->pressure_floor() : 0.;
     auto ok = [&](torch::Tensor const& a, bool p) {
       auto good = torch::isfinite(a).all(0) & (a[IDN] > df);
+      if (lim && a.size(0) > ICY)
+        good &= (a.narrow(0, ICY, a.size(0) - ICY) >= 0.).all(0);
       return p && a.size(0) > IPR ? good & (a[IPR] > pf) : good;
     };
     auto w0 = w.clone();
