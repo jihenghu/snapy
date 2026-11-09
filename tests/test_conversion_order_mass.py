@@ -6,6 +6,7 @@ temporary point state does not trip the EOS limiter.
     wall) and 0.45 (across the seam at 0.5), ideal gas, WENO5, LMARS, nx1 = 64 on [0, 1] between reflecting walls,
     as (a) one block and (b) two x1 blocks in one process: after 40 steps |M - M0| / M0 <= 1e-13, keys 2 and 4.
     (b') a 2:1 jump in rho and p exactly on that seam, two blocks, 40 steps, the same bound.
+    (b'') (a) and (b) on a spherical-polar shell r in [1, 2] (r^2 dr cells, seam at 1.5), the same bound.
 (c) The EOS limiter on (density floor 1e-3) and a 4-cell density dip of 0.0405 in rho = p = 1: u - L u is
     positive but below the floor at the dip's edges. 20 steps with the driver's redo loop must take no redo.
 (d) A stable moist column (ideal-moist, limiter on, g = 10, isothermal, 10 km) with a vapor step to zero at 5 km,
@@ -24,7 +25,7 @@ from snapy import Mesh, MeshOptions, kICY, kIDN, kIPR
 G, NX, TOL = 1.4, 64, 1.e-13
 
 
-def mesh(key, nb1, limiter=False, moist=False):
+def mesh(key, nb1, limiter=False, moist=False, sph=False):
     bc = {f"x{d}-{s}": ("reflecting" if d == 1 else "periodic") for d in (1, 2, 3) for s in ("inner", "outer")}
     weno = {"type": "weno5", "scale": True, "shock": False}
     eos = {"type": "ideal-gas", "gammad": G, "limiter": limiter, "density-floor": 1.e-3, "pressure-floor": 1.e-3,
@@ -37,6 +38,9 @@ def mesh(key, nb1, limiter=False, moist=False):
            "dynamics": {"equation-of-state": eos, "reconstruct": {"vertical": weno, "horizontal": weno},
                         "riemann-solver": {"type": "lmars"}, "conversion-order": key},
            "integration": {"type": "rk3", "cfl": 0.4, "implicit-scheme": 0, "nlim": -1, "tlim": 1.e9}}
+    if sph:
+        cfg["geometry"]["type"] = "spherical-polar"
+        cfg["geometry"]["bounds"].update(x1min=1., x1max=2., x2min=1., x2max=2.)
     if moist:
         cfg["reference-state"] = {"Tref": 0., "Pref": 1.e5}
         cfg["species"] = [{"name": "dry", "composition": {"H": 1.6667, "He": 0.16667}, "cv_R": 2.5},
@@ -60,7 +64,7 @@ def mesh(key, nb1, limiter=False, moist=False):
     return m
 
 
-def run(m, init, nstep, device):
+def run(m, init, nstep, device, sph=False):
     """init(x1v) -> {w row: values}; returns (relative mass drift, redos, trips)"""
     blocks = list(m.blocks)
     state = []
@@ -72,7 +76,8 @@ def run(m, init, nstep, device):
         state.append({"hydro_w": w})
     state, _ = m.initialize(state)
     parts = [b.part((0, 0, 0), False)[1:] for b in blocks]
-    dx = [b.buffer("coord.dx1f").double().cpu()[sl[-1]] for b, sl in zip(blocks, parts)]
+    f = [b.buffer("coord.x1f").double().cpu() for b in blocks]
+    dx = [(g[1:] ** 3 - g[:-1] ** 3 if sph else g[1:] - g[:-1])[sl[-1]] for g, sl in zip(f, parts)]
     mass = lambda: sum(float((s["hydro_u"][kIDN][sl].cpu() * h).sum()) for s, sl, h in zip(state, parts, dx))
     m0, redos, cycle = mass(), 0, 0
     while cycle < nstep:
@@ -118,6 +123,10 @@ def main(device):
             drift, redos, trips = run(mesh(key, nb1), init, 40, device)
             print(f"mass {name} key {key} blocks {nb1}: |dM|/M {drift:.2e} redos {redos} trips {trips}")
             bad += [f"mass {name} key {key} blocks {nb1}"] if drift > TOL else []
+        for nb1 in (1, 2):
+            drift = run(mesh(key, nb1, sph=True), lambda x: pulses(x - 1.), 40, device, sph=True)[0]
+            print(f"mass spherical pulses key {key} blocks {nb1}: |dM|/M {drift:.2e}")
+            bad += [f"mass spherical key {key} blocks {nb1}"] if drift > TOL else []
         for name, m, init in (("dip", mesh(key, 1, limiter=True), dip),
                               ("moist vapor step", mesh(key, 1, moist=True), column(False)),
                               ("moist cloud band", mesh(key, 1, moist=True), column(True))):
