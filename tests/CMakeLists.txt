@@ -423,6 +423,13 @@ snapy_add_python_test(test_radial_order TIMEOUT 300 LABELS "python;hydro")
 snapy_add_python_test(test_conversion_order TIMEOUT 600 LABELS "python;hydro")
 snapy_add_python_test(test_conversion_order_shock TIMEOUT 300 LABELS "python;hydro")
 snapy_add_python_test(test_conversion_order_mass TIMEOUT 300 LABELS "python;hydro")
+# radial x1: the conversion alone, and the spherical shell end to end, whose radial pressure
+# force is r^2-exact only with SNAP_X1_CENTROID_EXACT (then asserted)
+snapy_add_python_test(test_conversion_order_radial TIMEOUT 900 LABELS "python;hydro")
+snapy_add_python_test(test_conversion_order_radial_x1_centroid SCRIPT test_conversion_order_radial.py
+                      TIMEOUT 900 LABELS "python;hydro")
+set_tests_properties(test_conversion_order_radial_x1_centroid_python
+                     PROPERTIES ENVIRONMENT "SNAP_X1_CENTROID_EXACT=1")
 snapy_add_python_test(test_radial_order_x1_centroid SCRIPT test_radial_order.py
                       ARGS --x1-centroid TIMEOUT 300 LABELS "python;hydro")
 # #289: a passive scalar and the same tracer as a hydro species, covariance on and off
@@ -464,6 +471,10 @@ if(CUDA)
     ARGS --device cuda TIMEOUT 300 LABELS "python;hydro;cuda")
   snapy_add_python_test(test_conversion_order_mass_cuda SCRIPT test_conversion_order_mass.py
     ARGS --device cuda TIMEOUT 300 LABELS "python;hydro;cuda")
+  snapy_add_python_test(test_conversion_order_radial_cuda SCRIPT test_conversion_order_radial.py
+    ARGS --device cuda TIMEOUT 900 LABELS "python;hydro;cuda")
+  set_tests_properties(test_conversion_order_radial_cuda_python
+                       PROPERTIES ENVIRONMENT "SNAP_X1_CENTROID_EXACT=1")
   snapy_add_python_test(test_flux_positivity_cubedsphere_cuda
     SCRIPT test_flux_positivity_cubedsphere.py ARGS --device cuda
     TIMEOUT 300 LABELS "python;positivity;cubed-sphere;cuda")
