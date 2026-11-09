@@ -634,8 +634,8 @@ HydroImpl::_hydro_ref_x1(torch::Tensor const& w) const {
           wb_ref4_stencils(pcoord->x1f, is, iu, clamp && phys_in,
                            clamp && phys_out, w.options()));
     }
-    wb4_flag = wb_ref4_cells(*wb_ref4_, w, psf_lo, psf_hi, pref,
-                             wb_ref4() ? dref : dref.clone());
+    wb4_flag =
+        wb_ref4_cells(*wb_ref4_, w, psf_lo, psf_hi, pref, dref, wb_ref4());
   }
 
   if (below >= 0) {

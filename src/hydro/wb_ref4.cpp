@@ -193,7 +193,7 @@ WbRef4Stencils wb_ref4_stencils(torch::Tensor const& x1f, int is, int iu,
 torch::Tensor wb_ref4_cells(WbRef4Stencils const& st, torch::Tensor const& w,
                             torch::Tensor const& psf_lo,
                             torch::Tensor const& psf_hi, torch::Tensor pref,
-                            torch::Tensor dref) {
+                            torch::Tensor dref, bool cells) {
   if (!st.usable) return torch::ones_like(psf_lo, torch::kBool);
   // resolution flag, dilated by two cells
   auto bad = ((psf_lo / psf_hi).log().abs() > kMaxLogDrop) & st.counted;
@@ -201,6 +201,7 @@ torch::Tensor wb_ref4_cells(WbRef4Stencils const& st, torch::Tensor const& w,
   auto flag =
       torch::max_pool1d(bad.to(w.dtype()).reshape({-1, 1, st.nc1}), 5, 1, 2)
           .reshape(sizes) > 0.;
+  if (!cells) return flag;
 
   int nown = st.iu - st.is + 1;
   auto fl = flag.narrow(-1, st.is, nown);

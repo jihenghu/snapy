@@ -49,10 +49,11 @@ WbRef4Stencils wb_ref4_stencils(torch::Tensor const& x1f, int is, int iu,
 //! cells, in place. Returns the resolution
 //! flag (nc3, nc2, nc1): cells (dilated by two) where the column has fewer
 //! than two cells per pressure scale height and the kernel's values stay.
+//! cells = false: only the flag, dref untouched.
 torch::Tensor wb_ref4_cells(WbRef4Stencils const& st, torch::Tensor const& w,
                             torch::Tensor const& psf_lo,
                             torch::Tensor const& psf_hi, torch::Tensor pref,
-                            torch::Tensor dref);
+                            torch::Tensor dref, bool cells = true);
 
 //! face part, after the x1 seam exchange: dsf on the owned faces is..iu+1 is
 //! the fourth-order face value of dref itself. Needs is >= 1 (a ghost cell).
