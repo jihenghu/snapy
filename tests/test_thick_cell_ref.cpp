@@ -29,17 +29,17 @@ torch::Tensor column(double a, int n, torch::TensorOptions const& opt) {
 }
 
 //! that column's deck, with the density floor set to rho_top / `ratio`
-snap::MeshBlock block_at_floor_ratio(double ratio) {
-  double dz = kA * kRd * kT0 / kGrav;
-  double rho_top = kPs * std::exp(-(kN - 0.5) * kA) / (kRd * kT0);
+snap::MeshBlock block_at_floor_ratio(double ratio, double a = kA, int n = kN) {
+  double dz = a * kRd * kT0 / kGrav;
+  double rho_top = kPs * std::exp(-(n - 0.5) * a) / (kRd * kT0);
   char f[] = "/tmp/thickcell-XXXXXX";
   int fd = mkstemp(f);
   if (fd != -1) close(fd);
   std::ofstream(f)
       << std::setprecision(17) << "reference-state: {Tref: 0., Pref: 1.e5}\n"
       << "species: [{name: dry, composition: {H: 2}, cv_R: 2.5}]\n"
-      << "geometry: {type: cartesian, bounds: {x1min: 0., x1max: " << dz * kN
-      << ", x2min: 0., x2max: 1., x3min: 0., x3max: 1.}, cells: {nx1: " << kN
+      << "geometry: {type: cartesian, bounds: {x1min: 0., x1max: " << dz * n
+      << ", x2min: 0., x2max: 1., x3min: 0., x3max: 1.}, cells: {nx1: " << n
       << ", nx2: 1, nx3: 1, nghost: 3}}\ndynamics:\n"
       << "  equation-of-state: {type: ideal-gas, gammad: 1.4, weight: "
       << 8.31446261815324 / kRd << ", density-floor: " << rho_top / ratio
@@ -115,6 +115,28 @@ TEST(ThickCellRef, the_density_floor_guard_refuses_only_unsteppable_columns) {
       EXPECT_NO_THROW(blk->initialize(v)) << "ratio " << ratio;
     } else {
       EXPECT_THROW(blk->initialize(v), c10::Error) << "ratio " << ratio;
+    }
+  }
+}
+
+//! A reference the six-face rows cannot hold positive is refused when it is
+//! first built, naming the cell and its dz/H. On this five-cell isothermal
+//! column at 1.25 H the restored top face p_top - pref_top + psf_top was
+//! -29.07 Pa, silently. RED at the parent: the first stage runs.
+TEST(ThickCellRef, a_non_positive_reference_is_refused_at_its_first_build) {
+  auto opt = torch::TensorOptions().dtype(torch::kFloat64);
+  for (double a : {1.0, 1.25}) {
+    auto blk = block_at_floor_ratio(1.e6, a, 5);
+    auto co = blk->pcoord->options;
+    auto w =
+        torch::zeros({snap::IPR + 1, co->nc3(), co->nc2(), co->nc1()}, opt);
+    w.narrow(-1, blk->pcoord->il(), 5).copy_(column(a, 5, opt));
+    snap::Variables v{{"hydro_w", w}};
+    blk->initialize(v);
+    if (a < 1.1) {
+      EXPECT_NO_THROW(blk->forward(v, 1.e-3, 0)) << "dz/H " << a;
+    } else {
+      EXPECT_THROW(blk->forward(v, 1.e-3, 0), c10::Error) << "dz/H " << a;
     }
   }
 }
