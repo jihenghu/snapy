@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """SNAP_X1_CENTROID_EXACT: a spherical-polar column of r^2 cell averages stays at rest.
 
-The oracle of docs/derivations/x1-centroid-spherical.md, section 5. A hydrostatic column with g = 1 and a
-linear density, rho = 1 - A (r - r0), p = 1 + int_r^{r0+2} rho dr (quadratic), on a spherical-polar shell
-sector x1 = [r0, r0 + 2], reflecting walls, initialised with the EXACT cell averages a finite-volume cell holds:
-the r^2-weighted means of rho and p (six-point Gauss-Legendre per cell, exact here). Every x1 formula of the
-switch is exact for such a column, so its residual is round-off; a smooth non-polynomial column (an isothermal
-exp(-(r - r0))) instead keeps the fourth-order truncation of the reference, independent of r0, as in Cartesian.
+The oracle of docs/derivations/x1-centroid-spherical.md, section 5, on an isothermal column: g = 1 and
+p = H rho = H exp(-(r - r0) / H) with scale height H = 4, on a spherical-polar shell sector
+x1 = [r0, r0 + 2], reflecting walls, initialised with the EXACT cell averages a finite-volume cell holds:
+the r^2-weighted means of rho and p (six-point Gauss-Legendre per cell, error far below round-off at this
+width). The x1 reference rows interpolate ln p, so they are exact for an exponential column -- as real
+atmospheres nearly are -- not for a polynomial p (the linear-density, quadratic-p column this test used
+before). What is left with the switch on is the r^2-to-plain-mean conversion's truncation on an exponential,
+which falls steeply with H: at r0 = 5 the worst wall cell reads 4.5e-9 at H = 1, 2.8e-10 at H = 2, 1.5e-11
+at H = 4 and 7.1e-13 at H = 8, so H = 4 keeps the round-off-class bound below.
 One RK3 step at dt = 0.3 dx1 / sqrt(1.4); the radial force imbalance is
     f = max |rho v1| / (dt g <rho>)
 over the interior cells and over the three cells next to each wall. Without the switch the uniform-measure
@@ -36,7 +39,7 @@ R0S = (5.0, 1000.0)
 SCHEMES = (0, 1)
 NHS = (1.0, 0.0)
 LZ = 2.0
-A = 0.3
+SCALE_H = 4.0
 TOL_ON = 1.0e-10
 TOL_OFF = 1.0e-8
 NG, IV1 = 3, 1
@@ -65,9 +68,9 @@ def config(r0, scheme, nh):
 
 
 def column(r, r0):
-    """rho and p of the hydrostatic column (g = 1)"""
-    x = r - r0
-    return 1.0 - A * x, 1.0 + (LZ - x) - 0.5 * A * (LZ * LZ - x * x)
+    """rho and p of the isothermal hydrostatic column (g = 1, scale height SCALE_H)"""
+    rho = np.exp(-(r - r0) / SCALE_H)
+    return rho, SCALE_H * rho
 
 
 def r2_means(rf, r0):

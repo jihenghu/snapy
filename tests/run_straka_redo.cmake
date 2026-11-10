@@ -1,8 +1,11 @@
 # run_straka_redo.cmake: straka on one process at cfl 1.6 (shipped 0.9) to
-# t = 60 s. Steps there go non-finite and are redone with a smaller dt; with
+# t = 40 s. Steps there go non-finite and are redone with a smaller dt; with
 # gravity-work: cell and its default fixer on, they must reach the redo check and the
 # run its time limit. (Longer runs at this cfl end by chance on the redo limit,
-# with or without the fixer.)
+# with or without the fixer: over 25 runs per build with a 1e-12 theta
+# perturbation, the earliest such stop was at 42.03 s with p rows and 51.59 s
+# with ln p rows. A larger redo budget does not move it: the stopping step keeps
+# a non-finite cell at every dt the redos try.)
 
 get_filename_component(build_dir "${CMAKE_CURRENT_BINARY_DIR}/.." ABSOLUTE)
 set(work_dir "${CMAKE_CURRENT_BINARY_DIR}/straka_redo")
@@ -11,9 +14,9 @@ file(MAKE_DIRECTORY "${work_dir}")
 
 file(READ "${build_dir}/bin/straka_single.yaml" config)
 string(REPLACE "cfl: 0.9" "cfl: 1.6" config "${config}")
-string(REPLACE "tlim: 900" "tlim: 60" config "${config}")
+string(REPLACE "tlim: 900" "tlim: 40" config "${config}")
 string(REPLACE "grav1: -9.8\n" "grav1: -9.8\n    gravity-work: cell\n" config "${config}")
-if(NOT config MATCHES "cfl: 1.6" OR NOT config MATCHES "tlim: 60"
+if(NOT config MATCHES "cfl: 1.6" OR NOT config MATCHES "tlim: 40"
    OR NOT config MATCHES "gravity-work: cell")
   message(FATAL_ERROR "straka_single.yaml: no 'cfl: 0.9' / 'tlim: 900' / 'grav1: -9.8' to set")
 endif()
