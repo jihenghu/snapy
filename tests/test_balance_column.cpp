@@ -534,4 +534,32 @@ TEST(BalanceColumn, a_thick_isothermal_five_cell_column_converges) {
   }
 }
 
+//! The same column at 1.25-1.26 H, at the library's default tolerance. The
+//! six-face row interpolated p, and the top cell's average sat at 0.86 of its
+//! bracket (0.40 is exact), so the restored top face pressure
+//! p_top - pref_top + psf_top was -29.1 Pa at 1.25 H, and the sweeps did not
+//! converge at 1.25 or 1.26 H.
+TEST(BalanceColumn, a_1_25_scale_height_column_keeps_its_top_face_positive) {
+  auto opt = torch::TensorOptions().dtype(torch::kFloat64);
+  for (double a : {1.25, 1.26}) {
+    auto dx1f = torch::full({5}, a * kRd * kTs / kGrav, opt);
+    auto p = kPs * torch::exp(-(torch::arange(5, opt) + 0.5) * a);
+    auto w = torch::zeros({snap::IPR + 1, 1, 1, 5}, opt);
+    w[snap::IPR].copy_(p.view({1, 1, 5}));
+    w[snap::IDN].copy_((p / (kRd * kTs)).view({1, 1, 5}));
+    auto lo = torch::empty({1, 1, 5}, opt), hi = torch::empty_like(lo),
+         pref = torch::empty_like(lo), dsf = torch::empty_like(lo),
+         dref = torch::empty_like(lo);
+    torch::Tensor anchor, rows;
+    at::native::call_hydro_ref_x1(torch::kCPU, w, dx1f, anchor, lo, hi, pref,
+                                  dsf, dref, 4, kGrav, snap::kX1RefUniform,
+                                  true, true, true, rows);
+    auto top = (w[snap::IPR] - pref + hi).flatten()[4].item<double>();
+    EXPECT_GT(top, 0.) << "a=" << a;
+    EXPECT_NO_THROW(
+        snap::balance_column(w, dx1f, kGrav, true, 1.e-13, 450, "cartesian"))
+        << "a=" << a;
+  }
+}
+
 }  // namespace

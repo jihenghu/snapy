@@ -164,6 +164,49 @@ inline DISPATCH_MACRO int hydro_ref_x1_six_face_start(int i, int nc1, int iu,
   return start;
 }
 
+//! Average over cell `i` of the column through the six faces start..start+5,
+//! interpolated in ln p: exp of the degree-5 polynomial through ln p at the
+//! faces, by the three-point Gauss rule (exact for degree 5, as the rows the
+//! linear weights came from). Interpolating p itself is what failed on thick
+//! cells: across a wall stencil p varies by e^(5 dz/H), and the top cell's
+//! average missed by 0.47 of its dp at 1.25 H, which put the restored top
+//! face pressure p_top - (pref_top - psf_top) = p_top (1 - 0.86 x 1.25) below
+//! zero. ln p is near-linear in z at any thickness, so this is exact for an
+//! isothermal column and errs by 1e-6 of dp there at 1.25 H. Face offsets are
+//! in units of the cell's own width, from dx1f on a stretched grid.
+template <typename T>
+inline DISPATCH_MACRO T hydro_ref_x1_log_row(T const* psf_lo, T const* psf_hi,
+                                             T const* dx1f, int flat, int start,
+                                             int i, int nc1, bool stretched) {
+  T t[6], lf[6];
+  for (int k = 0; k < 6; ++k) {
+    T o = T(0);
+    for (int j = i; j < start + k; ++j) o += stretched ? dx1f[j] : T(1);
+    for (int j = start + k; j < i; ++j) o -= stretched ? dx1f[j] : T(1);
+    t[k] = stretched ? o / dx1f[i] : o;
+  }
+  // ln of each face over the cell's upper face: O(dz/H), not O(ln p), so the
+  // round-off of exp(log) stays at eps of the cell's dp
+  T base = psf_hi[flat + i];
+  for (int k = 0; k < 6; ++k)
+    lf[k] = log(hydro_ref_x1_face(psf_lo, psf_hi, flat, start + k, nc1) / base);
+  T r = T(0.1) * sqrt(T(15));
+  T tq[3] = {T(0.5) - r, T(0.5), T(0.5) + r};
+  T wq[3] = {T(5) / T(18), T(8) / T(18), T(5) / T(18)};
+  T avg = T(0);
+  for (int q = 0; q < 3; ++q) {
+    T lp = T(0);
+    for (int m = 0; m < 6; ++m) {
+      T l = T(1);
+      for (int k = 0; k < 6; ++k)
+        if (k != m) l *= (tq[q] - t[k]) / (t[m] - t[k]);
+      lp += l * lf[m];
+    }
+    avg += wq[q] * exp(lp);
+  }
+  return base * avg;
+}
+
 template <typename T>
 inline DISPATCH_MACRO void hydro_ref_x1_cell_impl(
     T const* w, T const* dx1f, T const* psf_lo, T const* psf_hi, T* pref,
@@ -209,17 +252,11 @@ inline DISPATCH_MACRO void hydro_ref_x1_cell_impl(
                                                    : dp_cell / log(ratio_cell);
 
   if (uniform) {
-    constexpr double w6[6] = {11. / 1440., -31. / 480., 401. / 720.,
-                              401. / 720., -31. / 480., 11. / 1440.};
     T lower = lo < hi ? lo : hi;
     T upper = lo > hi ? lo : hi;
-    auto use_six_faces = [&](int start, double const* weights,
-                             bool reverse = false) {
-      T value = T(0);
-      for (int m = 0; m < 6; ++m) {
-        value += T(weights[reverse ? 5 - m : m]) *
-                 hydro_ref_x1_face(psf_lo, psf_hi, flat, start + m, nc1);
-      }
+    auto use_six_faces = [&](int start) {
+      T value = hydro_ref_x1_log_row(psf_lo, psf_hi, dx1f, flat, start, i, nc1,
+                                     false);
       if (value >= lower && value <= upper) cell_pref = value;
     };
     // The two cells at a clamped wall average ONE polynomial, the one through
@@ -230,44 +267,26 @@ inline DISPATCH_MACRO void hydro_ref_x1_cell_impl(
     // five-cell column far from hydrostatic (p3/p4 = 2.1 for e^1.46 = 4.3),
     // within 0.07 of a bracket of cell 3's edge at 1.46 H and past it from
     // 1.49 H, so balance_column cycled between the branches.
-    auto partner_kept = [&](int j, int start, double const* weights,
-                            bool reverse) {
-      T value = T(0);
-      for (int m = 0; m < 6; ++m) {
-        value += T(weights[reverse ? 5 - m : m]) *
-                 hydro_ref_x1_face(psf_lo, psf_hi, flat, start + m, nc1);
-      }
+    auto partner_kept = [&](int j, int start) {
+      T value = hydro_ref_x1_log_row(psf_lo, psf_hi, dx1f, flat, start, j, nc1,
+                                     false);
       T a = psf_lo[flat + j], b = psf_hi[flat + j];
       return value >= (a < b ? a : b) && value <= (a > b ? a : b);
     };
     if (i >= 2 && i < nc1 - 2 && !wall_in && !wall_out) {
-      use_six_faces(i - 2, w6);
+      use_six_faces(i - 2);
     }
-
-    constexpr double w6e[2][6] = {
-        {95. / 288., 1427. / 1440., -133. / 240., 241. / 720., -173. / 1440.,
-         3. / 160.},
-        {-3. / 160., 637. / 1440., 511. / 720., -43. / 240., 77. / 1440.,
-         -11. / 1440.},
-    };
     if (clamp_in) {
-      int sigma = i - il;
-      if (partner_kept(il + 1 - sigma, il, w6e[1 - sigma], false))
-        use_six_faces(il, w6e[sigma]);
+      if (partner_kept(2 * il + 1 - i, il)) use_six_faces(il);
     }
     if (clamp_out) {
-      int s = iu + 1 - 5;
-      int row = 4 - (i - s);
-      if (partner_kept(iu - 1 + row, s, w6e[1 - row], true))
-        use_six_faces(s, w6e[row], true);
+      if (partner_kept(2 * iu - 1 - i, iu + 1 - 5)) use_six_faces(iu + 1 - 5);
     }
     if (!phys_in && i < 2) {
-      use_six_faces(0, w6e[i]);
+      use_six_faces(0);
     }
     if (!phys_out && i >= nc1 - 2) {
-      int sigma = i - (nc1 - 5);
-      int row = 4 - sigma;
-      use_six_faces(nc1 - 5, w6e[row], true);
+      use_six_faces(nc1 - 5);
     }
   } else if (x1_grid == kX1RefStretched) {
     T lower = lo < hi ? lo : hi;
@@ -276,12 +295,12 @@ inline DISPATCH_MACRO void hydro_ref_x1_cell_impl(
     // a clamped wall pair shares one polynomial here too (partner_kept above)
     int j = clamp_in ? 2 * il + 1 - i : (clamp_out ? 2 * iu - 1 - i : i);
     if (start >= 0) {
-      T value = T(0), partner = T(0);
-      for (int m = 0; m < 6; ++m) {
-        T face = hydro_ref_x1_face(psf_lo, psf_hi, flat, start + m, nc1);
-        value += rows[7 * i + 1 + m] * face;
-        partner += rows[7 * j + 1 + m] * face;
-      }
+      // rows supply the start only; the average is the log-space one above
+      T value =
+          hydro_ref_x1_log_row(psf_lo, psf_hi, dx1f, flat, start, i, nc1, true);
+      T partner = j == i ? value
+                         : hydro_ref_x1_log_row(psf_lo, psf_hi, dx1f, flat,
+                                                start, j, nc1, true);
       T a = psf_lo[flat + j], b = psf_hi[flat + j];
       bool kept = partner >= (a < b ? a : b) && partner <= (a > b ? a : b);
       if (kept && value >= lower && value <= upper) cell_pref = value;
