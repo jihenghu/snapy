@@ -1,0 +1,18 @@
+Processing ./.
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: snapy
+  Building wheel for snapy (pyproject.toml): started
+  Building wheel for snapy (pyproject.toml): still running...
+  Building wheel for snapy (pyproject.toml): still running...
+  Building wheel for snapy (pyproject.toml): still running...
+  Building wheel for snapy (pyproject.toml): still running...
+  Building wheel for snapy (pyproject.toml): finished with status 'done'
+  Created wheel for snapy: filename=snapy-2.12.6.dev5+g3c891cb-cp311-cp311-linux_x86_64.whl size=40607800 sha256=448b209fcf0f0ca10c1bcec12f476073a8242cf4e2bc4d5c3d15a8920f634262
+  Stored in directory: /data2/ai_workspace/worker2/tmp/pip-ephem-wheel-cache-ym7cqyxr/wheels/40/74/49/bb1bea864cb64db92af907ee9af03c9bce85924bed4f79764a
+Successfully built snapy
+Installing collected packages: snapy
+Successfully installed snapy-2.12.6.dev5+g3c891cb
+
+[notice] A new release of pip is available: 26.2.2 -> 26.3
+[notice] To update, run: pip install --upgrade pip

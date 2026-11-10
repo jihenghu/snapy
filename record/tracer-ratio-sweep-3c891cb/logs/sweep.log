@@ -1,0 +1,1514 @@
+--- limiter-2D-covon-limon-s0-setoff-stretched-moist (rc 0)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 0: dt = 10.44 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 1: dt = 5.218 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 2: dt = 2.609 s, check_redo = 1
+attempt 3: dt = 1.304 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter on, moist, relax False, implicit-scheme 0, C 30)
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+[W1109 12:14:43.257858416 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:14:43.257967042 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 16 cell(s); diag = -(100 * status + iterations) (function forward)
+[W1109 12:14:43.270209483 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:14:43.270305375 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 12 cell(s); diag = -(100 * status + iterations) (function forward)
+[W1109 12:14:43.282361203 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:14:43.282448118 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 4 cell(s); diag = -(100 * status + iterations) (function forward)
+--- limiter-2D-covon-limon-s0-setoff-stretched-moist-relax (rc 0)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[HydroOptions] -- relax bottom composition options --
+* tau = 3600
+* species = [vapor]
+* xfrac = [0.2]
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 0: dt = 10.44 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 1: dt = 5.218 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 2: dt = 2.609 s, check_redo = 1
+attempt 3: dt = 1.304 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter on, moist, relax True, implicit-scheme 0, C 30)
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+[W1109 12:14:44.787969820 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:14:44.788079648 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 16 cell(s); diag = -(100 * status + iterations) (function forward)
+[W1109 12:14:44.801560179 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:14:44.801651181 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 12 cell(s); diag = -(100 * status + iterations) (function forward)
+[W1109 12:14:45.814460118 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:14:45.814541031 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 4 cell(s); diag = -(100 * status + iterations) (function forward)
+--- limiter-2D-covon-limon-s0-setoff-stretched-dry (rc 0)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 0: dt = 10.44 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 1: dt = 5.218 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 2: dt = 2.609 s, check_redo = 1
+attempt 3: dt = 1.304 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter on, dry, relax False, implicit-scheme 0, C 30)
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+[W1109 12:14:46.366950919 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:14:46.367053504 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 16 cell(s); diag = -(100 * status + iterations) (function forward)
+[W1109 12:14:46.379422936 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:14:46.379509230 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 12 cell(s); diag = -(100 * status + iterations) (function forward)
+[W1109 12:14:46.391268494 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:14:46.391343396 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 4 cell(s); diag = -(100 * status + iterations) (function forward)
+--- limiter-2D-covon-limon-s0-setoff-stretched-dry-relax (rc 0)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[HydroOptions] -- relax bottom composition options --
+* tau = 3600
+* species = [vapor]
+* xfrac = [0.2]
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 0: dt = 10.44 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 1: dt = 5.218 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 2: dt = 2.609 s, check_redo = 1
+attempt 3: dt = 1.304 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter on, dry, relax True, implicit-scheme 0, C 30)
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+[W1109 12:14:48.956857240 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:14:48.956955727 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 16 cell(s); diag = -(100 * status + iterations) (function forward)
+[W1109 12:14:48.969690202 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:14:48.969779000 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 12 cell(s); diag = -(100 * status + iterations) (function forward)
+[W1109 12:14:48.982368340 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:14:48.982449113 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 4 cell(s); diag = -(100 * status + iterations) (function forward)
+--- limiter-2D-covon-limon-s9-setoff-stretched-moist (rc 0)
+attempt 0: dt = 10.44 s, check_redo = 1
+attempt 1: dt = 5.218 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter on, moist, relax False, implicit-scheme 9, C 30)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: clamp).
+--- limiter-2D-covon-limon-s9-setoff-stretched-moist-relax (rc 0)
+attempt 0: dt = 10.44 s, check_redo = 1
+attempt 1: dt = 5.218 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter on, moist, relax True, implicit-scheme 9, C 30)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[HydroOptions] -- relax bottom composition options --
+* tau = 3600
+* species = [vapor]
+* xfrac = [0.2]
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: clamp).
+--- limiter-2D-covon-limon-s9-setoff-stretched-dry (rc 0)
+attempt 0: dt = 10.44 s, check_redo = 1
+attempt 1: dt = 5.218 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter on, dry, relax False, implicit-scheme 9, C 30)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: clamp).
+--- limiter-2D-covon-limon-s9-setoff-stretched-dry-relax (rc 0)
+attempt 0: dt = 10.44 s, check_redo = 1
+attempt 1: dt = 5.218 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter on, dry, relax True, implicit-scheme 9, C 30)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[HydroOptions] -- relax bottom composition options --
+* tau = 3600
+* species = [vapor]
+* xfrac = [0.2]
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: clamp).
+--- 2d-2D-covon-limoff-s0-setoff-stretched (rc 0)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+Error: Non-positive temperature = -1696.27.
+Warning: Negative concentration for species 0 = -710.786.
+Setting it to zero.
+Error: Non-positive temperature = -1696.27.
+Warning: Negative concentration for species 0 = -710.786.
+Setting it to zero.
+Error: Non-positive temperature = -1696.27.
+Warning: Negative concentration for species 0 = -710.786.
+Setting it to zero.
+Error: Non-positive temperature = -1696.27.
+Warning: Negative concentration for species 0 = -710.786.
+Setting it to zero.
+nx2=4: max|r/r0-1| = 8.882e-16; stage-0 x1 faces F_scalar/(r0 F_rho) = 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+Error: Non-positive temperature = -1696.27.
+Warning: Negative concentration for species 0 = -710.786.
+Setting it to zero.
+nx2=1: max|r/r0-1| = 3.775e-15; stage-0 x1 faces F_scalar/(r0 F_rho) = 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000
+PASS (implicit-scheme 0, C 15)
+[W1109 12:14:55.679424816 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:14:55.679524175 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 4 cell(s); diag = -(100 * status + iterations) (function forward)
+[W1109 12:14:55.691358121 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 1 cell(s); diag = -(100 * status + iterations) (function forward)
+--- limiter-2D-covon-limoff-s0-setoff-stretched-moist (rc 0)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+attempt 0: dt = 10.44 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor).
+attempt 1: dt = 5.218 s, check_redo = 1
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor).
+Error: Non-positive temperature = -3260.16.
+Error: Non-positive temperature = -65750.3.
+Error: Non-positive temperature = -3260.16.
+Error: Non-positive temperature = -65750.3.
+Error: Non-positive temperature = -3260.16.
+Error: Non-positive temperature = -65750.3.
+Error: Non-positive temperature = -3260.16.
+Error: Non-positive temperature = -65750.3.
+attempt 2: dt = 2.609 s, check_redo = 1
+attempt 3: dt = 1.304 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter off, moist, relax False, implicit-scheme 0, C 30)
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor saturation).
+[W1109 12:14:57.229793210 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:14:57.240801329 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:14:57.248240415 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 8 cell(s); diag = -(100 * status + iterations) (function forward)
+--- limiter-2D-covon-limoff-s0-setoff-stretched-moist-relax (rc 0)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[HydroOptions] -- relax bottom composition options --
+* tau = 3600
+* species = [vapor]
+* xfrac = [0.2]
+attempt 0: dt = 10.44 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor).
+attempt 1: dt = 5.218 s, check_redo = 1
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor).
+Error: Non-positive temperature = -3260.16.
+Error: Non-positive temperature = -65750.3.
+Error: Non-positive temperature = -3260.16.
+Error: Non-positive temperature = -65750.3.
+Error: Non-positive temperature = -3260.16.
+Error: Non-positive temperature = -65750.3.
+Error: Non-positive temperature = -3260.16.
+Error: Non-positive temperature = -65750.3.
+attempt 2: dt = 2.609 s, check_redo = 1
+attempt 3: dt = 1.304 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter off, moist, relax True, implicit-scheme 0, C 30)
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor saturation).
+[W1109 12:14:58.769437353 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:14:58.781073303 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:14:58.788940552 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 8 cell(s); diag = -(100 * status + iterations) (function forward)
+--- limiter-2D-covon-limoff-s0-setoff-stretched-dry (rc 0)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+attempt 0: dt = 10.44 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor).
+attempt 1: dt = 5.218 s, check_redo = 1
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor).
+Error: Non-positive temperature = -3271.75.
+Error: Non-positive temperature = -65750.3.
+Error: Non-positive temperature = -3271.75.
+Error: Non-positive temperature = -65750.3.
+Error: Non-positive temperature = -3271.75.
+Error: Non-positive temperature = -65750.3.
+Error: Non-positive temperature = -3271.75.
+Error: Non-positive temperature = -65750.3.
+attempt 2: dt = 2.609 s, check_redo = 1
+attempt 3: dt = 1.304 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter off, dry, relax False, implicit-scheme 0, C 30)
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor saturation).
+[W1109 12:15:00.304588289 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:00.315405877 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:00.322630877 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 8 cell(s); diag = -(100 * status + iterations) (function forward)
+--- limiter-2D-covon-limoff-s0-setoff-stretched-dry-relax (rc 0)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[HydroOptions] -- relax bottom composition options --
+* tau = 3600
+* species = [vapor]
+* xfrac = [0.2]
+attempt 0: dt = 10.44 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor).
+attempt 1: dt = 5.218 s, check_redo = 1
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor).
+Error: Non-positive temperature = -3271.75.
+Error: Non-positive temperature = -65750.3.
+Error: Non-positive temperature = -3271.75.
+Error: Non-positive temperature = -65750.3.
+Error: Non-positive temperature = -3271.75.
+Error: Non-positive temperature = -65750.3.
+Error: Non-positive temperature = -3271.75.
+Error: Non-positive temperature = -65750.3.
+attempt 2: dt = 2.609 s, check_redo = 1
+attempt 3: dt = 1.304 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter off, dry, relax True, implicit-scheme 0, C 30)
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor saturation).
+[W1109 12:15:02.853707483 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:02.865081606 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:02.872777410 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 8 cell(s); diag = -(100 * status + iterations) (function forward)
+--- 2d-2D-covon-limoff-s9-setoff-stretched (rc 0)
+nx2=4: max|r/r0-1| = 6.661e-16; stage-0 x1 faces F_scalar/(r0 F_rho) = 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000
+nx2=1: max|r/r0-1| = 6.661e-16; stage-0 x1 faces F_scalar/(r0 F_rho) = 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000
+PASS (implicit-scheme 9, C 15)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+--- limiter-2D-covon-limoff-s9-setoff-stretched-moist (rc 0)
+attempt 0: dt = 10.44 s, check_redo = 1
+attempt 1: dt = 5.218 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter off, moist, relax False, implicit-scheme 9, C 30)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: clamp).
+--- limiter-2D-covon-limoff-s9-setoff-stretched-moist-relax (rc 0)
+attempt 0: dt = 10.44 s, check_redo = 1
+attempt 1: dt = 5.218 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter off, moist, relax True, implicit-scheme 9, C 30)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[HydroOptions] -- relax bottom composition options --
+* tau = 3600
+* species = [vapor]
+* xfrac = [0.2]
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: clamp).
+--- limiter-2D-covon-limoff-s9-setoff-stretched-dry (rc 0)
+attempt 0: dt = 10.44 s, check_redo = 1
+attempt 1: dt = 5.218 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter off, dry, relax False, implicit-scheme 9, C 30)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: clamp).
+--- limiter-2D-covon-limoff-s9-setoff-stretched-dry-relax (rc 0)
+attempt 0: dt = 10.44 s, check_redo = 1
+attempt 1: dt = 5.218 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter off, dry, relax True, implicit-scheme 9, C 30)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[HydroOptions] -- relax bottom composition options --
+* tau = 3600
+* species = [vapor]
+* xfrac = [0.2]
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: clamp).
+--- limiter-2D-covoff-limon-s0-setoff-stretched-moist (rc 0)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 0: dt = 10.44 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 1: dt = 5.218 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 2: dt = 2.609 s, check_redo = 1
+attempt 3: dt = 1.304 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter on, moist, relax False, implicit-scheme 0, C 30)
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+[W1109 12:15:11.059051499 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:11.059156268 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 16 cell(s); diag = -(100 * status + iterations) (function forward)
+[W1109 12:15:11.070659577 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:11.070745289 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 12 cell(s); diag = -(100 * status + iterations) (function forward)
+[W1109 12:15:11.082116257 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:11.082201118 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 4 cell(s); diag = -(100 * status + iterations) (function forward)
+--- limiter-2D-covoff-limon-s0-setoff-stretched-moist-relax (rc 0)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[HydroOptions] -- relax bottom composition options --
+* tau = 3600
+* species = [vapor]
+* xfrac = [0.2]
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 0: dt = 10.44 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 1: dt = 5.218 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 2: dt = 2.609 s, check_redo = 1
+attempt 3: dt = 1.304 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter on, moist, relax True, implicit-scheme 0, C 30)
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+[W1109 12:15:12.621983093 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:12.622095476 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 16 cell(s); diag = -(100 * status + iterations) (function forward)
+[W1109 12:15:12.634382221 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:12.634470619 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 12 cell(s); diag = -(100 * status + iterations) (function forward)
+[W1109 12:15:12.646692011 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:12.646777313 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 4 cell(s); diag = -(100 * status + iterations) (function forward)
+--- limiter-2D-covoff-limon-s0-setoff-stretched-dry (rc 0)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 0: dt = 10.44 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 1: dt = 5.218 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 2: dt = 2.609 s, check_redo = 1
+attempt 3: dt = 1.304 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter on, dry, relax False, implicit-scheme 0, C 30)
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+[W1109 12:15:14.162852731 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:14.162950948 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 16 cell(s); diag = -(100 * status + iterations) (function forward)
+[W1109 12:15:14.174742393 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:14.174823377 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 12 cell(s); diag = -(100 * status + iterations) (function forward)
+[W1109 12:15:14.186269317 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:14.186344991 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 4 cell(s); diag = -(100 * status + iterations) (function forward)
+--- limiter-2D-covoff-limon-s0-setoff-stretched-dry-relax (rc 0)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[HydroOptions] -- relax bottom composition options --
+* tau = 3600
+* species = [vapor]
+* xfrac = [0.2]
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 0: dt = 10.44 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 1: dt = 5.218 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+Error: Non-positive temperature = 0.
+attempt 2: dt = 2.609 s, check_redo = 1
+attempt 3: dt = 1.304 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter on, dry, relax True, implicit-scheme 0, C 30)
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor limiter saturation).
+[W1109 12:15:15.733973114 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:15.734081119 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 16 cell(s); diag = -(100 * status + iterations) (function forward)
+[W1109 12:15:15.746267885 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:15.746349069 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 12 cell(s); diag = -(100 * status + iterations) (function forward)
+[W1109 12:15:15.758213924 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:15.758297492 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 4 cell(s); diag = -(100 * status + iterations) (function forward)
+--- limiter-2D-covoff-limon-s9-setoff-stretched-moist (rc 0)
+attempt 0: dt = 10.44 s, check_redo = 1
+attempt 1: dt = 5.218 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter on, moist, relax False, implicit-scheme 9, C 30)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: clamp).
+--- limiter-2D-covoff-limon-s9-setoff-stretched-moist-relax (rc 0)
+attempt 0: dt = 10.44 s, check_redo = 1
+attempt 1: dt = 5.218 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter on, moist, relax True, implicit-scheme 9, C 30)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[HydroOptions] -- relax bottom composition options --
+* tau = 3600
+* species = [vapor]
+* xfrac = [0.2]
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: clamp).
+--- limiter-2D-covoff-limon-s9-setoff-stretched-dry (rc 0)
+attempt 0: dt = 10.44 s, check_redo = 1
+attempt 1: dt = 5.218 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter on, dry, relax False, implicit-scheme 9, C 30)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: clamp).
+--- limiter-2D-covoff-limon-s9-setoff-stretched-dry-relax (rc 0)
+attempt 0: dt = 10.44 s, check_redo = 1
+attempt 1: dt = 5.218 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter on, dry, relax True, implicit-scheme 9, C 30)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[HydroOptions] -- relax bottom composition options --
+* tau = 3600
+* species = [vapor]
+* xfrac = [0.2]
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: clamp).
+--- 2d-2D-covoff-limoff-s0-setoff-stretched (rc 0)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+Error: Non-positive temperature = -1696.27.
+Warning: Negative concentration for species 0 = -710.786.
+Setting it to zero.
+Error: Non-positive temperature = -1696.27.
+Warning: Negative concentration for species 0 = -710.786.
+Setting it to zero.
+Error: Non-positive temperature = -1696.27.
+Warning: Negative concentration for species 0 = -710.786.
+Setting it to zero.
+Error: Non-positive temperature = -1696.27.
+Warning: Negative concentration for species 0 = -710.786.
+Setting it to zero.
+nx2=4: max|r/r0-1| = 1.110e-15; stage-0 x1 faces F_scalar/(r0 F_rho) = 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+Error: Non-positive temperature = -1696.27.
+Warning: Negative concentration for species 0 = -710.786.
+Setting it to zero.
+nx2=1: max|r/r0-1| = 3.775e-15; stage-0 x1 faces F_scalar/(r0 F_rho) = 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000
+PASS (implicit-scheme 0, C 15)
+[W1109 12:15:23.455219523 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:23.455331616 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 4 cell(s); diag = -(100 * status + iterations) (function forward)
+[W1109 12:15:23.467134072 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 1 cell(s); diag = -(100 * status + iterations) (function forward)
+--- limiter-2D-covoff-limoff-s0-setoff-stretched-moist (rc 0)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+attempt 0: dt = 10.44 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor).
+attempt 1: dt = 5.218 s, check_redo = 1
+Warning: Negative concentration for species 1 = -0.112904.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.51772e-34.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -9.64124e-51.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -0.112904.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.51772e-34.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -9.64124e-51.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -0.112904.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.51772e-34.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -9.64124e-51.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -0.112904.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.51772e-34.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -9.64124e-51.
+Setting it to zero.
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor).
+Error: Non-positive temperature = -3271.75.
+Warning: Negative concentration for species 1 = -3.57844e-21.
+Setting it to zero.
+Error: Non-positive temperature = -65750.3.
+Warning: Negative concentration for species 1 = -6.09546e-38.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -8.20864e-53.
+Setting it to zero.
+Error: Non-positive temperature = -3271.75.
+Warning: Negative concentration for species 1 = -3.57844e-21.
+Setting it to zero.
+Error: Non-positive temperature = -65750.3.
+Warning: Negative concentration for species 1 = -6.09546e-38.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -8.20864e-53.
+Setting it to zero.
+Error: Non-positive temperature = -3271.75.
+Warning: Negative concentration for species 1 = -3.57844e-21.
+Setting it to zero.
+Error: Non-positive temperature = -65750.3.
+Warning: Negative concentration for species 1 = -6.09546e-38.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -8.20864e-53.
+Setting it to zero.
+Error: Non-positive temperature = -3271.75.
+Warning: Negative concentration for species 1 = -3.57844e-21.
+Setting it to zero.
+Error: Non-positive temperature = -65750.3.
+Warning: Negative concentration for species 1 = -6.09546e-38.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -8.20864e-53.
+Setting it to zero.
+attempt 2: dt = 2.609 s, check_redo = 1
+attempt 3: dt = 1.304 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter off, moist, relax False, implicit-scheme 0, C 30)
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor saturation).
+Warning: Negative concentration for species 1 = -2.53846e-07.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.87835e-22.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -3.36473e-38.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.48279e-54.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.53846e-07.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.87835e-22.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -3.36473e-38.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.48279e-54.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.53846e-07.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.87835e-22.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -3.36473e-38.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.48279e-54.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.53846e-07.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.87835e-22.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -3.36473e-38.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.48279e-54.
+Setting it to zero.
+[W1109 12:15:25.973495909 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:25.981839742 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:25.986657244 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 8 cell(s); diag = -(100 * status + iterations) (function forward)
+--- limiter-2D-covoff-limoff-s0-setoff-stretched-moist-relax (rc 0)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[HydroOptions] -- relax bottom composition options --
+* tau = 3600
+* species = [vapor]
+* xfrac = [0.2]
+attempt 0: dt = 10.44 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor).
+attempt 1: dt = 5.218 s, check_redo = 1
+Warning: Negative concentration for species 1 = -0.112904.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.51772e-34.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -9.64124e-51.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -0.112904.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.51772e-34.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -9.64124e-51.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -0.112904.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.51772e-34.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -9.64124e-51.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -0.112904.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.51772e-34.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -9.64124e-51.
+Setting it to zero.
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor).
+Error: Non-positive temperature = -3271.75.
+Warning: Negative concentration for species 1 = -3.57844e-21.
+Setting it to zero.
+Error: Non-positive temperature = -65750.3.
+Warning: Negative concentration for species 1 = -6.09546e-38.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -8.20864e-53.
+Setting it to zero.
+Error: Non-positive temperature = -3271.75.
+Warning: Negative concentration for species 1 = -3.57844e-21.
+Setting it to zero.
+Error: Non-positive temperature = -65750.3.
+Warning: Negative concentration for species 1 = -6.09546e-38.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -8.20864e-53.
+Setting it to zero.
+Error: Non-positive temperature = -3271.75.
+Warning: Negative concentration for species 1 = -3.57844e-21.
+Setting it to zero.
+Error: Non-positive temperature = -65750.3.
+Warning: Negative concentration for species 1 = -6.09546e-38.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -8.20864e-53.
+Setting it to zero.
+Error: Non-positive temperature = -3271.75.
+Warning: Negative concentration for species 1 = -3.57844e-21.
+Setting it to zero.
+Error: Non-positive temperature = -65750.3.
+Warning: Negative concentration for species 1 = -6.09546e-38.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -8.20864e-53.
+Setting it to zero.
+attempt 2: dt = 2.609 s, check_redo = 1
+attempt 3: dt = 1.304 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter off, moist, relax True, implicit-scheme 0, C 30)
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor saturation).
+Warning: Negative concentration for species 1 = -2.53846e-07.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.87835e-22.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -3.36473e-38.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.48279e-54.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.53846e-07.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.87835e-22.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -3.36473e-38.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.48279e-54.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.53846e-07.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.87835e-22.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -3.36473e-38.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.48279e-54.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.53846e-07.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.87835e-22.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -3.36473e-38.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.48279e-54.
+Setting it to zero.
+[W1109 12:15:26.521811567 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:26.530680386 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:26.535846530 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 8 cell(s); diag = -(100 * status + iterations) (function forward)
+--- limiter-2D-covoff-limoff-s0-setoff-stretched-dry (rc 0)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+attempt 0: dt = 10.44 s, check_redo = 1
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor).
+attempt 1: dt = 5.218 s, check_redo = 1
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor).
+Error: Non-positive temperature = -3271.75.
+Error: Non-positive temperature = -65750.3.
+Error: Non-positive temperature = -3271.75.
+Error: Non-positive temperature = -65750.3.
+Error: Non-positive temperature = -3271.75.
+Error: Non-positive temperature = -65750.3.
+Error: Non-positive temperature = -3271.75.
+Error: Non-positive temperature = -65750.3.
+attempt 2: dt = 2.609 s, check_redo = 1
+attempt 3: dt = 1.304 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter off, dry, relax False, implicit-scheme 0, C 30)
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor saturation).
+[W1109 12:15:28.063372628 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:28.071867327 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:28.076687604 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 8 cell(s); diag = -(100 * status + iterations) (function forward)
+--- limiter-2D-covoff-limoff-s0-setoff-stretched-dry-relax (rc 0)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[HydroOptions] -- relax bottom composition options --
+* tau = 3600
+* species = [vapor]
+* xfrac = [0.2]
+attempt 0: dt = 10.44 s, check_redo = 1
+Warning: Negative concentration for species 1 = -6.03011e-18.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -7.38043e-20.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -6.71203e-31.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -6.03011e-18.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -7.38043e-20.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -6.71203e-31.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -6.03011e-18.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -7.38043e-20.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -6.71203e-31.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -6.03011e-18.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -7.38043e-20.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -6.71203e-31.
+Setting it to zero.
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor).
+attempt 1: dt = 5.218 s, check_redo = 1
+Warning: Negative concentration for species 1 = -5.12776e-19.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.96831e-20.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.82578e-31.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -5.12776e-19.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.96831e-20.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.82578e-31.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -5.12776e-19.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.96831e-20.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.82578e-31.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -5.12776e-19.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.96831e-20.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.82578e-31.
+Setting it to zero.
+Warning: Negative concentration for species 0 = -95.1524.
+Setting it to zero.
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor).
+Warning: Negative concentration for species 1 = -2.52637e-11.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.59348e-32.
+Setting it to zero.
+Error: Non-positive temperature = -3271.75.
+Error: Non-positive temperature = -65750.3.
+Warning: Negative concentration for species 1 = -2.52637e-11.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.59348e-32.
+Setting it to zero.
+Error: Non-positive temperature = -3271.75.
+Error: Non-positive temperature = -65750.3.
+Warning: Negative concentration for species 1 = -2.52637e-11.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.59348e-32.
+Setting it to zero.
+Error: Non-positive temperature = -3271.75.
+Error: Non-positive temperature = -65750.3.
+Warning: Negative concentration for species 1 = -2.52637e-11.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.59348e-32.
+Setting it to zero.
+Error: Non-positive temperature = -3271.75.
+Error: Non-positive temperature = -65750.3.
+attempt 2: dt = 2.609 s, check_redo = 1
+attempt 3: dt = 1.304 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter off, dry, relax True, implicit-scheme 0, C 30)
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: floor saturation).
+Warning: Negative concentration for species 1 = -6.67968e-12.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -3.34071e-33.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -6.67968e-12.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -3.34071e-33.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -6.67968e-12.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -3.34071e-33.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -6.67968e-12.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -3.34071e-33.
+Setting it to zero.
+[W1109 12:15:29.590381313 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:29.599283085 thermo_y.cpp:532] Warning: ThermoYImpl::_intEng_to_temp: max iterations reached (function _intEng_to_temp)
+[W1109 12:15:29.604542616 thermo_y.cpp:387] Warning: ThermoYImpl::forward: saturation adjustment failed in 8 cell(s); diag = -(100 * status + iterations) (function forward)
+--- 2d-2D-covoff-limoff-s9-setoff-stretched (rc 0)
+nx2=4: max|r/r0-1| = 6.661e-16; stage-0 x1 faces F_scalar/(r0 F_rho) = 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000
+nx2=1: max|r/r0-1| = 6.661e-16; stage-0 x1 faces F_scalar/(r0 F_rho) = 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000
+PASS (implicit-scheme 9, C 15)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+--- limiter-2D-covoff-limoff-s9-setoff-stretched-moist (rc 0)
+attempt 0: dt = 10.44 s, check_redo = 1
+attempt 1: dt = 5.218 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter off, moist, relax False, implicit-scheme 9, C 30)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+Warning: Negative concentration for species 1 = -5.02944e-19.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.37836e-35.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -5.88858e-53.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -6.44422e-53.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -5.02944e-19.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.37836e-35.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -5.88858e-53.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -6.44422e-53.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -5.02944e-19.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.37836e-35.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -5.88858e-53.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -6.44422e-53.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -5.02944e-19.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.37836e-35.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -5.88858e-53.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -6.44422e-53.
+Setting it to zero.
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: clamp).
+Warning: Negative concentration for species 1 = -9.23152e-05.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -7.9653e-33.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.54641e-37.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -3.93993e-53.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -9.23152e-05.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -7.9653e-33.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.54641e-37.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -3.93993e-53.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -9.23152e-05.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -7.9653e-33.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.54641e-37.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -3.93993e-53.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -9.23152e-05.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -7.9653e-33.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.54641e-37.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -3.93993e-53.
+Setting it to zero.
+--- limiter-2D-covoff-limoff-s9-setoff-stretched-moist-relax (rc 0)
+attempt 0: dt = 10.44 s, check_redo = 1
+attempt 1: dt = 5.218 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter off, moist, relax True, implicit-scheme 9, C 30)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[HydroOptions] -- relax bottom composition options --
+* tau = 3600
+* species = [vapor]
+* xfrac = [0.2]
+Warning: Negative concentration for species 1 = -5.05153e-19.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.37827e-35.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -5.8928e-53.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -6.44228e-53.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -5.05153e-19.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.37827e-35.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -5.8928e-53.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -6.44228e-53.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -5.05153e-19.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.37827e-35.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -5.8928e-53.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -6.44228e-53.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -5.05153e-19.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -1.37827e-35.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -5.8928e-53.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -6.44228e-53.
+Setting it to zero.
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: clamp).
+Warning: Negative concentration for species 1 = -9.2305e-05.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -7.95712e-33.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.5463e-37.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -3.93977e-53.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -9.2305e-05.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -7.95712e-33.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.5463e-37.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -3.93977e-53.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -9.2305e-05.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -7.95712e-33.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.5463e-37.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -3.93977e-53.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -9.2305e-05.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -7.95712e-33.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.5463e-37.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -3.93977e-53.
+Setting it to zero.
+--- limiter-2D-covoff-limoff-s9-setoff-stretched-dry (rc 0)
+attempt 0: dt = 10.44 s, check_redo = 1
+attempt 1: dt = 5.218 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter off, dry, relax False, implicit-scheme 9, C 30)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: clamp).
+--- limiter-2D-covoff-limoff-s9-setoff-stretched-dry-relax (rc 0)
+attempt 0: dt = 10.44 s, check_redo = 1
+attempt 1: dt = 5.218 s, check_redo = 0
+max|r/r0-1| = 4.441e-16
+PASS (limiter off, dry, relax True, implicit-scheme 9, C 30)
+[HydroOptions] -- constant gravity options --
+* grav1 = -10
+* grav2 = 0
+* grav3 = 0
+* non-hydrostatic = 1
+* gravity-work = face
+* gravity-work-fixer = 0
+[HydroOptions] -- relax bottom composition options --
+* tau = 3600
+* species = [vapor]
+* xfrac = [0.2]
+Warning: Negative concentration for species 1 = -6.29419e-18.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.73823e-26.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -6.29419e-18.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.73823e-26.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -6.29419e-18.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.73823e-26.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -6.29419e-18.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.73823e-26.
+Setting it to zero.
+[MeshBlock] Density/pressure at or within 0.1% of the floor, the VIC dry-gas clamp emptied a cell, the limiter patched one or found a NaN, or the saturation adjustment left a cell unadjusted, or the VIC solve rejected a singular/near-singular or nonfinite column. Redoing the step with smaller dt (causes: clamp).
+Warning: Negative concentration for species 1 = -2.14207e-18.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -5.95545e-27.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.14207e-18.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -5.95545e-27.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.14207e-18.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -5.95545e-27.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -2.14207e-18.
+Setting it to zero.
+Warning: Negative concentration for species 1 = -5.95545e-27.
+Setting it to zero.
+--- cubed-sphere C12 moist (rc 0)
+cs: steps=50 redo=0 hits=0 tracer_r0_init=0.0010000000000000007 vapor_q0=0.020408163265306121
+cs tracer max|r/r0-1| = 3.664e-15
+cs vapor max|q/q0-1| = 3.331e-15
+arms: 42 run, 116 skipped; 0 failing; worst 2d-2D-covon-limoff-s0-setoff-stretched-nx2=1 = 3.775e-15
+exit=0

@@ -1,0 +1,159 @@
+arm,repro,dim,covariance,limiter,scheme,settling,grid,steps,max_dev,pass
+2d-2D-covon-limon-s0-setoff-stretched,2d,2D,on,on,0,off,stretched,,,SKIP
+limiter-2D-covon-limon-s0-setoff-stretched-moist,limiter,2D,on,on,0,off,stretched,1 accepted (4 attempts),4.441e-16,True
+limiter-2D-covon-limon-s0-setoff-stretched-moist-relax,limiter,2D,on,on,0,off,stretched,1 accepted (4 attempts),4.441e-16,True
+limiter-2D-covon-limon-s0-setoff-stretched-dry,limiter,2D,on,on,0,off,stretched,1 accepted (4 attempts),4.441e-16,True
+limiter-2D-covon-limon-s0-setoff-stretched-dry-relax,limiter,2D,on,on,0,off,stretched,1 accepted (4 attempts),4.441e-16,True
+2d-2D-covon-limon-s0-setoff-uniform,2d,2D,on,on,0,off,uniform,,,SKIP
+limiter-2D-covon-limon-s0-setoff-uniform,limiter,2D,on,on,0,off,uniform,,,SKIP
+2d-2D-covon-limon-s0-seton-stretched,2d,2D,on,on,0,on,stretched,,,SKIP
+limiter-2D-covon-limon-s0-seton-stretched,limiter,2D,on,on,0,on,stretched,,,SKIP
+2d-2D-covon-limon-s0-seton-uniform,2d,2D,on,on,0,on,uniform,,,SKIP
+limiter-2D-covon-limon-s0-seton-uniform,limiter,2D,on,on,0,on,uniform,,,SKIP
+2d-2D-covon-limon-s9-setoff-stretched,2d,2D,on,on,9,off,stretched,,,SKIP
+limiter-2D-covon-limon-s9-setoff-stretched-moist,limiter,2D,on,on,9,off,stretched,1 accepted (2 attempts),4.441e-16,True
+limiter-2D-covon-limon-s9-setoff-stretched-moist-relax,limiter,2D,on,on,9,off,stretched,1 accepted (2 attempts),4.441e-16,True
+limiter-2D-covon-limon-s9-setoff-stretched-dry,limiter,2D,on,on,9,off,stretched,1 accepted (2 attempts),4.441e-16,True
+limiter-2D-covon-limon-s9-setoff-stretched-dry-relax,limiter,2D,on,on,9,off,stretched,1 accepted (2 attempts),4.441e-16,True
+2d-2D-covon-limon-s9-setoff-uniform,2d,2D,on,on,9,off,uniform,,,SKIP
+limiter-2D-covon-limon-s9-setoff-uniform,limiter,2D,on,on,9,off,uniform,,,SKIP
+2d-2D-covon-limon-s9-seton-stretched,2d,2D,on,on,9,on,stretched,,,SKIP
+limiter-2D-covon-limon-s9-seton-stretched,limiter,2D,on,on,9,on,stretched,,,SKIP
+2d-2D-covon-limon-s9-seton-uniform,2d,2D,on,on,9,on,uniform,,,SKIP
+limiter-2D-covon-limon-s9-seton-uniform,limiter,2D,on,on,9,on,uniform,,,SKIP
+2d-2D-covon-limoff-s0-setoff-stretched-nx2=4,2d,2D,on,off,0,off,stretched,1 (3 stages),8.882e-16,True
+2d-2D-covon-limoff-s0-setoff-stretched-nx2=1,2d,1D-column,on,off,0,off,stretched,1 (3 stages),3.775e-15,True
+limiter-2D-covon-limoff-s0-setoff-stretched-moist,limiter,2D,on,off,0,off,stretched,1 accepted (4 attempts),4.441e-16,True
+limiter-2D-covon-limoff-s0-setoff-stretched-moist-relax,limiter,2D,on,off,0,off,stretched,1 accepted (4 attempts),4.441e-16,True
+limiter-2D-covon-limoff-s0-setoff-stretched-dry,limiter,2D,on,off,0,off,stretched,1 accepted (4 attempts),4.441e-16,True
+limiter-2D-covon-limoff-s0-setoff-stretched-dry-relax,limiter,2D,on,off,0,off,stretched,1 accepted (4 attempts),4.441e-16,True
+2d-2D-covon-limoff-s0-setoff-uniform,2d,2D,on,off,0,off,uniform,,,SKIP
+limiter-2D-covon-limoff-s0-setoff-uniform,limiter,2D,on,off,0,off,uniform,,,SKIP
+2d-2D-covon-limoff-s0-seton-stretched,2d,2D,on,off,0,on,stretched,,,SKIP
+limiter-2D-covon-limoff-s0-seton-stretched,limiter,2D,on,off,0,on,stretched,,,SKIP
+2d-2D-covon-limoff-s0-seton-uniform,2d,2D,on,off,0,on,uniform,,,SKIP
+limiter-2D-covon-limoff-s0-seton-uniform,limiter,2D,on,off,0,on,uniform,,,SKIP
+2d-2D-covon-limoff-s9-setoff-stretched-nx2=4,2d,2D,on,off,9,off,stretched,1 (3 stages),6.661e-16,True
+2d-2D-covon-limoff-s9-setoff-stretched-nx2=1,2d,1D-column,on,off,9,off,stretched,1 (3 stages),6.661e-16,True
+limiter-2D-covon-limoff-s9-setoff-stretched-moist,limiter,2D,on,off,9,off,stretched,1 accepted (2 attempts),4.441e-16,True
+limiter-2D-covon-limoff-s9-setoff-stretched-moist-relax,limiter,2D,on,off,9,off,stretched,1 accepted (2 attempts),4.441e-16,True
+limiter-2D-covon-limoff-s9-setoff-stretched-dry,limiter,2D,on,off,9,off,stretched,1 accepted (2 attempts),4.441e-16,True
+limiter-2D-covon-limoff-s9-setoff-stretched-dry-relax,limiter,2D,on,off,9,off,stretched,1 accepted (2 attempts),4.441e-16,True
+2d-2D-covon-limoff-s9-setoff-uniform,2d,2D,on,off,9,off,uniform,,,SKIP
+limiter-2D-covon-limoff-s9-setoff-uniform,limiter,2D,on,off,9,off,uniform,,,SKIP
+2d-2D-covon-limoff-s9-seton-stretched,2d,2D,on,off,9,on,stretched,,,SKIP
+limiter-2D-covon-limoff-s9-seton-stretched,limiter,2D,on,off,9,on,stretched,,,SKIP
+2d-2D-covon-limoff-s9-seton-uniform,2d,2D,on,off,9,on,uniform,,,SKIP
+limiter-2D-covon-limoff-s9-seton-uniform,limiter,2D,on,off,9,on,uniform,,,SKIP
+2d-2D-covoff-limon-s0-setoff-stretched,2d,2D,off,on,0,off,stretched,,,SKIP
+limiter-2D-covoff-limon-s0-setoff-stretched-moist,limiter,2D,off,on,0,off,stretched,1 accepted (4 attempts),4.441e-16,True
+limiter-2D-covoff-limon-s0-setoff-stretched-moist-relax,limiter,2D,off,on,0,off,stretched,1 accepted (4 attempts),4.441e-16,True
+limiter-2D-covoff-limon-s0-setoff-stretched-dry,limiter,2D,off,on,0,off,stretched,1 accepted (4 attempts),4.441e-16,True
+limiter-2D-covoff-limon-s0-setoff-stretched-dry-relax,limiter,2D,off,on,0,off,stretched,1 accepted (4 attempts),4.441e-16,True
+2d-2D-covoff-limon-s0-setoff-uniform,2d,2D,off,on,0,off,uniform,,,SKIP
+limiter-2D-covoff-limon-s0-setoff-uniform,limiter,2D,off,on,0,off,uniform,,,SKIP
+2d-2D-covoff-limon-s0-seton-stretched,2d,2D,off,on,0,on,stretched,,,SKIP
+limiter-2D-covoff-limon-s0-seton-stretched,limiter,2D,off,on,0,on,stretched,,,SKIP
+2d-2D-covoff-limon-s0-seton-uniform,2d,2D,off,on,0,on,uniform,,,SKIP
+limiter-2D-covoff-limon-s0-seton-uniform,limiter,2D,off,on,0,on,uniform,,,SKIP
+2d-2D-covoff-limon-s9-setoff-stretched,2d,2D,off,on,9,off,stretched,,,SKIP
+limiter-2D-covoff-limon-s9-setoff-stretched-moist,limiter,2D,off,on,9,off,stretched,1 accepted (2 attempts),4.441e-16,True
+limiter-2D-covoff-limon-s9-setoff-stretched-moist-relax,limiter,2D,off,on,9,off,stretched,1 accepted (2 attempts),4.441e-16,True
+limiter-2D-covoff-limon-s9-setoff-stretched-dry,limiter,2D,off,on,9,off,stretched,1 accepted (2 attempts),4.441e-16,True
+limiter-2D-covoff-limon-s9-setoff-stretched-dry-relax,limiter,2D,off,on,9,off,stretched,1 accepted (2 attempts),4.441e-16,True
+2d-2D-covoff-limon-s9-setoff-uniform,2d,2D,off,on,9,off,uniform,,,SKIP
+limiter-2D-covoff-limon-s9-setoff-uniform,limiter,2D,off,on,9,off,uniform,,,SKIP
+2d-2D-covoff-limon-s9-seton-stretched,2d,2D,off,on,9,on,stretched,,,SKIP
+limiter-2D-covoff-limon-s9-seton-stretched,limiter,2D,off,on,9,on,stretched,,,SKIP
+2d-2D-covoff-limon-s9-seton-uniform,2d,2D,off,on,9,on,uniform,,,SKIP
+limiter-2D-covoff-limon-s9-seton-uniform,limiter,2D,off,on,9,on,uniform,,,SKIP
+2d-2D-covoff-limoff-s0-setoff-stretched-nx2=4,2d,2D,off,off,0,off,stretched,1 (3 stages),1.110e-15,True
+2d-2D-covoff-limoff-s0-setoff-stretched-nx2=1,2d,1D-column,off,off,0,off,stretched,1 (3 stages),3.775e-15,True
+limiter-2D-covoff-limoff-s0-setoff-stretched-moist,limiter,2D,off,off,0,off,stretched,1 accepted (4 attempts),4.441e-16,True
+limiter-2D-covoff-limoff-s0-setoff-stretched-moist-relax,limiter,2D,off,off,0,off,stretched,1 accepted (4 attempts),4.441e-16,True
+limiter-2D-covoff-limoff-s0-setoff-stretched-dry,limiter,2D,off,off,0,off,stretched,1 accepted (4 attempts),4.441e-16,True
+limiter-2D-covoff-limoff-s0-setoff-stretched-dry-relax,limiter,2D,off,off,0,off,stretched,1 accepted (4 attempts),4.441e-16,True
+2d-2D-covoff-limoff-s0-setoff-uniform,2d,2D,off,off,0,off,uniform,,,SKIP
+limiter-2D-covoff-limoff-s0-setoff-uniform,limiter,2D,off,off,0,off,uniform,,,SKIP
+2d-2D-covoff-limoff-s0-seton-stretched,2d,2D,off,off,0,on,stretched,,,SKIP
+limiter-2D-covoff-limoff-s0-seton-stretched,limiter,2D,off,off,0,on,stretched,,,SKIP
+2d-2D-covoff-limoff-s0-seton-uniform,2d,2D,off,off,0,on,uniform,,,SKIP
+limiter-2D-covoff-limoff-s0-seton-uniform,limiter,2D,off,off,0,on,uniform,,,SKIP
+2d-2D-covoff-limoff-s9-setoff-stretched-nx2=4,2d,2D,off,off,9,off,stretched,1 (3 stages),6.661e-16,True
+2d-2D-covoff-limoff-s9-setoff-stretched-nx2=1,2d,1D-column,off,off,9,off,stretched,1 (3 stages),6.661e-16,True
+limiter-2D-covoff-limoff-s9-setoff-stretched-moist,limiter,2D,off,off,9,off,stretched,1 accepted (2 attempts),4.441e-16,True
+limiter-2D-covoff-limoff-s9-setoff-stretched-moist-relax,limiter,2D,off,off,9,off,stretched,1 accepted (2 attempts),4.441e-16,True
+limiter-2D-covoff-limoff-s9-setoff-stretched-dry,limiter,2D,off,off,9,off,stretched,1 accepted (2 attempts),4.441e-16,True
+limiter-2D-covoff-limoff-s9-setoff-stretched-dry-relax,limiter,2D,off,off,9,off,stretched,1 accepted (2 attempts),4.441e-16,True
+2d-2D-covoff-limoff-s9-setoff-uniform,2d,2D,off,off,9,off,uniform,,,SKIP
+limiter-2D-covoff-limoff-s9-setoff-uniform,limiter,2D,off,off,9,off,uniform,,,SKIP
+2d-2D-covoff-limoff-s9-seton-stretched,2d,2D,off,off,9,on,stretched,,,SKIP
+limiter-2D-covoff-limoff-s9-seton-stretched,limiter,2D,off,off,9,on,stretched,,,SKIP
+2d-2D-covoff-limoff-s9-seton-uniform,2d,2D,off,off,9,on,uniform,,,SKIP
+limiter-2D-covoff-limoff-s9-seton-uniform,limiter,2D,off,off,9,on,uniform,,,SKIP
+2d-3D-covon-limon-s0-setoff-stretched,2d,3D,on,on,0,off,stretched,,,SKIP
+limiter-3D-covon-limon-s0-setoff-stretched,limiter,3D,on,on,0,off,stretched,,,SKIP
+2d-3D-covon-limon-s0-setoff-uniform,2d,3D,on,on,0,off,uniform,,,SKIP
+limiter-3D-covon-limon-s0-setoff-uniform,limiter,3D,on,on,0,off,uniform,,,SKIP
+2d-3D-covon-limon-s0-seton-stretched,2d,3D,on,on,0,on,stretched,,,SKIP
+limiter-3D-covon-limon-s0-seton-stretched,limiter,3D,on,on,0,on,stretched,,,SKIP
+2d-3D-covon-limon-s0-seton-uniform,2d,3D,on,on,0,on,uniform,,,SKIP
+limiter-3D-covon-limon-s0-seton-uniform,limiter,3D,on,on,0,on,uniform,,,SKIP
+2d-3D-covon-limon-s9-setoff-stretched,2d,3D,on,on,9,off,stretched,,,SKIP
+limiter-3D-covon-limon-s9-setoff-stretched,limiter,3D,on,on,9,off,stretched,,,SKIP
+2d-3D-covon-limon-s9-setoff-uniform,2d,3D,on,on,9,off,uniform,,,SKIP
+limiter-3D-covon-limon-s9-setoff-uniform,limiter,3D,on,on,9,off,uniform,,,SKIP
+2d-3D-covon-limon-s9-seton-stretched,2d,3D,on,on,9,on,stretched,,,SKIP
+limiter-3D-covon-limon-s9-seton-stretched,limiter,3D,on,on,9,on,stretched,,,SKIP
+2d-3D-covon-limon-s9-seton-uniform,2d,3D,on,on,9,on,uniform,,,SKIP
+limiter-3D-covon-limon-s9-seton-uniform,limiter,3D,on,on,9,on,uniform,,,SKIP
+2d-3D-covon-limoff-s0-setoff-stretched,2d,3D,on,off,0,off,stretched,,,SKIP
+limiter-3D-covon-limoff-s0-setoff-stretched,limiter,3D,on,off,0,off,stretched,,,SKIP
+2d-3D-covon-limoff-s0-setoff-uniform,2d,3D,on,off,0,off,uniform,,,SKIP
+limiter-3D-covon-limoff-s0-setoff-uniform,limiter,3D,on,off,0,off,uniform,,,SKIP
+2d-3D-covon-limoff-s0-seton-stretched,2d,3D,on,off,0,on,stretched,,,SKIP
+limiter-3D-covon-limoff-s0-seton-stretched,limiter,3D,on,off,0,on,stretched,,,SKIP
+2d-3D-covon-limoff-s0-seton-uniform,2d,3D,on,off,0,on,uniform,,,SKIP
+limiter-3D-covon-limoff-s0-seton-uniform,limiter,3D,on,off,0,on,uniform,,,SKIP
+2d-3D-covon-limoff-s9-setoff-stretched,2d,3D,on,off,9,off,stretched,,,SKIP
+limiter-3D-covon-limoff-s9-setoff-stretched,limiter,3D,on,off,9,off,stretched,,,SKIP
+2d-3D-covon-limoff-s9-setoff-uniform,2d,3D,on,off,9,off,uniform,,,SKIP
+limiter-3D-covon-limoff-s9-setoff-uniform,limiter,3D,on,off,9,off,uniform,,,SKIP
+2d-3D-covon-limoff-s9-seton-stretched,2d,3D,on,off,9,on,stretched,,,SKIP
+limiter-3D-covon-limoff-s9-seton-stretched,limiter,3D,on,off,9,on,stretched,,,SKIP
+2d-3D-covon-limoff-s9-seton-uniform,2d,3D,on,off,9,on,uniform,,,SKIP
+limiter-3D-covon-limoff-s9-seton-uniform,limiter,3D,on,off,9,on,uniform,,,SKIP
+2d-3D-covoff-limon-s0-setoff-stretched,2d,3D,off,on,0,off,stretched,,,SKIP
+limiter-3D-covoff-limon-s0-setoff-stretched,limiter,3D,off,on,0,off,stretched,,,SKIP
+2d-3D-covoff-limon-s0-setoff-uniform,2d,3D,off,on,0,off,uniform,,,SKIP
+limiter-3D-covoff-limon-s0-setoff-uniform,limiter,3D,off,on,0,off,uniform,,,SKIP
+2d-3D-covoff-limon-s0-seton-stretched,2d,3D,off,on,0,on,stretched,,,SKIP
+limiter-3D-covoff-limon-s0-seton-stretched,limiter,3D,off,on,0,on,stretched,,,SKIP
+2d-3D-covoff-limon-s0-seton-uniform,2d,3D,off,on,0,on,uniform,,,SKIP
+limiter-3D-covoff-limon-s0-seton-uniform,limiter,3D,off,on,0,on,uniform,,,SKIP
+2d-3D-covoff-limon-s9-setoff-stretched,2d,3D,off,on,9,off,stretched,,,SKIP
+limiter-3D-covoff-limon-s9-setoff-stretched,limiter,3D,off,on,9,off,stretched,,,SKIP
+2d-3D-covoff-limon-s9-setoff-uniform,2d,3D,off,on,9,off,uniform,,,SKIP
+limiter-3D-covoff-limon-s9-setoff-uniform,limiter,3D,off,on,9,off,uniform,,,SKIP
+2d-3D-covoff-limon-s9-seton-stretched,2d,3D,off,on,9,on,stretched,,,SKIP
+limiter-3D-covoff-limon-s9-seton-stretched,limiter,3D,off,on,9,on,stretched,,,SKIP
+2d-3D-covoff-limon-s9-seton-uniform,2d,3D,off,on,9,on,uniform,,,SKIP
+limiter-3D-covoff-limon-s9-seton-uniform,limiter,3D,off,on,9,on,uniform,,,SKIP
+2d-3D-covoff-limoff-s0-setoff-stretched,2d,3D,off,off,0,off,stretched,,,SKIP
+limiter-3D-covoff-limoff-s0-setoff-stretched,limiter,3D,off,off,0,off,stretched,,,SKIP
+2d-3D-covoff-limoff-s0-setoff-uniform,2d,3D,off,off,0,off,uniform,,,SKIP
+limiter-3D-covoff-limoff-s0-setoff-uniform,limiter,3D,off,off,0,off,uniform,,,SKIP
+2d-3D-covoff-limoff-s0-seton-stretched,2d,3D,off,off,0,on,stretched,,,SKIP
+limiter-3D-covoff-limoff-s0-seton-stretched,limiter,3D,off,off,0,on,stretched,,,SKIP
+2d-3D-covoff-limoff-s0-seton-uniform,2d,3D,off,off,0,on,uniform,,,SKIP
+limiter-3D-covoff-limoff-s0-seton-uniform,limiter,3D,off,off,0,on,uniform,,,SKIP
+2d-3D-covoff-limoff-s9-setoff-stretched,2d,3D,off,off,9,off,stretched,,,SKIP
+limiter-3D-covoff-limoff-s9-setoff-stretched,limiter,3D,off,off,9,off,stretched,,,SKIP
+2d-3D-covoff-limoff-s9-setoff-uniform,2d,3D,off,off,9,off,uniform,,,SKIP
+limiter-3D-covoff-limoff-s9-setoff-uniform,limiter,3D,off,off,9,off,uniform,,,SKIP
+2d-3D-covoff-limoff-s9-seton-stretched,2d,3D,off,off,9,on,stretched,,,SKIP
+limiter-3D-covoff-limoff-s9-seton-stretched,limiter,3D,off,off,9,on,stretched,,,SKIP
+2d-3D-covoff-limoff-s9-seton-uniform,2d,3D,off,off,9,on,uniform,,,SKIP
+limiter-3D-covoff-limoff-s9-seton-uniform,limiter,3D,off,off,9,on,uniform,,,SKIP
+cs-C12-moist-tracer,cubed_sphere_c12_moist,CS-C12,on,on,0,off,uniform,50,3.664e-15,True
+cs-C12-moist-vapor,cubed_sphere_c12_moist,CS-C12,on,on,0,off,uniform,50,3.331e-15,True

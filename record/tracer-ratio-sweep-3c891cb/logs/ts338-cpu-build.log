@@ -1,0 +1,410 @@
+[  0%] Building CXX object _deps/fmt-build/CMakeFiles/fmt.dir/src/format.cc.o
+[  0%] Building CXX object _deps/fmt-build/CMakeFiles/fmt.dir/src/os.cc.o
+[  0%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/contrib/graphbuilder.cpp.o
+[  0%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/binary.cpp.o
+[  9%] Building CXX object _deps/gtest-build/googletest/CMakeFiles/gtest.dir/src/gtest-all.cc.o
+[  9%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/contrib/graphbuilderadapter.cpp.o
+[  9%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/directives.cpp.o
+[  9%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/emit.cpp.o
+[  9%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/emitterstate.cpp.o
+[  9%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/convert.cpp.o
+[  9%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/emitter.cpp.o
+[  9%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/depthguard.cpp.o
+[  9%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/emitterutils.cpp.o
+[  9%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/memory.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/emitfromevents.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/node.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/nodebuilder.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/exceptions.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/parse.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/exp.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/null.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/nodeevents.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/node_data.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/ostream_wrapper.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/parser.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/regex_yaml.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/scanner.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/scanscalar.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/scantag.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/scantoken.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/simplekey.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/singledocparser.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/stream.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/tag.cpp.o
+[ 18%] Linking CXX static library ../../lib/libyaml-cpp.a
+[ 18%] Built target yaml-cpp
+[ 18%] Building CXX object _deps/yaml-cpp-build/util/CMakeFiles/yaml-cpp-read.dir/read.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/util/CMakeFiles/yaml-cpp-parse.dir/parse.cpp.o
+[ 18%] Building CXX object _deps/yaml-cpp-build/util/CMakeFiles/yaml-cpp-sandbox.dir/sandbox.cpp.o
+[ 18%] Linking CXX static library ../../lib/libfmt.a
+[ 18%] Built target fmt
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/bc/bc_dispatch.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/bc/rectify_solid.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/coord/cubed_sphere_utils.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/coord/cartesian.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/coord/coord_dispatch.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/coord/coordgen.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/coord/gnomonic_equiangle.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/bc/internal_boundary.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/eos/eos_dispatch.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/coord/coord_utils.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/bc/bc_func.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/coord/spherical_polar.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/coord/x1_centroid.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/coord/coordinate.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/coord/spherical_utils.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/eos/ideal_gas.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/eos/equation_of_state.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/eos/aneos.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/eos/aneos/aneos_thermo_dummy.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/eos/ideal_moist.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/eos/moist_mixture.cpp.o
+[ 18%] Linking CXX executable parse
+[ 18%] Linking CXX executable read
+[ 18%] Built target yaml-cpp-parse
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/eos/shallow_water.cpp.o
+[ 18%] Linking CXX executable sandbox
+[ 18%] Built target yaml-cpp-read
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/forcing/body_heat.cpp.o
+[ 18%] Built target yaml-cpp-sandbox
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/forcing/bot_heat.cpp.o
+[ 18%] Linking CXX static library ../../../lib/libgtest.a
+[ 18%] Built target gtest
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/forcing/bot_sponge_lyr.cpp.o
+[ 18%] Building CXX object _deps/gtest-build/googlemock/CMakeFiles/gmock.dir/src/gmock-all.cc.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/forcing/const_gravity.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/forcing/coriolis.cpp.o
+[ 18%] Linking CXX static library ../../../lib/libgmock.a
+[ 18%] Built target gmock
+[ 18%] Building CXX object _deps/gtest-build/googletest/CMakeFiles/gtest_main.dir/src/gtest_main.cc.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/forcing/diffusion.cpp.o
+[ 18%] Building CXX object src/CMakeFiles/snap_release.dir/forcing/diffusion_cubed_sphere.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/forcing/diffusion_radial.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/forcing/plume_forcing.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/forcing/relax_bot_comp.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/forcing/relax_bot_temp.cpp.o
+[ 27%] Linking CXX static library ../../../lib/libgtest_main.a
+[ 27%] Built target gtest_main
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/forcing/relax_bot_velo.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/forcing/top_cool.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/forcing/top_sponge_lyr.cpp.o
+[ 27%] Building CXX object _deps/gtest-build/googlemock/CMakeFiles/gmock_main.dir/src/gmock_main.cc.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/hydro/balance_column.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/hydro/flux_positivity.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/hydro/hydro.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/hydro/hydro_dispatch.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/hydro/hydro_forward.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/hydro/hydro_options.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/hydro/register_forcing_modules.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/hydro/wb_ref4.cpp.o
+[ 27%] Linking CXX static library ../../../lib/libgmock_main.a
+[ 27%] Built target gmock_main
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/implicit/implicit_dispatch.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/implicit/implicit_hydro.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/input/check_keys.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/input/command_line.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/input/io_wrapper.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/input/parameter_input.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/input/read_restart_file.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/input/signal.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/layout/connectivity.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/layout/cubed_layout.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/layout/cubed_sphere_layout.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/layout/distributed.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/layout/layout.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/layout/process_group.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/layout/process_group_ucx.cpp.o
+[ 27%] Building CXX object src/CMakeFiles/snap_release.dir/layout/slab_layout.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/mesh/mesh.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/mesh/mesh_functions.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/mesh/meshblock.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/mesh/meshblock_options.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/output/combine_netcdf.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/output/combine_restart.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/output/hdf5.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/output/load_diag_output_data.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/output/load_hydro_output_data.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/output/load_scalar_output_data.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/output/load_user_output_data.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/output/mppnccombine.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/output/netcdf.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/output/output_type.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/output/output_utils.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/output/pnetcdf.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/output/restart.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/recon/cp3.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/recon/cp5.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/recon/interpolation.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/recon/plm.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/recon/ppm.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/recon/recon_dispatch.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/recon/recon_dispatch_nu.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/recon/reconstruct.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/recon/weno3.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/recon/weno5.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/recon/x1_coeffs.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/riemann/hllc.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/riemann/hllc_dispatch.cpp.o
+[ 36%] Building CXX object src/CMakeFiles/snap_release.dir/riemann/lmars.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/snap_release.dir/riemann/lmars_dispatch.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/snap_release.dir/riemann/plume_roe.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/snap_release.dir/riemann/riemann_solver.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/snap_release.dir/riemann/roe.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/snap_release.dir/riemann/roe_dispatch.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/snap_release.dir/riemann/shallow_roe.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/snap_release.dir/riemann/shallow_roe_dispatch.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/snap_release.dir/scalar/scalar.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/snap_release.dir/scalar/scalar_options.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/snap_release.dir/sedimentation/sed_hydro.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/snap_release.dir/sedimentation/sed_hydro_dispatch.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/snap_release.dir/sedimentation/sed_options.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/snap_release.dir/sedimentation/sed_vel.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/snap_release.dir/utils/flip_zero.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/snap_release.dir/utils/pull_neighbors.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/snap_release.dir/utils/refine.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/snap_release.dir/utils/signal_handler.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/snap_release.dir/utils/utils_dispatch.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/snap_release.dir/utils/vectorize.cpp.o
+[ 45%] Linking CXX shared library ../lib/libsnap_release.so
+[ 45%] Built target snap_release
+[ 45%] Building CXX object tests/CMakeFiles/test_x1_dim_guard.release.dir/test_x1_dim_guard.cpp.o
+[ 45%] Building CXX object tests/CMakeFiles/test_radiating_boundary.release.dir/test_radiating_boundary.cpp.o
+[ 45%] Building CXX object tests/CMakeFiles/test_hydro_ref_x1_rf_wall.release.dir/test_hydro_ref_x1_rf_wall.cpp.o
+[ 45%] Building CXX object tests/CMakeFiles/test_implicit_cfl.release.dir/test_implicit_cfl.cpp.o
+[ 45%] Building CXX object tests/CMakeFiles/test_plm.release.dir/test_plm.cpp.o
+[ 45%] Building CXX object tests/CMakeFiles/test_eos.release.dir/test_eos.cpp.o
+[ 45%] Building CXX object tests/CMakeFiles/test_implicit_face_work_jacobian.release.dir/test_implicit_face_work_jacobian.cpp.o
+[ 45%] Building CXX object tests/CMakeFiles/test_vic_partial_tangential.release.dir/test_vic_partial_tangential.cpp.o
+[ 45%] Building CXX object tests/CMakeFiles/test_x1_coeffs.release.dir/test_x1_coeffs.cpp.o
+[ 45%] Building CXX object tests/CMakeFiles/test_uniform_module_tree.release.dir/test_uniform_module_tree.cpp.o
+[ 45%] Building CXX object tests/CMakeFiles/test_x1_stretched_refusal.release.dir/test_x1_stretched_refusal.cpp.o
+[ 45%] Building CXX object tests/CMakeFiles/test_lu_failure.release.dir/test_lu_failure.cpp.o
+[ 45%] Building CXX object tests/CMakeFiles/test_weno.release.dir/test_weno.cpp.o
+[ 45%] Building CXX object tests/CMakeFiles/test_riemann.release.dir/test_riemann.cpp.o
+[ 45%] Building CXX object tests/CMakeFiles/test_backward_substitution.release.dir/test_backward_substitution.cpp.o
+[ 45%] Building CXX object tests/CMakeFiles/test_x1_qmax_guard.release.dir/test_x1_qmax_guard.cpp.o
+[ 45%] Building CXX object tests/CMakeFiles/test_flip_zero_count.release.dir/test_flip_zero_count.cpp.o
+[ 45%] Building CXX object tests/CMakeFiles/test_stretched_x1.release.dir/test_stretched_x1.cpp.o
+[ 54%] Building CXX object tests/CMakeFiles/test_cubed_sphere_exchange.release.dir/test_cubed_sphere_exchange.cpp.o
+[ 54%] Building CXX object tests/CMakeFiles/test_rectify.release.dir/test_rectify.cpp.o
+[ 54%] Building CXX object tests/CMakeFiles/test_scalar.release.dir/test_scalar.cpp.o
+[ 54%] Building CXX object tests/CMakeFiles/test_deck_x1_wiring.release.dir/test_deck_x1_wiring.cpp.o
+[ 54%] Building CXX object tests/CMakeFiles/test_cp5_nghost.release.dir/test_cp5_nghost.cpp.o
+[ 54%] Building CXX object tests/CMakeFiles/test_coordinate.release.dir/test_coordinate.cpp.o
+[ 63%] Linking CXX executable test_implicit_face_work_jacobian.release
+[ 63%] Linking CXX executable test_vic_partial_tangential.release
+[ 63%] Built target test_implicit_face_work_jacobian.release
+[ 63%] Building CXX object tests/CMakeFiles/test_stretched_x1_ref.release.dir/test_stretched_x1_ref.cpp.o
+[ 63%] Built target test_vic_partial_tangential.release
+[ 63%] Building CXX object tests/CMakeFiles/test_radial_face_moments.release.dir/test_radial_face_moments.cpp.o
+[ 63%] Linking CXX executable test_rectify.release
+[ 63%] Linking CXX executable test_flip_zero_count.release
+[ 63%] Built target test_rectify.release
+[ 63%] Building CXX object tests/CMakeFiles/test_hydrostatic.release.dir/test_hydrostatic.cpp.o
+[ 63%] Built target test_flip_zero_count.release
+[ 63%] Building CXX object tests/CMakeFiles/test_hydro_options.release.dir/test_hydro_options.cpp.o
+[ 63%] Linking CXX executable test_hydro_ref_x1_rf_wall.release
+[ 63%] Linking CXX executable test_x1_qmax_guard.release
+[ 63%] Built target test_hydro_ref_x1_rf_wall.release
+[ 63%] Building CXX object tests/CMakeFiles/test_cycle_diagnostics.release.dir/test_cycle_diagnostics.cpp.o
+[ 63%] Linking CXX executable test_x1_dim_guard.release
+[ 63%] Built target test_x1_qmax_guard.release
+[ 63%] Building CXX object tests/CMakeFiles/test_flux_positivity_carry.release.dir/test_flux_positivity_carry.cpp.o
+[ 63%] Built target test_x1_dim_guard.release
+[ 63%] Linking CXX executable test_implicit_cfl.release
+[ 63%] Building CXX object tests/CMakeFiles/test_yaml_keys.release.dir/test_yaml_keys.cpp.o
+[ 63%] Built target test_implicit_cfl.release
+[ 63%] Building CXX object tests/CMakeFiles/test_sedimentation_guards.release.dir/test_sedimentation_guards.cpp.o
+[ 63%] Linking CXX executable test_stretched_x1.release
+[ 63%] Built target test_stretched_x1.release
+[ 63%] Linking CXX executable test_plm.release
+[ 63%] Building CXX object tests/CMakeFiles/test_balance_column.release.dir/test_balance_column.cpp.o
+[ 72%] Linking CXX executable test_backward_substitution.release
+[ 72%] Linking CXX executable test_weno.release
+[ 72%] Built target test_plm.release
+[ 72%] Building CXX object tests/CMakeFiles/test_hydro_ref_x1.release.dir/test_hydro_ref_x1.cpp.o
+[ 72%] Built target test_backward_substitution.release
+[ 72%] Building CXX object tests/CMakeFiles/test_uranus_cycle1_abort.release.dir/test_uranus_cycle1_abort.cpp.o
+[ 72%] Linking CXX executable test_x1_coeffs.release
+[ 72%] Built target test_weno.release
+[ 72%] Building CXX object tests/CMakeFiles/test_pref_local_seam.release.dir/test_pref_local_seam.cpp.o
+[ 72%] Linking CXX executable test_cp5_nghost.release
+[ 72%] Built target test_x1_coeffs.release
+[ 72%] Building CXX object tests/CMakeFiles/test_gravity_work_cache_to.release.dir/test_gravity_work_cache_to.cpp.o
+[ 72%] Linking CXX executable test_deck_x1_wiring.release
+[ 72%] Linking CXX executable test_uranus_cycle1_abort.release
+[ 72%] Built target test_cp5_nghost.release
+[ 72%] Building CXX object tests/CMakeFiles/test_x1_seam_split.release.dir/test_x1_seam_split.cpp.o
+[ 72%] Linking CXX executable test_x1_stretched_refusal.release
+[ 72%] Built target test_deck_x1_wiring.release
+[ 72%] Building CXX object tests/CMakeFiles/test_x1_seam_split_mp.release.dir/test_x1_seam_split_mp.cpp.o
+[ 72%] Linking CXX executable test_radial_face_moments.release
+[ 72%] Built target test_uranus_cycle1_abort.release
+[ 72%] Building CXX object tests/CMakeFiles/test_wb_wall_corner.release.dir/test_wb_wall_corner.cpp.o
+[ 72%] Linking CXX executable test_uniform_module_tree.release
+[ 72%] Linking CXX executable test_scalar.release
+[ 72%] Built target test_x1_stretched_refusal.release
+[ 72%] Building CXX object tests/CMakeFiles/test_face_floor.release.dir/test_face_floor.cpp.o
+[ 72%] Built target test_radial_face_moments.release
+[ 72%] Building CXX object tests/CMakeFiles/test_wb_ref_wall.release.dir/test_wb_ref_wall.cpp.o
+[ 72%] Linking CXX executable test_cubed_sphere_exchange.release
+[ 72%] Built target test_uniform_module_tree.release
+[ 72%] Built target test_scalar.release
+[ 72%] Building CXX object tests/CMakeFiles/test_netcdf_utils.release.dir/test_netcdf_utils.cpp.o
+[ 72%] Building CXX object tests/CMakeFiles/test_user_output.release.dir/test_user_output.cpp.o
+[ 72%] Linking CXX executable test_eos.release
+[ 72%] Built target test_cubed_sphere_exchange.release
+[ 72%] Building CXX object tests/CMakeFiles/test_process_group.release.dir/test_process_group.cpp.o
+[ 72%] Built target test_eos.release
+[ 72%] Building CXX object tests/CMakeFiles/test_refine.release.dir/test_refine.cpp.o
+[ 72%] Linking CXX executable test_riemann.release
+[ 72%] Linking CXX executable test_radiating_boundary.release
+[ 72%] Built target test_riemann.release
+[ 72%] Building CXX object tests/CMakeFiles/test_diffusion.release.dir/test_diffusion.cpp.o
+[ 72%] Linking CXX executable test_coordinate.release
+[ 72%] Built target test_radiating_boundary.release
+[ 72%] Building CXX object tests/CMakeFiles/test_diffusion_cubed_sphere.release.dir/test_diffusion_cubed_sphere.cpp.o
+[ 72%] Built target test_coordinate.release
+[ 72%] Building CXX object tests/CMakeFiles/test_diffusion_cubed_sphere_two_gpu.release.dir/test_diffusion_cubed_sphere_two_gpu.cpp.o
+[ 72%] Linking CXX executable test_stretched_x1_ref.release
+[ 72%] Built target test_stretched_x1_ref.release
+[ 72%] Building CXX object tests/CMakeFiles/test_diffusion_moist.release.dir/test_diffusion_moist.cpp.o
+[ 72%] Linking CXX executable test_lu_failure.release
+[ 72%] Linking CXX executable test_netcdf_utils.release
+[ 72%] Linking CXX executable test_hydro_ref_x1.release
+[ 72%] Built target test_lu_failure.release
+[ 81%] Building CXX object tests/CMakeFiles/test_diffusion_x1_scale.release.dir/test_diffusion_x1_scale.cpp.o
+[ 81%] Linking CXX executable test_hydrostatic.release
+[ 81%] Built target test_netcdf_utils.release
+[ 81%] Building CXX object tests/CMakeFiles/test_condensate_conservation.release.dir/test_condensate_conservation.cpp.o
+[ 81%] Built target test_hydro_ref_x1.release
+[ 81%] Building CXX object tests/CMakeFiles/test_parentless_cloud.release.dir/test_parentless_cloud.cpp.o
+[ 81%] Linking CXX executable test_gravity_work_cache_to.release
+[ 81%] Built target test_hydrostatic.release
+[ 81%] Building CXX object tests/CMakeFiles/test_fix_vapor_volume.release.dir/test_fix_vapor_volume.cpp.o
+[ 81%] Linking CXX executable test_hydro_options.release
+[ 81%] Built target test_gravity_work_cache_to.release
+[ 81%] Building CXX object tests/CMakeFiles/test_fix_vapor_deficit.release.dir/test_fix_vapor_deficit.cpp.o
+[ 81%] Built target test_hydro_options.release
+[ 81%] Building CXX object tests/CMakeFiles/test_check_redo_vapor_deficit.release.dir/test_check_redo_vapor_deficit.cpp.o
+[ 81%] Linking CXX executable test_yaml_keys.release
+[ 81%] Linking CXX executable test_sedimentation_guards.release
+[ 81%] Built target test_yaml_keys.release
+[ 81%] Building CXX object tests/CMakeFiles/test_species_face_clamp.release.dir/test_species_face_clamp.cpp.o
+[ 81%] Linking CXX executable test_refine.release
+[ 81%] Linking CXX executable test_cycle_diagnostics.release
+[ 81%] Built target test_sedimentation_guards.release
+[ 81%] Building CXX object tests/CMakeFiles/test_parentless_cloud_nb1.release.dir/test_parentless_cloud_nb1.cpp.o
+[ 81%] Linking CXX executable test_process_group.release
+[ 81%] Built target test_refine.release
+[ 81%] Building CXX object tests/CMakeFiles/test_vapor_column_nb1.release.dir/test_vapor_column_nb1.cpp.o
+[ 81%] Built target test_cycle_diagnostics.release
+[ 81%] Building CXX object tests/CMakeFiles/test_wall_saturation.release.dir/test_wall_saturation.cpp.o
+[ 81%] Linking CXX executable test_flux_positivity_carry.release
+[ 81%] Built target test_process_group.release
+[ 81%] Building CXX object tests/CMakeFiles/test_cloud_parent_slots.release.dir/test_cloud_parent_slots.cpp.o
+[ 81%] Built target test_flux_positivity_carry.release
+[ 81%] Building CXX object tests/CMakeFiles/test_two_cards_species.release.dir/test_two_cards_species.cpp.o
+[ 81%] Linking CXX executable test_balance_column.release
+[ 81%] Built target test_balance_column.release
+[ 81%] Building CXX object tests/CMakeFiles/test_forcing.release.dir/test_forcing.cpp.o
+[ 81%] Linking CXX executable test_diffusion_cubed_sphere_two_gpu.release
+[ 81%] Linking CXX executable test_pref_local_seam.release
+[ 81%] Linking CXX executable test_face_floor.release
+[ 81%] Linking CXX executable test_x1_seam_split.release
+[ 81%] Linking CXX executable test_wb_ref_wall.release
+[ 81%] Built target test_pref_local_seam.release
+[ 81%] Built target test_diffusion_cubed_sphere_two_gpu.release
+[ 81%] Building CXX object tests/CMakeFiles/test_exchange.release.dir/test_exchange.cpp.o
+[ 81%] Building CXX object tests/CMakeFiles/test_output_barrier.release.dir/test_output_barrier.cpp.o
+[ 81%] Built target test_face_floor.release
+[ 81%] Building CXX object tests/CMakeFiles/test_check_redo_parallel.release.dir/test_check_redo_parallel.cpp.o
+[ 90%] Linking CXX executable test_wb_wall_corner.release
+[ 90%] Built target test_x1_seam_split.release
+[ 90%] Building CXX object tests/CMakeFiles/test_cycle_diagnostics_parallel.release.dir/test_cycle_diagnostics_parallel.cpp.o
+[ 90%] Linking CXX executable test_x1_seam_split_mp.release
+[ 90%] Built target test_wb_ref_wall.release
+[ 90%] Building CXX object tests/CMakeFiles/test_sedimentation_cubed_seam.release.dir/test_sedimentation_cubed_seam.cpp.o
+[ 90%] Built target test_wb_wall_corner.release
+[ 90%] Building CXX object tests/CMakeFiles/test_parentless_cloud_nb1_mp.release.dir/test_parentless_cloud_nb1_mp.cpp.o
+[ 90%] Built target test_x1_seam_split_mp.release
+[ 90%] Building CXX object tests/CMakeFiles/test_mesh_multi_block.release.dir/test_mesh_multi_block.cpp.o
+[ 90%] Linking CXX executable test_diffusion.release
+[ 90%] Built target test_diffusion.release
+[ 90%] Building CXX object examples/CMakeFiles/shock.release.dir/shock.cpp.o
+[ 90%] Linking CXX executable test_user_output.release
+[ 90%] Built target test_user_output.release
+[100%] Building CXX object examples/CMakeFiles/straka.release.dir/straka.cpp.o
+[100%] Linking CXX executable test_diffusion_cubed_sphere.release
+[100%] Linking CXX executable test_diffusion_moist.release
+[100%] Built target test_diffusion_cubed_sphere.release
+[100%] Building CXX object examples/CMakeFiles/bryan.release.dir/bryan.cpp.o
+[100%] Built target test_diffusion_moist.release
+[100%] Building CXX object examples/CMakeFiles/jupiter_evap_precip_1d.release.dir/jupiter_evap_precip_1d.cpp.o
+[100%] Linking CXX executable test_condensate_conservation.release
+[100%] Linking CXX executable test_parentless_cloud.release
+[100%] Linking CXX executable test_fix_vapor_deficit.release
+[100%] Linking CXX executable test_fix_vapor_volume.release
+[100%] Built target test_condensate_conservation.release
+[100%] Building CXX object examples/CMakeFiles/run_hydro.release.dir/run_hydro.cpp.o
+[100%] Linking CXX executable test_check_redo_vapor_deficit.release
+[100%] Built target test_parentless_cloud.release
+[100%] Building CXX object examples/CMakeFiles/cubed_sphere_convection.release.dir/cubed_sphere_convection.cpp.o
+[100%] Built target test_fix_vapor_deficit.release
+[100%] Building CXX object examples/CMakeFiles/planar_convection.release.dir/planar_convection.cpp.o
+[100%] Built target test_fix_vapor_volume.release
+[100%] Building CXX object examples/CMakeFiles/spherical_convection.release.dir/spherical_convection.cpp.o
+[100%] Built target test_check_redo_vapor_deficit.release
+[100%] Building CXX object examples/CMakeFiles/shallow_xy.release.dir/shallow_xy.cpp.o
+[100%] Linking CXX executable test_species_face_clamp.release
+[100%] Built target test_species_face_clamp.release
+[100%] Building CXX object examples/CMakeFiles/shallow_splash.release.dir/shallow_splash.cpp.o
+[100%] Linking CXX executable test_diffusion_x1_scale.release
+[100%] Built target test_diffusion_x1_scale.release
+[100%] Linking CXX executable test_wall_saturation.release
+[100%] Linking CXX executable test_parentless_cloud_nb1.release
+[100%] Linking CXX executable test_vapor_column_nb1.release
+[100%] Linking CXX executable test_cloud_parent_slots.release
+[100%] Linking CXX executable test_two_cards_species.release
+[100%] Built target test_wall_saturation.release
+[100%] Built target test_parentless_cloud_nb1.release
+[100%] Built target test_vapor_column_nb1.release
+[100%] Built target test_cloud_parent_slots.release
+[100%] Built target test_two_cards_species.release
+[100%] Linking CXX executable test_check_redo_parallel.release
+[100%] Linking CXX executable test_exchange.release
+[100%] Built target test_check_redo_parallel.release
+[100%] Linking CXX executable test_sedimentation_cubed_seam.release
+[100%] Built target test_exchange.release
+[100%] Linking CXX executable test_output_barrier.release
+[100%] Linking CXX executable test_parentless_cloud_nb1_mp.release
+[100%] Built target test_sedimentation_cubed_seam.release
+[100%] Linking CXX executable test_mesh_multi_block.release
+[100%] Linking CXX executable test_cycle_diagnostics_parallel.release
+[100%] Built target test_output_barrier.release
+[100%] Built target test_parentless_cloud_nb1_mp.release
+[100%] Built target test_mesh_multi_block.release
+[100%] Built target test_cycle_diagnostics_parallel.release
+[100%] Linking CXX executable test_forcing.release
+[100%] Built target test_forcing.release
+[100%] Linking CXX executable ../bin/shock.release
+[100%] Built target shock.release
+[100%] Linking CXX executable ../bin/straka.release
+[100%] Built target straka.release
+[100%] Linking CXX executable ../bin/jupiter_evap_precip_1d.release
+[100%] Built target jupiter_evap_precip_1d.release
+[100%] Linking CXX executable ../bin/bryan.release
+[100%] Built target bryan.release
+[100%] Linking CXX executable ../bin/cubed_sphere_convection.release
+[100%] Linking CXX executable ../bin/planar_convection.release
+[100%] Linking CXX executable ../bin/run_hydro.release
+[100%] Linking CXX executable ../bin/shallow_xy.release
+[100%] Built target planar_convection.release
+[100%] Built target cubed_sphere_convection.release
+[100%] Linking CXX executable ../bin/spherical_convection.release
+[100%] Built target run_hydro.release
+[100%] Built target shallow_xy.release
+[100%] Built target spherical_convection.release
+[100%] Linking CXX executable ../bin/shallow_splash.release
+[100%] Built target shallow_splash.release

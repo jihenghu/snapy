@@ -1,0 +1,55 @@
+Tracer/species ratio sweep record, chengcli/snapy main
+snapy sha: 3c891cb20614260351944fb8007cbc9bd50d22a3  (fb003523 + #338; pinned with git ls-remote on 2026-11-09)
+
+Build: CPU Release source build at 3c891cb in a clean detached worktree (dirty=0), following the README:
+  cmake -B build -DCMAKE_BUILD_TYPE=Release -DNETCDF=ON -DCUDA=OFF
+  cmake --build build --parallel 24
+  pip install --no-build-isolation --no-deps -t _pyinstall .
+Toolchain: gcc 12.2.1 (gcc-toolset-12), torch 2.10.0+cu128 (run on CPU), kintera 2.6.6, Python 3.11.
+Logs of that build: logs/ts338-cpu-{cfg,build,pip}.log
+
+Exact sweep command (run once on 2026-11-09, from the job's run/ directory, with the build's
+_pyinstall directory on PYTHONPATH and the venv above active):
+  PYTHONPATH=<snapy-3c891cb>/_pyinstall python3.11 ../driver/tracer_ratio_sweep.py \
+      --repros ../repros --snapy-src ../snapy --out ../out > sweep.log 2>&1   ->  exit 0
+Equivalent command from the root of this archive (with snapy 3c891cb importable):
+  python driver/tracer_ratio_sweep.py --repros repros --snapy-src snapy-src --out results
+  (in the original run, --snapy-src was the full snapy checkout and --out was out/; here
+   results/ holds those outputs and snapy-src/ holds the only file the driver reads from it)
+
+Contents
+  driver/tracer_ratio_sweep.py   sweep driver. The C12 cubed-sphere moist deck generator is INLINE in it
+                                 (function cs_arm): it loads tests/test_flux_positivity_cubedsphere.yaml from
+                                 --snapy-src, makes it moist / limiter on / nlim 50 / one tracer, and writes the
+                                 generated deck to a temporary directory that is deleted after Mesh construction.
+                                 The generated deck file was therefore never kept on disk and is NOT included.
+  snapy-src/tests/test_flux_positivity_cubedsphere.yaml
+                                 the C12 template deck, byte copy of `git show 3c891cb:tests/...`
+                                 (blob ce004fbb9c5c6a3669e0b028ed5e039ee8629b1f)
+  repros/tracer_ratio_2d_repro.py, repros/tracer_ratio_limiter_repro.py
+                                 the two #338 repros (11-08 attachments), run unchanged
+  results/tracer_ratio_sweep.csv 158 rows: 42 run arms + 116 SKIP rows; gate max_dev <= 1e-13
+  results/tracer_ratio_skipped.csv  116 skipped arms with reasons
+  logs/sweep.log                 full stdout/stderr of the sweep run
+  logs/ts338-cpu-*.log           configure / build / pip logs of the 3c891cb build
+  report/tracer-ratio-sweep-3c891cb.md  the report posted with the run
+
+Summary: 42 arms run, 116 skipped, 0 failing, driver exit 0. Worst arm
+2d-2D-cov{on,off}-limoff-s0-setoff-stretched-nx2=1 = 3.775e-15. C12 moist: tracer 3.664e-15, vapour 3.331e-15.
+
+All files are byte-for-byte copies of the earlier job's files; no file was modified. The only
+layout difference is the directory names above (out/ -> results/, run/ -> logs/, and the template yaml
+placed under snapy-src/tests/ so the driver runs unchanged with --snapy-src snapy-src).
+
+md5sum of every file (except MANIFEST.txt itself):
+801f928f826cc4797c3fcaee904a8fbc  ./driver/tracer_ratio_sweep.py
+e8fc5b537e8950882213a3cccc7cdf1f  ./logs/sweep.log
+d38fe662ba6af432aaa953bb3558d212  ./logs/ts338-cpu-build.log
+50fed840fe8e6e4607bdba448ebefdba  ./logs/ts338-cpu-cfg.log
+6d75c7eaf8d79ca4202a47160f6f3d07  ./logs/ts338-cpu-pip.log
+0fc4fccf1a0455451b0796864282d56d  ./report/tracer-ratio-sweep-3c891cb.md
+998c80acd70acc2a5561e7b4ec21dd5c  ./repros/tracer_ratio_2d_repro.py
+4fff8f1d7c2c4fdd216306d9639d8a6f  ./repros/tracer_ratio_limiter_repro.py
+1baf00bc08305ed77d6b3d894ace8117  ./results/tracer_ratio_skipped.csv
+583dbc418fc836c3d6e0ade32d2b4dec  ./results/tracer_ratio_sweep.csv
+9209520281037820ce7f0d2b715b274f  ./snapy-src/tests/test_flux_positivity_cubedsphere.yaml
