@@ -705,7 +705,27 @@ HydroImpl::_hydro_ref_x1(torch::Tensor const& w) const {
   // faces as one block
   if (wb4_flag.defined()) wb_ref4_faces(*wb_ref4_, dref, dsf, wb4_flag);
 
-  return {psf_lo, pref, dsf, dref};
+  // face density per face side: the x1 reconstruction's linear cp5 rows (for
+  // weno5 its own optimal combination, precon1's interp2, on the same x1
+  // faces) applied to the exchanged cell dref. A side whose value leaves
+  // [min, max] of the two neighbouring drefs, or any other reconstruction,
+  // keeps the face value above. Face j: IRT from cell j, ILT from cell j - 1.
+  auto dsf2 = torch::stack({dsf, dsf});
+  auto rtype = options->recon1()->interp()->type();
+  int n1 = dref.size(-1), m = n1 - 4;
+  if ((rtype == "weno5" || rtype == "cp5") && m > 0) {
+    auto [lf, rf] = precon1->pinterp2->forward(dref.unsqueeze(0), 3);
+    auto guard = [](torch::Tensor const& v, torch::Tensor const& a,
+                    torch::Tensor const& b, torch::Tensor const& keep) {
+      return torch::where((v >= torch::minimum(a, b)) &
+                              (v <= torch::maximum(a, b)),
+                          v, keep);
+    };
+    auto r = dsf2[IRT].narrow(-1, 2, m), l = dsf2[ILT].narrow(-1, 3, m);
+    r.copy_(guard(lf[0], dref.narrow(-1, 1, m), dref.narrow(-1, 2, m), r));
+    l.copy_(guard(rf[0], dref.narrow(-1, 2, m), dref.narrow(-1, 3, m), l));
+  }
+  return {psf_lo, pref, dsf2, dref};
 }
 
 std::shared_ptr<HydroImpl> HydroImpl::create(HydroOptions const& opts,

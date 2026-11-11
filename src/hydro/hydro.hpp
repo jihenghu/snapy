@@ -257,8 +257,8 @@ class HydroImpl : public torch::nn::Cloneable<HydroImpl> {
 
   // Per-column hydrostatic references for the well-balanced x1
   // reconstruction: {psf_lo (face pressure), pref (cell pressure), dsf (face
-  // density), dref (cell density)}, rebuilt from the current field on every
-  // call.
+  // density, (2, ...): ILT, IRT sides), dref (cell density)}, rebuilt from
+  // the current field on every call.
   std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
   _hydro_ref_x1(torch::Tensor const& w) const;
   //! overwrite the m x1 ghost rows of f next to each x1 neighbour with the

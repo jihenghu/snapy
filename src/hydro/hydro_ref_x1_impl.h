@@ -105,6 +105,10 @@ inline DISPATCH_MACRO T hydro_ref_x1_rop_smooth(
   auto rop = [&](int j) {
     return w[IDN * ncells + flat + j] / w[IPR * ncells + flat + j];
   };
+  // interior cells take their own rho/p: the binomial below is kept only where
+  // the 5-point stencil reaches past a clamped wall (the wall continuation)
+  if (!(ext_lo && i - 2 < jlo) && !(ext_hi && i + 2 > jhi))
+    return rop(i < jlo ? jlo : (i > jhi ? jhi : i));
   T v[5];
   for (int m = -2; m <= 2; ++m) {
     int j = i + m;
