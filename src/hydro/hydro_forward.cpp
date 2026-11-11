@@ -296,6 +296,12 @@ static void conv4_x1_weights(torch::Tensor x1f, int n,
   auto c = (f(2) - f(1)).square() / 4. / (f(3) - f(0));
   k[0] = (c / (f(3) - f(1))).to(opts);
   k[1] = (c / (f(2) - f(0))).to(opts);
+  // the same h^2/24 q''(x_i) with q the quadratic through the POINT values at
+  // the centres of cells i-1, i, i+1 (equal to k[0], k[1] on a uniform grid)
+  auto dp = (f(3) - f(1)) / 2., dm = (f(2) - f(0)) / 2.;
+  auto cp = (f(2) - f(1)).square() / 12. / (dp + dm);
+  k[2] = (cp / dp).to(opts);
+  k[3] = (cp / dm).to(opts);
 }
 
 torch::Tensor HydroImpl::forward(double dt, torch::Tensor u,
@@ -328,11 +334,11 @@ torch::Tensor HydroImpl::forward(double dt, torch::Tensor u,
     int n = u.size(DIM1) - 2;
     // centred everywhere, reading the u ghosts the boundary condition or the
     // exchange filled; the converted ghosts are refilled below
-    auto lap = [&](torch::Tensor const& a) {
+    auto lap = [&](torch::Tensor const& a, int j = 0) {
       auto out = torch::zeros_like(a);
       auto am = a.narrow(-1, 0, n), a0 = a.narrow(-1, 1, n);
       out.narrow(-1, 1, n) =
-          k[0] * (a.narrow(-1, 2, n) - a0) - k[1] * (a0 - am);
+          k[j] * (a.narrow(-1, 2, n) - a0) - k[j + 1] * (a0 - am);
       return out;
     };
     // per cell, keep the second-order w where u - L u or its primitives are
@@ -368,7 +374,11 @@ torch::Tensor HydroImpl::forward(double dt, torch::Tensor u,
                         : peos->vapor_failures().zero_();
     }
     good &= ok(w, true);
-    w.add_(lap(w0));
+    // back to averages: the velocity rows take the point-value L of the point
+    // values W(u - L u), not L of W(u), whose O(h^2) offset steps with the width
+    auto back = lap(w0);
+    back.narrow(0, IVX, 3).copy_(lap(w.narrow(0, IVX, 3), 2));
+    w.add_(back);
     w.copy_(torch::where(good, w, w0));
     _conv4_trips += good.logical_not().sum();
     // every ghost from the converted owned cells: the block's exchange, the
