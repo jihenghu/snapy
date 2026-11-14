@@ -733,6 +733,16 @@ torch::Tensor HydroImpl::forward(double dt, torch::Tensor u,
 
   //// ------------ (3.A) Calculate dimension 2 LR states ------------ ////
   torch::Tensor wtmp2, wtmp3;
+  // LOCAL ROUND-2 HOOK (#357, not for upstream; env-switched, default off):
+  //  SNAP_C2=1  the Coriolis call gets M - M_central (the solver's dissipative mass flux)
+  static bool const r2_c2 = std::getenv("SNAP_C2") != nullptr;
+  torch::Tensor r2_cen2, r2_cen3;
+  auto r2_central = [&](torch::Tensor a, torch::Tensor b, int dim, torch::Tensor like) {
+    auto fa = torch::zeros_like(like), fb = torch::zeros_like(like);
+    priemann->forward(a.clone(), a.clone(), dim, fa);
+    priemann->forward(b.clone(), b.clone(), dim, fb);
+    return 0.5 * (fa + fb);
+  };
   SyncOptions sync_opts;
   sync_opts.cross_panel_only(true).interpolate(false).type(kPrimitive);
   std::vector<CommWorkPtr> works2, works3;
@@ -863,6 +873,7 @@ torch::Tensor HydroImpl::forward(double dt, torch::Tensor u,
         _cov_wr[0] = cwr.clone();
         _cov_dry[0] = cov_dry(dcov, cwl);
       }
+      if (r2_c2) r2_cen2 = r2_central(wlr2[ILT], wlr2[IRT], DIM2, _flux2);
       priemann->forward(wlr2[ILT], wlr2[IRT], DIM2, _flux2);
       if (dcov.defined()) add_cov(_flux2, dcov);
       cov2 = dcov.defined();
@@ -895,6 +906,7 @@ torch::Tensor HydroImpl::forward(double dt, torch::Tensor u,
         _cov_wr[1] = cwr.clone();
         _cov_dry[1] = cov_dry(dcov, cwl);
       }
+      if (r2_c2) r2_cen3 = r2_central(wlr3[ILT], wlr3[IRT], DIM3, _flux3);
       priemann->forward(wlr3[ILT], wlr3[IRT], DIM3, _flux3);
       if (dcov.defined()) add_cov(_flux3, dcov);
       cov3 = dcov.defined();
@@ -1118,6 +1130,12 @@ torch::Tensor HydroImpl::forward(double dt, torch::Tensor u,
         on(options->disable_flux_x2(), _flux2),
         on(options->disable_flux_x3(), _flux3)};
     _aam_mass_ny = ny;
+    // ROUND-2 C2: the Coriolis call sees only the dissipative part of the x2/x3 mass flux
+    if (r2_c2) {
+      if (_aam_mass_flux[1].defined() && r2_cen2.defined()) _aam_mass_flux[1] = _flux2 - r2_cen2;
+      if (_aam_mass_flux[2].defined() && r2_cen3.defined()) _aam_mass_flux[2] = _flux3 - r2_cen3;
+      _aam_mass_flux[0] = torch::Tensor();
+    }
   }
   for (auto& f : forcings)
     f.forward(du, mass_w && coriolis(f) ? mw.wc1 : w, temp, dt);

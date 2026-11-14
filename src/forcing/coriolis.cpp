@@ -310,6 +310,23 @@ torch::Tensor CoriolisXYZImpl::forward(torch::Tensor du, torch::Tensor w,
         pcoord->axial_rate_to_rows_(force[VEL2], force[VEL3], target);
       }
     }
+    // LOCAL ROUND-2 C2 (SNAP_C2=1, key transport): cell-form force plus head full's zonal loop
+    // fed with the dissipative mass flux M - M_central (set by Hydro), added along K
+    static bool const r2_c2 = std::getenv("SNAP_C2") != nullptr;
+    if (r2_c2 && phydro->axial_flux_form() &&
+        phydro->options->conserve_axial_momentum() == "transport") {
+      auto pcoord = phydro->pmb->pcoord;
+      auto const &mf = phydro->axial_mass_fluxes();
+      if (mf[1].defined() || mf[2].defined()) {
+        auto target = pcoord->axial_coriolis_rate(torch::Tensor(), mf[1], mf[2],
+                                                  options->omega1(),
+                                                  phydro->axial_mass_species());
+        auto z2 = torch::zeros_like(force[VEL2]), z3 = torch::zeros_like(force[VEL3]);
+        pcoord->axial_rate_to_rows_(z2, z3, target);  // K . z = target, along K
+        force[VEL2] += z2;
+        force[VEL3] += z3;
+      }
+    }
     if (traditional) {
       du.narrow(0, IVY, 2) += dt * force.narrow(0, VEL2, 2);
     } else {
