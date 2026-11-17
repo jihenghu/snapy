@@ -1,5 +1,5 @@
 #pragma once
-// V3 lane S skeleton: declarations only, in no build. Revision 1.1.
+// V3 lane S skeleton: declarations only, in no build. Revision 2.
 // Pin chengcli/snapy 9e5de2d4ce497d0b2d4da3295fc1fe969fe7e410. S owns the
 // transport of every within-stage exchange (S.rst section 3 table); the
 // rules for registered fluxes are R's (flux_register.hpp:62-65 at 4c59162a).

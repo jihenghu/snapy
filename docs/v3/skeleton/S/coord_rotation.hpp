@@ -1,5 +1,5 @@
 #pragma once
-// V3 lane S skeleton: declarations only, in no build. Revision 1.1.
+// V3 lane S skeleton: declarations only, in no build. Revision 2.
 // Pin chengcli/snapy 9e5de2d4ce497d0b2d4da3295fc1fe969fe7e410; lines at the
 // pin. Untested claims: "hypothesis". S-1 (settled): coord owns ONE rotation
 // and the rotation data; lane A owns the Omega and mass-flux consumers.
@@ -42,17 +42,20 @@ class PanelRotation {
   torch::Tensor face_normal(int dim) const;
 };
 
-//! the rotation data coord owns (gnomonic_equiangle.hpp, AAM block): the
-//! unit-radius rotation field k, its face averages, cos^2 lat and the
-//! rate-to-rows projection (gnomonic_equiangle.cpp:485-603, 679-720)
+//! the rotation data coord owns (gnomonic_equiangle.cpp:18-36, 169-221).
+//! rate_to_rows (:485-525) is lane A's (S-4); A reads these, never casts
 struct AxialRotationData {
   RotationAxis axis;
   torch::Tensor k_cell, k_face2, k_face3;  // contravariant, unit radius
   torch::Tensor cos2_lat;
-  //! rate -> rows (axial_rate_to_rows_), read by lane A
-  void rate_to_rows_(torch::Tensor row2, torch::Tensor row3,
-                     torch::Tensor rate) const;
+  torch::Tensor K_f2, K_f3;  // S-5: exact face averages of K = s k (:563-567)
+  torch::Tensor s2;          // S-5: s^2 = (r cos lat)^2 at the cell centres
+  torch::Tensor on_axis;     // S-4: bool mask; reset checks nx2 >= 3 if any
 };
+
+//! S-6: centre frame on every grid, never null (Cartesian, spherical-polar,
+//! gnomonic; replaces coriolis.cpp:85-151). No rule: throws at reset
+torch::Tensor centre_frame(CoordinateImpl const& coord);
 
 //! per-panel derived geometry built once (owner G in the 919936da designs):
 //! seam arcs from one function of the unordered endpoint pair (already at

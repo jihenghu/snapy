@@ -1,5 +1,5 @@
 #pragma once
-// V3 lane S skeleton: declarations only, in no build. Revision 1.1.
+// V3 lane S skeleton: declarations only, in no build. Revision 2.
 // The two-sided register entry for every shared face (S.rst section 4) and
 // the wall/solid faces S supplies for R's "boundary.prescribed". Names are
 // R's at happysky19/snapy 4c59162a (flux_register.hpp): FluxRegister,
@@ -32,11 +32,21 @@ struct SeamGate {
   std::string reason;  // e.g. "two panels' covariant bases, one rotation"
 };
 
+//! one directed panel edge, read once from CS_FACE_EDGES
+//! (cubed_sphere_layout.cpp:320-350); 24 entries, 6 non-identity edges
+struct PanelEdge {
+  int8_t panel, side, peer_panel, peer_side;  // 0..5; SIDE_L/R/B/T
+  int8_t dim, peer_dim;  // 2 for L/R, 3 for B/T; differ <=> trans_flag (:659)
+  bool reversed;         // CS_FACE_EDGES[..].rev
+  int8_t normal_sign;    // -1 if flip_flag (:660): every flux row x -1
+};
+
 struct SeamEntry {
   int dim;              // 1 = x1, 2 = x2, 3 = x3 (R's numbering)
   SeamOwner owner;
   SeamGate gate;
   std::vector<int> rotated_rows;  // momentum rows; empty when none
+  std::vector<PanelEdge> edges;   // lower_rank only: the map before replace
 };
 
 //! the entries S declares (S.rst section 4 table)
@@ -44,8 +54,9 @@ std::vector<SeamEntry> const& seam_entries();
 
 //! phase reconcile: per dim, S gathers the shared faces and the peer entry
 //! (Exchange::seam_slab: board for a local peer, process group otherwise),
-//! rotates the momentum rows of a panel peer with coord's rotation, and
-//! calls R's FluxRegister::replace(dim, faces, peer, rule)
+//! maps a panel peer by its PanelEdge (transpose, reverse, normal_sign),
+//! rotates its momentum rows with coord's rotation, and calls R's
+//! FluxRegister::replace(dim, faces, peer, rule)
 void reconcile_seams(FluxRegister& reg, Exchange& ex,
                      PanelRotation const& rot);
 
@@ -65,7 +76,13 @@ struct PrescribedFaces {
 };
 
 //! S's only call into R for boundaries: set_prescribed(dim, mask, value)
-//! per active dim, redone when the solid field or wall set changes
+//! per register instance (hydro and each Scalar module), per active dim,
+//! redone when the solid field or wall set changes
 void supply_prescribed(FluxRegister& reg, PrescribedFaces const& faces);
+
+//! gate G-S-K7 (S.rst s5): end of RegisterPhase::limit, own vs mapped peer
+//! on every shared face; debug and CI only
+bool post_limit_single_valued(FluxRegister const& reg, Exchange& ex,
+                              PanelRotation const& rot);
 
 }  // namespace snap
