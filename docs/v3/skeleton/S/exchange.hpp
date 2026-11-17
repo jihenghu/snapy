@@ -2,7 +2,7 @@
 // V3 lane S skeleton: declarations only, in no build. Revision 1.1.
 // Pin chengcli/snapy 9e5de2d4ce497d0b2d4da3295fc1fe969fe7e410. S owns the
 // transport of every within-stage exchange (S.rst section 3 table); the
-// rules for registered fluxes are R's (flux_register.hpp:77-79 at 3490d7e1).
+// rules for registered fluxes are R's (flux_register.hpp:62-65 at 4c59162a).
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -10,7 +10,7 @@
 
 namespace snap {
 class MeshBlockImpl;
-enum class RegisterPhase : uint8_t;  // R's (flux_register.hpp:35-44)
+enum class RegisterPhase : uint8_t;  // R's (flux_register.hpp:14-23)
 
 //! what a block face is; replaces three wall predicates (hydro.cpp:296-301,
 //! is_physical_boundary, bc_func.cpp:231-250) with one lookup

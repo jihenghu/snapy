@@ -6,7 +6,7 @@
 #include <array>
 #include <torch/torch.h>
 
-namespace snap {  // R's namespace (flux_register.hpp:32 at 3490d7e1)
+namespace snap {  // R's namespace (flux_register.hpp:12 at 4c59162a)
 class CoordinateImpl;
 
 //! declared rotation axis. Only z is supported; anything else is refused at

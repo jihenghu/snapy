@@ -2,15 +2,16 @@ V3 lane S: seams, coord, layout, exchange and boundaries
 =========================================================
 
 :Lane: S (cubed-sphere seams, coord, layout, exchange, bc)
-:Owner: Xinyue Wang (backup owner, on the PM's assignment)
-:Revision: 1.1 (from ``fe1612b1``): Tianhao's four points, re-cited to lane
-           R rev 1.2. Item 3 went up first as ``48b2328d`` and is section 3.
+:Owner: Jiheng Hu (from 17:59 EST, on Cheng's assignment; revisions up to
+        1.1 by Xinyue Wang)
+:Revision: 2, part 1 (from 1.1, ``d03e4888``): section 9 on real counts,
+           the final options ranges, re-cited to lane R rev 2.2.
 :Pin: chengcli/snapy ``9e5de2d4ce497d0b2d4da3295fc1fe969fe7e410``
 :Lane R header: happysky19/snapy ``docs/v3/skeleton/R/flux_register.hpp`` at
-                ``3490d7e1aee481684da998e3b9ba7ea12d697f84`` (branch
-                ``v3-design/R``, R.rst rev 1.2, 118 lines; confirmed with
-                ``git ls-remote``). Its names and signatures are used here
-                unchanged. Rev 1 used ``543ff84f``.
+                ``4c59162ae37080d0ab307b2823742b44f46da7c3`` (frozen; header
+                rev 4.2, 117 lines; R.rst rev 2.2). Its names and
+                signatures are used here unchanged. Rev 1.1 cited
+                ``3490d7e1``, rev 1 ``543ff84f``.
 
 Every ``file:line`` is at the pin and relative to ``src/`` unless it names
 another tree. Lines of R's header are written ``flux_register.hpp:N``. A
@@ -35,8 +36,10 @@ call sites in ``hydro/hydro_forward.cpp``, ``hydro/hydro.cpp:344-377, 606-776``,
 **Pins.**
 
 - snapy ``9e5de2d4`` (checked with ``git rev-parse`` in a fresh clone).
-- Lane R header and R.rst at ``3490d7e1`` (fetched read-only). R.rst lines
+- Lane R header and R.rst at ``4c59162a`` (fetched read-only). R.rst lines
   are written ``R.rst:N``.
+- Lane A at JiachenLiu-Atmos/snapy ``4e0827b8`` (A.rst:N) and lane O at
+  ``5a7b46fa`` (O.rst:N), both read-only.
 - #370 (open; species enthalpy and donor velocity across seams) is used only
   through its PR text. It appears as the pending row 17p.
 
@@ -68,7 +71,7 @@ numbers match, but I did not see the brief's own file list.
   and mass-flux consumers. The non-z axis is a declared parameter that refuses
   non-z. That FOR CHENG item sits in lane A.
 - S-2: register posts are in global components after coord's rotation
-  (``flux_register.hpp:8-9``). This replaces my earlier panel-frame position.
+  (``flux_register.hpp:4-5``). This replaces my earlier panel-frame position.
   Any rounding or cost problem goes to the R header review, not back here.
 - S-3: diffusion gets a face-slab row and keeps its own exchange until
   phase 3.
@@ -117,7 +120,7 @@ of both (``hydro/hydro.cpp:344-377, 727-776``;
 
 The face rotations the solver uses, ``prim2local*_``/``flux2global*_``
 (``coord/gnomonic_equiangle.cpp:365-484``), are a fifth, per-face use. They
-stay as they are. "Global components" in R's sense (``flux_register.hpp:8-9``)
+stay as they are. "Global components" in R's sense (``flux_register.hpp:4-5``)
 is their output: each panel's own covariant components
 (``coord/gnomonic_equiangle.cpp:427-455``).
 
@@ -435,18 +438,18 @@ Column meanings:
      - ``hydro/hydro_forward.cpp:1132``
    * - 16r
      - **reconcile** (x2/x3, not at the pin): R's ``replace(d, faces, peer,
-       SeamRule::owner_copy)`` on panel seams, adopted in R rev 1.2
+       SeamRule::owner_copy)`` on panel seams, adopted by R (R.rst:183-184)
      - the owner's posted x2/x3 face flux slab, all rows; momentum rows
        rotated by coord (section 4)
      - cross-panel x2/x3 neighbours
      - ``RegisterPhase::reconcile``, after x2/x3 Riemann and covariance,
-       before positivity (R's phases, ``flux_register.hpp:35-44``)
+       before positivity (R's phases, ``flux_register.hpp:14-23``)
      - no interp; covariant(owner) to covariant(receiver) via one Cartesian
        rotation
      - none (one face)
      - +1
      - finalize
-     - new; ``SeamRule::owner_copy`` (``flux_register.hpp:46, 77-78``)
+     - new; ``SeamRule::owner_copy`` (``flux_register.hpp:24, 62-64``)
    * - 17
      - hydro species theta sync
      - ``hydro_theta``
@@ -791,32 +794,36 @@ That an earlier x2/x3 reconstruction therefore reads the same bits is a
 -------------------------
 
 Lane S posts no physical flux. It owns the transport of the ``reconcile``
-phase (``RegisterPhase::reconcile``, ``flux_register.hpp:37``), the rotation
+phase (``RegisterPhase::reconcile``, ``flux_register.hpp:16``), the rotation
 that phase needs, and the wall and solid-face mask. R owns the rules:
 ``replace(dim, faces, peer, rule)`` with ``SeamRule::mean`` or
-``SeamRule::owner_copy`` (``flux_register.hpp:46, 77-78``), and
-``set_prescribed``/``apply_prescribed`` (``:61-62, 79``). Citations of R's
-header are at ``3490d7e1`` (R.rst rev 1.2).
+``SeamRule::owner_copy`` (``flux_register.hpp:24, 62-64``), and
+``set_prescribed``/``apply_prescribed`` (``:45-47, 65``). Citations of R's
+header are at ``4c59162a`` (header rev 4.2, R.rst rev 2.2).
 
-**What changed in R since 543ff84f that affects S.**
+**What changed in R since rev 1's ``543ff84f`` that affects S** (cited at
+``4c59162a``).
 
 - ``replace`` now takes the faces and the peer entry plus a ``SeamRule``,
-  not a name and a seam tensor (``:77-78``). S supplies ``faces`` and
-  ``peer``; R applies the rule to the total, the kept parts and the
+  not a name and a seam tensor (``:62-64``). ``:62`` states that S maps
+  the peer: dim swap, edge order, normal sign, basis. S supplies ``faces``
+  and ``peer``; R applies the rule to the total, the kept parts and the
   companions (``riemann.pstar``, ``pressure_base1``).
-- ``SeamRule {mean, owner_copy}`` (``:46``): ``mean`` is row 9,
-  ``owner_copy`` is S's row 16r, adopted by R (R.rst:28-29, 366-370).
-- ``boundary.prescribed`` (``:23-24, 61-62, 79``) replaces S's
+- ``SeamRule {mean, owner_copy}`` (``:24``): ``mean`` is row 9,
+  ``owner_copy`` is S's row 16r, adopted by R (R.rst:183-184, 712-732).
+- ``boundary.prescribed`` (``:16, 21, 45-47, 65``) replaces S's
   ``bc.solid_face``. R calls it after ``reconcile`` and again after
   ``post_implicit``.
-- ``bflux1`` is gone with the cell form (``:13``). Row 9's payload under R is
-  therefore the total plus ``pressure_base1``, not ``bflux1``.
+- ``bflux1`` is gone with the cell form (R.rst:216-217). Row 9's payload
+  under R is therefore the total plus ``pressure_base1``, not ``bflux1``.
 - The frame is the output of coord's ``flux2global<d>_``
-  (``:8-9``; ``coord/coordinate.hpp:353-361``), as S-2 says.
-- New phase ``after_combine`` (``:43``) and ``begin_stage(stage,
-  harp::IntegratorWeight)`` (``:64``). Neither touches S's rows.
+  (``:4-5``; ``coord/coordinate.hpp:353-361``), as S-2 says.
+- New phase ``after_combine`` (``:22``), ``begin_step()`` (``:48``) and
+  ``begin_stage(stage, harp::IntegratorWeight)`` (``:49``). None touches
+  S's rows.
 - The replaced amount is a monitor amount named ``reconcile.x1`` or
-  ``reconcile.panel`` (R.rst:372-373). This answers S's rev 1 question 3.
+  ``reconcile.panel`` (R.rst:727-729, 1023-1026). This answers S's rev 1
+  question 3.
 
 **Convention (adopted, S-2).** A post is per unit face area and time, in
 the output frame of ``flux2global<d>_``. On the cubed sphere that is each
@@ -944,15 +951,15 @@ onto R's ``boundary.prescribed``:
    * - name
      - ``boundary.prescribed`` (R's). S's ``bc.solid_face`` is retired
    * - who posts
-     - R calls ``apply_prescribed(d)`` (``flux_register.hpp:79``). S makes no
+     - R calls ``apply_prescribed(d)`` (``flux_register.hpp:65``). S makes no
        ``add`` call. R books the change as the named correction
-       ``boundary.prescribed`` (R.rst:216-226)
+       ``boundary.prescribed`` (R.rst:407-417)
    * - phase
      - ``reconcile``, after ``replace``; and again after ``post_implicit``
-       (``flux_register.hpp:23-24, 37, 42``)
+       (``flux_register.hpp:16, 21``)
    * - when S supplies
-     - ``set_prescribed(d, mask, value)`` (``:61-62``), redone when the solid
-       field or the wall set changes (R.rst:742-744), not per stage
+     - ``set_prescribed(d, mask, value)`` (``:45-47``), redone when the solid
+       field or the wall set changes (R.rst:1395-1397), not per stage
    * - mask
      - per direction ``d`` and per row: true where the row is prescribed on
        the face. A face is prescribed if it is a physical reflecting wall
@@ -1134,7 +1141,7 @@ round-off, which is R's G-R9. Hence:
   changes the CUDA bits relative to today's lazy build on the velocity's
   device (cross-check §3 at 919936da). That is a change at round-off.
 - The reconcile slab is in the register's ``kFlux`` dtype
-  (``flux_register.hpp:14-16``). The mean of row 9 and the raw copy of row 16r
+  (``flux_register.hpp:82``). The mean of row 9 and the raw copy of row 16r
   are exact in either precision. The momentum rotation is not, and its gate
   tolerance scales with the dtype's epsilon (**hypothesis**).
 - The anchor scan (rows 6-7) stays in the reference's precision, FP64 under
@@ -1154,7 +1161,7 @@ contract:
 - **No host read inside a row.** The axial closure's ``item``
   (``mesh/meshblock.cpp:1017-1018``) and the fixer's ``.cpu()``
   (``:1058-1061``) move to X's single step-end read, as R's monitor does
-  (``flux_register.hpp:21-22``).
+  (``flux_register.hpp:89, 102``).
 - **Fixed buffers.** Each row's send and receive buffers are keyed by
   (row, shape, dtype, device), as ``exchange_buffer_cache`` is today
   (``layout/cubed_sphere_layout.cpp:571-574``). Row 16r's slab buffer is
@@ -1180,7 +1187,7 @@ contract:
 - **Lane R.** ``reconcile_seams`` calls ``FluxRegister::replace(d, faces,
   peer, rule)``, and ``supply_prescribed`` calls
   ``FluxRegister::set_prescribed(d, mask, value)``, exactly as declared at
-  ``3490d7e1``. R calls ``apply_prescribed``. A rename in R is a one-line
+  ``4c59162a``. R calls ``apply_prescribed``. A rename in R is a one-line
   change here.
 - **Lane A.** Coriolis (``forcing/coriolis.cpp:128-142``) stops building
   frame matrices and calls ``PanelRotation``. A's rev 2 cites coord for the
@@ -1195,9 +1202,130 @@ contract:
 9. Line budget
 --------------
 
-Baseline 8,472 (section 1). "Measured" means the lines exist at the pin and
-have no caller, or are replaced as named. "Estimate" is a design estimate
-for code that is not written.
+Baseline 8,472 (section 1). Lane S has no line ceiling any more (Cheng's
+below-target decision in the lane S thread), so this section gives the real
+count and no ceiling arithmetic. "Exact" means the lines exist at the pin and
+were counted with ``git show 9e5de2d4:src/FILE | sed -n 'a,bp' | wc -l``;
+the removal has no caller or is replaced as named. "Estimate" is a design
+estimate for code that is not written. Rows marked "rev 1.1" are carried
+from rev 1.1 unchanged and were not recounted, except the coordinate row.
+
+**New in rev 2.**
+
+- **V3-1, 153 gnomonic AAM lines (exact).** Under RULING V3-1 a deletion is
+  counted by the lane that owns the file, so S counts the AAM physics that
+  leaves coord for lane A's ``src/forcing`` (A.rst:261-263, 284-287 at
+  ``4e0827b8``). A lists ``gnomonic_equiangle.hpp:84-108, 117-122`` (25 + 6)
+  and ``.cpp:526-604, 664-719`` (79 + 56) = 166, less
+  ``x1_mass_source_`` (``.cpp:664-674``, 11; ``.hpp:84-85``, 2), which stays
+  in coord (J1): **153**. They are ``axial_x1_source_`` and
+  ``conserve_axial_momentum_`` (``.cpp:526-604``), ``axial_coriolis_rate``
+  (``.cpp:675-719``) and their declarations (``.hpp:86-108, 117-122``). The
+  rotation data (``.cpp:18-36, 169-221, 485-525``; ``.hpp:22-35, 109-116``,
+  135 lines) stays with S (S-1).
+- **Options parsing to lane O, 127 lines (exact).** Lane O splits move A
+  (226 lines) into 127 for O's schema and 99 that stay in S (O.rst:2326-2406
+  at JiachenLiu-Atmos/snapy ``5a7b46fa``). Every range holds exactly at the
+  pin. S deletes the 127 and counts them; O books none (O.rst:2333-2334,
+  2401-2402).
+
+  .. list-table:: Final options ranges (pin)
+     :header-rows: 1
+
+     * - range
+       - lines
+       - goes to
+     * - ``coord/coordinate.cpp:62-114``
+       - 53
+       - O: ``geometry``, ``bounds`` (incl. ``*_pi``), global bounds
+     * - ``coord/coordinate.cpp:125-149``
+       - 25
+       - O: ``cells/nx1..3``, ``x1rat``/``x1f`` and their cross-checks
+     * - ``coord/coordinate.cpp:213-214``
+       - 2
+       - O: ``nghost``, ``interp_order``
+     * - ``layout/layout.cpp:249-272``
+       - 24
+       - O: ``distribute/*``, ``BACKEND``/``DEVICE``
+     * - ``bc/internal_boundary.cpp:14-36``
+       - 23
+       - O: ``boundary-condition/internal/*``
+     * - **to O**
+       - **127**
+       -
+     * - ``coord/coordinate.cpp:115-124, 150-178, 179-212, 215-240``
+       - 10 + 29 + 34 + 26 = 99
+       - stay in S as the post-parse grid resolver
+
+- **D7 (34, counted in R).** S takes ``hydro/hydro.cpp:344-377`` as
+  ``Exchange::x1_rows`` (+30, estimate, inside the layout row). R counts the
+  -34 (R.rst:1464-1466); S counts no hydro deletion.
+- **H-S1..H-S7, repeated or dead code inside S.** H-S1 is exact. For H-S2 to
+  H-S7 the removed spans are exact and the nets are estimates.
+
+  .. list-table::
+     :header-rows: 1
+     :widths: 10 50 10 10 20
+
+     * - item
+       - site (pin)
+       - removed
+       - net
+       - status
+     * - H-S1
+       - dead ``reset_coordinates`` family: ``coord/coordinate.cpp:471-494``,
+         ``coord/coordinate.hpp:214, 432``, ``coord/cartesian.cpp:48-77``,
+         ``coord/spherical_polar.cpp:111-156``, ``.hpp:23``
+       - 103
+       - -103
+       - exact; ``git grep -n reset_coordinates 9e5de2d4`` finds no caller
+     * - H-S2
+       - partition computed twice, ``coord/coordinate.cpp:181-211``
+       - 31
+       - -25
+       - estimate (+6, the divisibility checks move to ``repartition``)
+     * - H-S3
+       - normal-velocity index by ``if (dim==...)``,
+         ``bc/internal_boundary.cpp:83-92``
+       - 10
+       - -7
+       - estimate (+3, as ``bc/bc_func.cpp:32``)
+     * - H-S4
+       - face table inverted twice, ``coord/cubed_sphere_utils.cpp:54-76``,
+         ``.hpp:68-73`` (with its doc comment)
+       - 29
+       - -21
+       - estimate (+8)
+     * - H-S5
+       - widening rule repeated, ``coord/gnomonic_equiangle.cpp:320-332``
+         (kept: ``layout/cubed_sphere_layout.cpp:103-110``)
+       - 13
+       - -6
+       - estimate
+     * - H-S6
+       - radial volume three ways, ``coord/spherical_polar.cpp:80, 201-205``
+         (kept: ``coord/gnomonic_equiangle.cpp:292-296``)
+       - 6
+       - -4
+       - estimate
+     * - H-S7
+       - face frame built twice: rev 1.1's ``face_normal(d)`` (+10) reuses
+         ``coord/coordinate.cpp:811-837``
+       - 0
+       - -10
+       - estimate (an addition avoided)
+     * - **all**
+       -
+       - 192
+       - **-176**
+       - -103 exact, -73 estimate
+
+- **Lane O overlap, counted once.** H-S2 (``coordinate.cpp:181-211``) lies
+  inside the 99 lines that stay (``:179-212``) and is disjoint from the 127.
+  It is counted once, as S's H-S2.
+- **Recount.** Rev 1.1's coordinate row said "measured -24"; at the pin it is
+  25 (``coord/coordinate.cpp:687-705`` 19, ``coord/coordinate.hpp:19``,
+  ``:327``, ``:329-332``).
 
 .. list-table::
    :header-rows: 1
@@ -1212,158 +1340,124 @@ for code that is not written.
      - 83
      - 0
      - -83
-     - the whole file is ``cs_lonlat_to_ab``, which has no caller (measured).
-       Its include at ``coord/coord_dispatch.cpp:11`` goes too
+     - rev 1.1: ``cs_lonlat_to_ab``, no caller; include at
+       ``coord/coord_dispatch.cpp:11`` (exact)
    * - ``coord/coordgen.{hpp,cpp}``
      - 13
      - 0
      - -13
-     - ``UniformCoord``, no caller. Include at ``coord/coordinate.hpp:19``
-       (measured)
+     - rev 1.1: ``UniformCoord``, no caller (exact)
    * - ``coord/coordinate.{cpp,hpp}``
      - 1,297
-     - 1,283
-     - -14
-     - ``find_cell_index`` (``.cpp:687-705``, ``.hpp:327``), the
-       ``vec_from_cartesian`` default (``.hpp:329-332``; no caller, and the
-       only override is in ``cylindrical.cpp_``), the coordgen include
-       (measured, -24); ``face_normal(d)`` for ``boundary.prescribed``
-       (+10, estimate)
+     - 1,141
+     - -156
+     - rev 1.1 -25 (recount, exact); H-S1 -26 (exact); O's options -80
+       (exact); H-S2 -31 +6 (estimate); ``face_normal`` +10 cancelled by
+       H-S7 -10 (estimate)
    * - ``coord/coord_dispatch.{cpp,hpp,cu}``
      - 218
      - 132
      - -86
-     - MPS kernels and registrations (``.cpp:31-38, 57-65, 94-104,
-       120-122``), the ``cs_matrix_vec`` CPU and CUDA kernels and their
-       dispatch (``.cpp:67-92, 112, 118``; ``.cu:42-65, 75-76``; ``.hpp:14``)
-       (measured; the MPS part assumes lane X's MPS refusal)
+     - rev 1.1: MPS kernels, ``cs_matrix_vec`` kernels (exact)
    * - ``coord/cubed_sphere_utils.{cpp,hpp}``
      - 550
-     - 432
-     - -118
-     - spherical frame route: ``cs_ab_to_xyz_tensors`` (``.cpp:146-184``),
-       ``cs_ab_to_theta_phi`` (``:185-193``), ``cs_velocity_transform_matrix``
-       (``:259-298``), ``cs_apply_velocity_transform_`` (``:300-334``), their
-       declarations (``.hpp:206-215``). +15 for
-       ``panel_to_panel_rows_`` (estimate)
+     - 411
+     - -139
+     - rev 1.1 -118 (spherical frame route, +15 for
+       ``panel_to_panel_rows_``); H-S4 -29 +8 (estimate)
    * - ``coord/gnomonic_equiangle.{cpp,hpp}``
      - 939
-     - 959
-     - +20
-     - ``AxialRotationData`` is declared over the existing AAM members and
-       gains the axis check (estimate)
+     - 800
+     - -139
+     - rev 1.1 +20 (axis check, estimate); **V3-1 -153 (exact)**; H-S5 -13
+       +7 (estimate)
+   * - ``coord/cartesian.cpp``
+     - 78
+     - 48
+     - -30
+     - H-S1 (exact)
+   * - ``coord/spherical_polar.{cpp,hpp}``
+     - 363
+     - 312
+     - -51
+     - H-S1 -47 (exact); H-S6 -4 (estimate)
    * - ``layout/cubed_sphere_layout.{cpp,hpp}``
      - 1,006
      - 816
      - -190
-     - ``velocity_transform_key`` and ``_velocity_transform`` with its cache
-       (``.cpp:132-142, 161-191``; ``.hpp:67-74``), the test-only
-       ``populate_cs_l2g_vel`` (``.cpp:352-363``; ``.hpp:17-18``), the dead
-       ``cs_clamp_inside`` (``.cpp:379-389`` and its commented call
-       ``:489``), the dead ``_interpolate_to_local`` (``.cpp:866-891``;
-       ``.hpp:63-65``), the intra-panel loops that repeat the base class
-       (``.cpp:577-616, 756-776``), the two velocity switch blocks that
-       become one call each (``.cpp:684-701, 822-839``) (measured, net of
-       about +10 for the calls)
+     - rev 1.1: velocity-transform cache, test-only and dead helpers,
+       repeated intra-panel loops (measured span, net of about +10)
    * - ``layout/layout.{cpp,hpp}``
      - 1,338
-     - 1,328
-     - -10
-     - board/remote fold into ``Channel`` (``.cpp:312-500, 895-940``, about
-       -100, estimate). Adds ``Exchange::x1_rows``, which takes over
-       ``hydro/hydro.cpp:344-377`` (R's D7; +30, estimate), ``seam_slab`` for
-       rows 9 and 16r over board and process group (+25, estimate), the
-       anchor scan (+5, estimate), and ``FaceKind``, ``CornerRule`` and the
-       schedule table (+30, estimate). Net unchanged from rev 1
+     - 1,304
+     - -34
+     - rev 1.1 -10 (estimate; includes D7's ``x1_rows`` +30); O's options
+       -24 (exact)
    * - ``layout/connectivity.hpp``
      - 234
      - 220
      - -14
-     - ``is_edge_loc``, ``is_corner_loc`` and their comments, with no caller
-       (measured)
+     - rev 1.1: ``is_edge_loc``, ``is_corner_loc`` (exact)
    * - ``bc/rectify_solid.cpp``
      - 170
      - 112
      - -58
-     - ``run_flip_dim1/2/3`` (``:17-107``) are one function three times. They
-       become one, with a permute (measured span, estimated result)
+     - rev 1.1: ``run_flip_dim1/2/3`` become one (estimate)
    * - ``bc/bc_func.cpp``, ``bc/bc_dispatch.cpp``
      - 320
      - 307
      - -13
-     - ``is_outflow``/``is_reflecting``/``is_custom_noop``
-       (``bc_func.cpp:231-250``) become a ``FaceKind`` lookup. The MPS
-       registration ``bc_dispatch.cpp:68`` goes
+     - rev 1.1: wall predicates become a ``FaceKind`` lookup
    * - ``bc/internal_boundary.{cpp,hpp}``
      - 225
-     - 245
-     - +20
-     - ``PrescribedFaces::build`` and the per-row mask and value for
-       ``set_prescribed`` (estimate)
+     - 215
+     - -10
+     - rev 1.1 +20 (``PrescribedFaces``, estimate); O's options -23
+       (exact); H-S3 -10 +3 (estimate)
    * - all other files
-     - 2,079
-     - 2,079
+     - 1,638
+     - 1,638
      - 0
-     - unchanged
+     - rev 1.1's 2,079 less ``cartesian.cpp`` and ``spherical_polar.*``,
+       which now have rows
    * - **total within S**
      - **8,472**
-     - **7,913**
-     - **-559 (-6.6%)**
+     - **7,456**
+     - **-1,016 (-12.0%)**
      -
 
-The ceiling is not met within S. Line-by-line reading finds 559 lines that
-S can cut by its own design. Moves that would bring it closer, each needing
-its receiving owner's agreement:
+Arithmetic: rev 1.1's 7,913 - 153 (V3-1) - 127 (O) - 103 (H-S1) - 73
+(H-S2..H-S7) - 1 (recount) = 7,456. Of the -1,016, 384 lines are exact
+(V3-1 153, O 127, H-S1 103, recount 1) plus the rev 1.1 rows marked exact;
+the rest are estimates.
 
-.. list-table::
-   :header-rows: 1
-   :widths: 10 34 10 46
+**Not counted.**
 
-   * - move
-     - what
-     - lines
-     - receiver and status
-   * - A
-     - YAML parsing of the options structs: ``coord/coordinate.cpp:62-240``,
-       ``layout/layout.cpp:249-272``, ``bc/internal_boundary.cpp:14-36``
-     - -226
-     - lane X's one options reader ("Scheme struct + YAML" in the 919936da
-       designs). Not agreed
-   * - B
-     - the spherical-polar centroid switch, ``coord/x1_centroid.{cpp,hpp}``
-       (its users are hydro's x1 code, ``hydro/hydro_forward.cpp:653-667,
-       949-1000``)
-     - -283
-     - the x1 reconstruction lane. Not agreed
-   * - C
-     - the process-group wrapper, ``layout/process_group*``,
-       ``layout/distributed*``
-     - -446
-     - commux (Zoey). Not agreed
+- Moves B (``coord/x1_centroid.{cpp,hpp}``, -283) and C (process-group
+  wrapper, ``layout/process_group*``, ``layout/distributed*``, -446) are
+  still not agreed with their receivers. With both, 6,727.
+- The virtual hooks ``coord/coordinate.hpp:375-380``
+  (``conserve_axial_momentum_``) and ``:387-392`` (``axial_x1_source_``),
+  up to 12 lines, belong to the 153's physics. A.rst:267 books
+  ``coordinate.hpp:370-392`` to S, but whether they go depends on how lane A
+  calls the moved code. Open with lane A.
 
-With all three moves: 7,913 - 955 = 6,958 (-17.9%), still 181 lines above
-the ceiling. Reaching 6,777 needs either a deeper cut that I cannot justify
-by reading (the AAM operators stay in coord per S-1), or a ruling on the
-ceiling. **FOR CHENG**: the ceiling for lane S. The lines leaving hydro for
-S's transport (``hydro/hydro.cpp:344-377, 727-776``,
+**S's 149 hydro lines are counted in R.** The lines leaving hydro for S's
+transport (``hydro/hydro.cpp:344-377, 727-776``,
 ``hydro/hydro_forward.cpp:882-946``: 149 lines, replaced by about 60 in
-``layout.cpp``) are counted in the hydro lanes, not here: R's D7 (34) and
-D5 (``:882-946``, 65), and C's 50 (R.rst:824-826).
+``layout.cpp``) are R's D7 (34), D5's ``:882-946`` (65) and **R's D1**
+``hydro.cpp:727-776`` (50), each counted once, in R (R.rst:1535-1539).
+Under R-C2, C counts no deletion of ``hydro.cpp:727-776`` and neither does
+S (R.rst:759-762).
 
 **D7, ``hydro/hydro.cpp:344-377``: S takes it (yes, unconditionally).** It
 is ``HydroImpl::_x1_ghost_rows`` (34 lines; declared ``hydro/hydro.hpp:402``),
-the generic x1 ghost-row relay. It sends ``m`` rows (cells, or faces with
-``faces = true``) over every x2/x3 column to the x1 neighbours: through a
-board for a same-process block, through the process group otherwise
-(``:353-367``). Its callers are schedule rows 4, 5, 10, 13-16, 19 and 22-25
-(``hydro/hydro_forward.cpp:249, 491, 666, 953, 1063, 1490``). R lists it as
-D7, "conditional on S": R deletes it only if S's transport takes it
-(R.rst:42-43, 805, 822). It is pure transport with no physics, so S takes it
-as ``Exchange::x1_rows`` (``exchange.hpp``), which also packs several fields
-in one message (merges M4, M5). Nothing in it depends on X. X only places
-the segment cuts at those rows, as for every row. Lines: -34 in hydro
-(counted in R's D7), +30 in ``layout.cpp`` (estimate, inside the layout row
-above). The S total above already includes that +30.
+the generic x1 ghost-row relay, over a board for a same-process block and
+the process group otherwise (``:353-367``). Its callers are schedule rows 4,
+5, 10, 13-16, 19 and 22-25 (``hydro/hydro_forward.cpp:249, 491, 666, 953,
+1063, 1490``). S takes it as ``Exchange::x1_rows`` (``exchange.hpp``), which
+also packs several fields in one message (merges M4, M5). R accepts it
+unconditionally (R.rst:196-197, 733).
 
 
 10. Migration
@@ -1417,7 +1511,7 @@ row (S-3).
    * - lane, owner
      - question
    * - R, Tianhao
-     - Settled by R rev 1.2: R calls ``apply_prescribed`` under the name
+     - Settled by R rev 2.2: R calls ``apply_prescribed`` under the name
        ``boundary.prescribed``; panel seams use ``SeamRule::owner_copy``; the
        replaced amounts are ``reconcile.x1``/``reconcile.panel``. Open: (1)
        do you accept ``SeamRule::mean`` on same-process x1 seams (K6, section
@@ -1454,7 +1548,7 @@ row (S-3).
 ------------------
 
 ``docs/v3/skeleton/S/`` holds declarations and comments only, 216 lines
-in all. It is not part of any build. It uses R's names at ``3490d7e1``
+in all. It is not part of any build. It uses R's names at ``4c59162a``
 (``FluxRegister``, ``RegisterPhase::reconcile``, ``SeamRule``,
 ``replace(dim, faces, peer, rule)``, ``set_prescribed``,
 ``apply_prescribed``) and R's namespace ``snap``.

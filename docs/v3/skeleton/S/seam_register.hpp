@@ -2,10 +2,10 @@
 // V3 lane S skeleton: declarations only, in no build. Revision 1.1.
 // The two-sided register entry for every shared face (S.rst section 4) and
 // the wall/solid faces S supplies for R's "boundary.prescribed". Names are
-// R's at happysky19/snapy 3490d7e1 (flux_register.hpp): FluxRegister,
-// RegisterPhase::reconcile, SeamRule {mean, owner_copy} (:46),
-// replace(dim, faces, peer, rule) (:77-78), set_prescribed(dim, mask,
-// value) (:61-62); R itself calls apply_prescribed(dim) (:79).
+// R's at happysky19/snapy 4c59162a (flux_register.hpp): FluxRegister,
+// RegisterPhase::reconcile, SeamRule {mean, owner_copy} (:24),
+// replace(dim, faces, peer, rule) (:62-64), set_prescribed(dim, mask,
+// value) (:45-47); R itself calls apply_prescribed(dim) (:65).
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -15,7 +15,7 @@ namespace snap {
 class FluxRegister;
 class Exchange;
 class PanelRotation;
-enum class SeamRule : uint8_t;  // R's (flux_register.hpp:46)
+enum class SeamRule : uint8_t;  // R's (flux_register.hpp:24)
 
 //! who holds the canonical value of a shared face
 enum class SeamOwner : uint8_t {
