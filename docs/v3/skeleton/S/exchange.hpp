@@ -1,5 +1,5 @@
 #pragma once
-// V3 lane S skeleton: declarations only, in no build. Revision 2.
+// V3 lane S skeleton: declarations only, in no build. Revision 2.1.
 // Pin chengcli/snapy 9e5de2d4ce497d0b2d4da3295fc1fe969fe7e410. S owns the
 // transport of every within-stage exchange (S.rst section 3 table); the
 // rules for registered fluxes are R's (flux_register.hpp:62-65 at 4c59162a).
@@ -10,6 +10,7 @@
 
 namespace snap {
 class MeshBlockImpl;
+class StateStore;                    // X's (state_store.hpp at 54ca5356)
 enum class RegisterPhase : uint8_t;  // R's (flux_register.hpp:14-23)
 
 //! what a block face is; replaces three wall predicates (hydro.cpp:296-301,
@@ -39,6 +40,7 @@ struct ExchangeRow {
   CornerRule corners;
   bool interpolate;       // cubed-sphere ghost interpolation (delta form)
   int rounds;             // blocking rounds with every option on
+  bool fallback;          // 16i, 16l: in the schedule only if their gate fails
 };
 
 //! the declared schedule of one stage; X reads it to place segment cuts
@@ -74,6 +76,28 @@ class Exchange {
   //! x1 column gather (row 28) and the reference anchor scan (rows 6-7)
   torch::Tensor gather_x1(torch::Tensor const& piece);
   torch::Tensor anchor_scan(torch::Tensor const& local_drop);  // M3, non-bitwise
+  //! allocates every row's pack/unpack buffers once per (row, shape, dtype,
+  //! device) and registers them (StateStore::register_storage, X
+  //! state_store.hpp:33-35); pack and unpack ops only use these
+  void reset(StateStore& store);
+};
+
+//! bc's outflow checks (bc_func.cpp:93-103, 132, 161, 185, 209-212, 221):
+//! one bit each in a per-block int32 device word, no sync; joins X's
+//! step-end read (meshblock.cpp:1566), which aborts with the check's message
+struct BoundaryFlags {
+  torch::Tensor outflow_bad;  // int32 [1], zeroed at step start
+  static std::string message(int bit);
+};
+
+//! owner S, as X assigns (X meshblock_parts.hpp:18-20 at 54ca5356): now
+//! meshblock.cpp:644-685, 1111-1205, 1846-1918, less 1198-1200 (X's divide)
+struct BlockExchange {
+  Exchange* ex;
+  BoundaryFlags flags;
+  void exchange_ghost_zones(std::vector<torch::Tensor> fields);  // rows 1-2
+  void apply_boundaries(torch::Tensor hydro, torch::Tensor tracers,
+                        bool primitive);  // sets flags, never reads them
 };
 
 }  // namespace snap

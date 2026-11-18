@@ -4,9 +4,11 @@ V3 lane S: seams, coord, layout, exchange and boundaries
 :Lane: S (cubed-sphere seams, coord, layout, exchange, bc)
 :Owner: Jiheng Hu (from 17:59 EST, on Cheng's assignment; revisions up to
         1.1 by Xinyue Wang)
-:Revision: 2 (from 1.1, ``d03e4888``): Cheng's six items of 16:37 EST and
-           lane A's S-4 to S-8 (A rev 4 final, ``4e0827b8``), re-cited to
-           lane R rev 2.2. The index is at the end of section 1.
+:Revision: 2.1 (from 2, ``c505fb87``): the PM's items 1-8 on rev 2,
+           answered by number in section 11 ("Rev 2.1"). Rev 2 (from 1.1,
+           ``d03e4888``): Cheng's six items of 16:37 EST and lane A's S-4
+           to S-8 (A rev 4 final, ``4e0827b8``), re-cited to lane R rev
+           2.2. The index is at the end of section 1.
 :Pin: chengcli/snapy ``9e5de2d4ce497d0b2d4da3295fc1fe969fe7e410``
 :Lane R header: happysky19/snapy ``docs/v3/skeleton/R/flux_register.hpp`` at
                 ``4c59162ae37080d0ab307b2823742b44f46da7c3`` (frozen; header
@@ -29,10 +31,20 @@ round-off is marked **FOR CHENG**. Nothing in this document was built or run.
 
 **Scope.** Lane S owns ``src/coord/*``, ``src/layout/*`` and ``src/bc/*``,
 the transport of every within-stage exchange (section 3), the panel-seam
-geometry and the one rotation (S-1). S reads but does not own the exchange
-call sites in ``hydro/hydro_forward.cpp``, ``hydro/hydro.cpp:344-377, 606-776``,
+geometry and the one rotation (S-1). **S also owns ``BlockExchange``**, the
+part X assigns it in the ``MeshBlock`` split (X skeleton
+``meshblock_parts.hpp:18-20`` at UCzhangxi/snapy
+``54ca53562c315cedc958af0799c2099546014b1f``): ``mesh/meshblock.cpp:644-685``
+(the two-round exchange and its pack, host, unpack phases),
+``:1111-1205`` (``exchange_ghost_zones`` with the x1 boundary-function
+refresh) and ``:1846-1918`` (``apply_boundaries``), less ``:1198-1200``
+(the ``scalar_r`` divide, X's). Those lines stay in X's ``meshblock.cpp``
+split, outside S's section 9 baseline (proposal: X books any deletion
+there under RULING V3-1). S reads but does not own the other exchange
+call sites: ``hydro/hydro_forward.cpp``, ``hydro/hydro.cpp:344-377, 606-776``,
 ``scalar/scalar.cpp:100-181``, ``forcing/diffusion_cubed_sphere.cpp``,
-``eos/equation_of_state.cpp:335-372`` and ``mesh/meshblock.cpp:611-1196``.
+``eos/equation_of_state.cpp:335-372`` and the rest of
+``mesh/meshblock.cpp:611-1110``.
 
 **Pins.**
 
@@ -41,6 +53,13 @@ call sites in ``hydro/hydro_forward.cpp``, ``hydro/hydro.cpp:344-377, 606-776``,
   are written ``R.rst:N``.
 - Lane A at JiachenLiu-Atmos/snapy ``4e0827b8`` (A.rst:N) and lane O at
   ``5a7b46fa`` (O.rst:N), both read-only.
+- Rev 2.1 adds, all fetched read-only: lane A rev 4.1 part 2
+  ``a0b006d29cf7c9c8147ebdc387ecddc672623b79``; lane X rev 3.13
+  ``54ca53562c315cedc958af0799c2099546014b1f`` (UCzhangxi/snapy; X.rst:N);
+  lane R rev 2.4 ``a15af81660f75b53f3e905b7ee15aa935ada855c``
+  (happysky19/snapy, R.rst only; the header stays at ``4c59162a``); lane EF
+  ``f5c8e9a76f2b06045b545cc692bff7262f13ac0d`` (zoeyzyhu/snapy; EF.rst:N).
+  A cite to one of these names its sha.
 - #370 (open; species enthalpy and donor velocity across seams) is used only
   through its PR text. It appears as the pending row 17p.
 
@@ -76,11 +95,14 @@ numbers match, but I did not see the brief's own file list.
   Any rounding or cost problem goes to the R header review, not back here.
 - S-3: diffusion gets a face-slab row and keeps its own exchange until
   phase 3.
-- EF: solid cells are column breaks, never donor or receiver in
-  ``fix_vapor``. They are excluded from theta, the hit census and the
-  neighbour minimum. Solid faces are mask-zeroed for mass, species, energy
-  and scalars, and normal momentum keeps the mirror-Riemann flux, posted as
-  one named boundary increment.
+- EF: a solid cell is a column break in ``fix_vapor``, never a donor or
+  receiver, and is excluded from theta, the hit census and the neighbour
+  minimum (``phi``). Solid faces are not limited by EF: R's
+  ``boundary.prescribed`` zeroes their mass, species, energy and scalar
+  rows in ``reconcile``, before ``limit``, so theta already sees zero
+  species flux there; normal momentum keeps the mirror-Riemann flux
+  (EF.rst:696-704 at ``f5c8e9a7``). Tangential momentum is free-slip,
+  accepted by EF (same lines; section 4).
 
 **Rev 2: answers to Cheng's six items (16:37 EST), by number.**
 
@@ -89,7 +111,8 @@ numbers match, but I did not see the brief's own file list.
    2T:3T with a negative control: section 4.1 and section 5. The table cite
    is ``layout/cubed_sphere_layout.cpp:320-350``.
 2. RULING V3-3: one sentence in section 4.
-3. Section 9 on real counts: 8,472 -> 7,434 (-1,038, -12.3%), with the 153
+3. Section 9 on real counts: 8,472 -> 7,434 (-1,038, -12.3%; 7,445 at
+   rev 2.1, section 9), with the 153
    AAM lines (V3-1), D7, H-S1..H-S7, lane O's 127 options lines (99 stay),
    the 16 ``coordinate.hpp`` AAM hook lines, ``rotation_geometry()`` (+4,
    estimate) and the overlap counted once.
@@ -217,15 +240,29 @@ bitwise end to end is a **hypothesis**. The spherical-frame code is deleted
 **FaceKind.** Each block face has one kind (``exchange.hpp``). The three
 wall predicates become one lookup. ``periodic`` is a seam to self: the layout
 wraps where it can, and slab x1 keeps the bc copy as the declared fallback.
-Only ``wall``, ``outflow`` and ``custom`` faces are physical: R's
-``RegisterMonitor::boundary(dim)`` sums those (plus R's
-``boundary.prescribed`` entries), never an ``interior``, ``seam_x1``,
-``panel`` or ``periodic`` face, which ``replace`` reconciles instead (lane
-O's L-3). **Proposal (lane A's conflict 3; until R agrees):** fluid-solid
-faces also count as physical, all rows. S supplies the face set
-(``PrescribedFaces::solid_face_sign``: +1 where the solid cell is on the
-high side, -1 on the low side, 0 on fluid-fluid and solid-solid faces) and
-R sums ``sign * A_f S_d`` there in ``boundary(dim)``. Reason: the momentum
+**The ``boundary(dim)`` face set (contract; R closed it in R rev 2.4,
+R.rst:39-42, 632-657 at ``a15af816``).** R's
+``RegisterMonitor::boundary(dim)`` sums two disjoint face sets, all rows,
+outward from the fluid, and never an ``interior``, ``seam_x1``, ``panel``
+or ``periodic`` face, which ``replace`` reconciles instead (lane O's L-3):
+
+- **block faces**, selected by ``FaceKind``: a block face of kind
+  ``wall``, ``outflow`` or ``custom`` whose interior cell is fluid.
+  ``FaceKind`` is one value per block face (six per block), so it can only
+  select faces on the block's outer boundary;
+- **fluid-solid faces**, selected by the **solid mask**, not by
+  ``FaceKind``: an immersed solid lies mostly inside a block, so its faces
+  are interior faces of the block and no per-block-face kind can name them.
+  S builds the set once from the cell mask (``solidl``/``solidr``,
+  ``bc/internal_boundary.cpp:74-76``) as
+  ``PrescribedFaces::solid_face_sign``: +1 where the solid cell is on the
+  high side, -1 on the low side, 0 on fluid-fluid faces **and on
+  solid-solid faces**. A face between two solid cells is not a boundary of
+  the fluid domain, so whatever is posted on it stays out of
+  ``boundary(dim)`` (R.rst:647-648 at ``a15af816``). R sums ``sign * A_f
+  S_d`` over the nonzero entries.
+
+Reason for the second set: the momentum
 rows at a solid face keep the mirror flux ``p* n`` (section 4,
 "Tangential momentum at solid faces"), which is not zero, and the solid
 cell is overwritten every stage (``fill_cons_solid_``,
@@ -236,7 +273,8 @@ while ``domain_total`` sums fluid cells only
 O.rst:808, 970 at ``4afdbf37``) leaves the wall pressure force in the
 momentum residual. O.rst:2915-2917 (on the sphere ``boundary`` uses x1
 faces only) then holds only without solids. Mass, species, energy and
-scalar rows there are prescribed to zero, so they add nothing.
+scalar rows there are prescribed to zero, so they add nothing. No
+``flux_register.hpp`` declaration changes (R.rst:41-42 at ``a15af816``).
 
 **Corners.** ``CornerRule::diagonal`` on slab and cubed layouts, using the
 diagonal neighbour that ``for_each_direction`` can already visit
@@ -494,6 +532,20 @@ Column meanings:
      - +1
      - finalize
      - new; ``SeamRule::owner_copy`` (``flux_register.hpp:24, 62-64``)
+   * - 16i
+     - **fallback, only if G-R2 fails** (section 4 table): R's ``replace(d,
+       faces, peer, SeamRule::owner_copy)`` on x2/x3 edges inside one panel
+       (and on x2/x3 block edges of slab and cubed layouts)
+     - the owner's posted x2/x3 face flux slab, all rows; raw copy, no
+       rotation (same panel, same basis)
+     - same-panel x2/x3 neighbours
+     - ``RegisterPhase::reconcile``, at row 16r's position
+     - no interp; raw
+     - none (one face)
+     - +1 when it runs; 0 extra on the cubed sphere if packed into row
+       16r's round (**hypothesis**: one round can carry both peer sets)
+     - finalize
+     - new; not in the section 3.5 count unless G-R2 fails
    * - 17
      - hydro species theta sync
      - ``hydro_theta``
@@ -517,6 +569,23 @@ Column meanings:
      - finalize
      - not at the pin: ``hydro/hydro_forward.cpp:1224-1225`` says ``hspec`` is
        not exchanged (#238). Row from PR #370's description only
+   * - 16l
+     - **fallback, only if G-S-K7 fails** (section 5): a second R
+       ``replace`` after the carry, ``SeamRule::mean`` on x1 seams and
+       ``owner_copy`` on panel seams (mapped by the ``PanelEdge``, momentum
+       rotated, as row 16r)
+     - the post-carry face flux slab, all rows (x1 as row 9, x2/x3 as row
+       16r)
+     - x1 below/above and cross-panel x2/x3 neighbours
+     - end of ``RegisterPhase::limit``, after row 17 (and 17p) and the
+       carry (``hydro/hydro_forward.cpp:1234-1235``), before ``divergence``
+       (``flux_register.hpp:17-18``)
+     - as rows 9 and 16r
+     - none (one face)
+     - +1 when it runs
+     - finalize
+     - new; not in the section 3.5 count unless G-S-K7 fails; lanes X and
+       EF decide
    * - 18
      - cubed-sphere diffusion flux seam
      - ``diffusion_flux`` (12 channels: area-weighted flux + trace), streamed
@@ -624,36 +693,28 @@ Column meanings:
      - cloud (parentless) then vapor rows + dry total + volume, the whole x1
        column
      - every block of the x1 column (``pz`` pieces)
-     - step (4) multi-stage averaging
+     - step (4) multi-stage averaging; again in step (6) on the last stage
+       when the thermo has reactions
      - raw
      - interior only
-     - 1-2
+     - 1-2 per call (two calls on the last stage with reactions)
      - all pieces waited (``layout/layout.cpp:792-802``); CUDA stream sync
        (``layout/layout.cpp:757-760``, ``:804-807``)
-     - ``mesh/meshblock.cpp:908-909``; ``eos/equation_of_state.cpp:335-372``;
+     - ``mesh/meshblock.cpp:908-909``, ``:952`` (last stage, before the
+       saturation adjustment, ``:950-951``); ``eos/equation_of_state.cpp:335-372``;
        ``layout/layout.cpp:748-818``
    * - 29
-     - axial-momentum closure reduction
-     - ``axial_closure_sums`` (2 numbers)
+     - axial-momentum closure reduction, with a process group
+     - ``axial_closure_sums`` {R, I} (2 FP64 numbers)
      - all ranks (allreduce SUM)
-     - stage tail
+     - stage tail, every stage
      - n/a
      - n/a
      - 1
-     - allreduce ``wait`` (``layout/process_group.cpp:184-195``); host read
-       ``item`` (``mesh/meshblock.cpp:1017-1018``)
+     - pin: allreduce ``wait`` (``layout/process_group.cpp:184-195``) and a
+       host read ``item`` (``mesh/meshblock.cpp:1017-1018``). V3: an
+       in-stage device collective with no host read (section 7)
      - ``mesh/meshblock.cpp:983-990``
-   * - 30
-     - gravity-work fixer reduction (last stage only)
-     - ``gravity_work_fixer_sums`` (incl. ``.cpu()``,
-       ``mesh/meshblock.cpp:1058-1061``)
-     - all ranks (allreduce SUM)
-     - stage tail
-     - n/a
-     - n/a
-     - 1
-     - allreduce ``wait``; host copy
-     - ``mesh/meshblock.cpp:997-1004``
 
 Gates (when a row runs at all):
 
@@ -673,9 +734,17 @@ Gates (when a row runs at all):
 - row 17: ``limiter || cov2 || cov3`` and species (``hydro/hydro_forward.cpp:1165``);
 - row 19: x1 gravity and ``radial_exact_work()`` (``hydro/hydro_forward.cpp:1471``);
 - row 28: ``pz > 1`` (``eos/equation_of_state.cpp:340-341``), and only when
-  the limiter runs (``mesh/meshblock.cpp:907-909``);
-- row 29: ``conserve_axial_momentum_closure``; row 30: ``gravity_work_fixer``
-  on the last stage.
+  the limiter runs (``mesh/meshblock.cpp:907-909``); its second call
+  (``:952``) only on the last stage with thermo reactions (``:950-951``);
+- row 29: ``conserve_axial_momentum_closure`` with a process group
+  (``mesh/meshblock.cpp:983-988``); on one rank the closure has no
+  collective and is not a row;
+- rows 16i and 16l: only if their gates fail (G-R2, G-S-K7).
+
+The gravity-work fixer's reduction (row 30 up to rev 2,
+``mesh/meshblock.cpp:997-1004``) is gone: the fixer is removed (Cheng's
+ruling (b); X.rst:452-453 at ``54ca5356``; A.rst:501-505 at
+``a0b006d2``), and with it merge M9.
 
 Host reads in the stage that are not exchanges, but are blocking points for
 lane X: the implicit solve's finiteness screen, ``item<double>()`` on every
@@ -719,25 +788,32 @@ Rows not in either list: 0-2 (stage-entry syncs), 9 (seam flux averaging),
 11-12 and 20-21 (face-state seam syncs), 18 (diffusion seam), 19
 (potential-energy seam row), 22-25 (scalar covariance rows, a separate call
 path at ``hydro_forward.cpp:245-253``), 28 (whole-column limiter gather),
-29-30 (reductions).
+29 (reduction).
 
 3.5 Segment boundaries and merge proposals
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Lane X's contract: one segment boundary per blocking round. With the most
-options on that can hold together on the cubed sphere (rows 1-4, 6-9, 11-30
-except 17p; ``pz > 1`` across processes; not stage 0; last stage), the count
-is the sum of the ``rounds`` column:
+options on that can hold together on the cubed sphere (rows 1-4, 6-9, 11-29
+except 16i, 16l and 17p; ``pz > 1`` across processes; a stage that is
+neither stage 0 nor the last), the count is the sum of the ``rounds``
+column:
 
 2+2+2+1 (rows 1-4) + 1+1+1+1 (6-9) + 1 (11-12) + 4 (13-16) + 1 (17) + 4 (18)
-+ 1 (19) + 1 (20-21) + 4 (22-25) + 1+1 (26-27) + 2 (28) + 1+1 (29-30) = **33**.
++ 1 (19) + 1 (20-21) + 4 (22-25) + 1+1 (26-27) + 2 (28) + 1 (29) = **32**.
 
-Rows 5 and 10 are spherical-polar only and do not add to this count. The
-proposed row 16r adds one round on the cubed sphere (34). The earlier local
+Rev 2 counted 33: row 30 (the gravity-work fixer's reduction) is gone with
+the fixer (X.rst:452-453 at ``54ca5356``). Rows 5 and 10 are
+spherical-polar only and do not add to this count. The proposed row 16r
+adds one round on the cubed sphere (33). The last stage adds row 28's
+second call at ``mesh/meshblock.cpp:952`` when the thermo has reactions:
++2 rounds (+1 with M8), so 34 on that stage (35 with 16r). The fallback
+rows add +1 each only if their gates fail: 16l (G-S-K7), and 16i (G-R2;
+0 if packed into 16r's round, **hypothesis**). The earlier local
 commit 9c568b92 counted per exchange site and reported 23 points, with nine
 merges to 12. That commit could not be fetched from here, so I could not
-reconcile its count with this one. Counted per site, this table has 26 points
-with the same options. Both counts and both merge results are
+reconcile its count with this one. Counted per site, this table has 25 points
+with the same options (rev 2's 26 less row 30). Both counts and both merge results are
 **hypotheses**. Whether
 the diffusion seam (row 18), radial-exact work (row 19) and the covariance
 rows really run together in one cubed-sphere deck is a **hypothesis**. I did
@@ -794,7 +870,9 @@ is a property of the code. A changed summation order is not bitwise.
      - 18
      - 3
      - yes per the code comment ("four completed rounds reproduce the old
-       48-channel round"). Costs 4x the buffer
+       48-channel round"). Costs 4x the buffer. **Phase 3**, with S-3: it
+       goes in when diffusion leaves its own exchange for
+       ``Exchange::seam_slab`` (A.rst:160-161, 775 at ``a0b006d2``)
    * - M7
      - one theta sync for hydro and scalar species, by running the scalar
        lower-bound theta before row 17
@@ -812,20 +890,16 @@ is a property of the code. A changed summation order is not bitwise.
      - yes if the cloud repair does not feed the vapor repair's inputs. The
        clamp at ``eos/equation_of_state.cpp:378`` lies between them, so this
        is a **hypothesis**
-   * - M9
-     - one allreduce for rows 29 and 30 on the last stage
-     - 29+30
-     - 1
-     - yes if the backend reduces element by element. That depends on the
-       backend and is a **hypothesis**
    * - M10
      - pack row 17p into row 17 when #370 lands
      - 17+17p
      - 1 (vs. #370 as written)
      - yes (pure copies)
 
-With M1-M9: 33 - (2+1+1+3+3+3+1+1+1) = **17** blocking rounds (**hypothesis**).
-Of these merges, only M3 is not bitwise.
+With M1-M8: 32 - (2+1+1+3+3+3+1+1) = **17** blocking rounds, **18** with
+row 16r (**hypothesis**; X.rst:456-458 at ``54ca5356``). M9 (one allreduce
+for rows 29 and 30) is gone with row 30; the label is not reused. Of these
+merges, only M3 is not bitwise.
 Also proposed, with no change to the count: start rows 11-12 (and 20-21)
 before the x1 sweep so they overlap it. The x2/x3 face states are
 reconstructed from ``w`` (``hydro/hydro_forward.cpp:1011``, ``:1023``). The x1
@@ -887,6 +961,29 @@ SeamRule::mean)`` is the flux average at ``hydro/hydro_forward.cpp:868-946``
 (comment ``:868-881``; exchange and mean ``:882-946``). Both sides hold
 ``0.5*(mine + theirs)`` (``:937, 942``), which is bitwise equal on both sides
 because IEEE addition commutes.
+
+**Row 9 and the implicit phase (J10): row 9 does not run again after
+``implicit``.** The ``vic.*`` posts (``add(1, "vic.*", ...)`` in phase
+``implicit``, ``flux_register.hpp:20`` at ``4c59162a``; R.rst:551-560 at
+``a15af816``) never land on an x1 seam face, because under an implicit
+scheme no x1 seam exists: the pin refuses an x1 split whenever the vertical
+solve is active. ``HydroImpl::_apply_implicit_correction`` checks that both
+x1 faces of the block are physical and throws otherwise ("implicit scheme
+requires nb1 = 1 (no x1 decomposition): the vertical solve has no
+cross-rank coupling", ``hydro/hydro.cpp:485-490``), and the solver's own
+comments rely on it (``implicit/implicit_hydro.cpp:375-378, 576-577``).
+Every column the solve sees is whole and inside one block, so each x1 face
+it posts on is either a cell face inside the block (one value by
+construction) or one of the column's two physical walls (in
+``boundary(dim)``, not a seam). That is read from the pin, not run. V3
+must keep the refusal as a precondition of ``implicit`` (proposal: the
+check stays on the implicit path, lane I's). If a later design lifts it, the
+fix is a second ``replace(1, faces, peer, SeamRule::mean)`` at the start of
+``post_implicit``, before ``apply_prescribed(1)`` (+1 round), and that
+would be a new row. **Hypothesis**, untested: on a slab with x1 periodic
+(a seam to self through the bc copy, which ``is_physical_boundary`` counts
+as physical, R.rst:643-645 at ``a15af816``) the solve treats both ends as
+walls, so the two posts there are the wall's own and need no ``replace``.
 
 **Same-process x1 seams (R's K6, requirement 5).** At the pin one process
 can hold several blocks that are adjacent in x1. ``blocks_per_process``
@@ -953,12 +1050,14 @@ seams: it described the pin's process seams only. Proposed rule:
      - bitwise, checked in debug and CI (R's G-R2). **Hypothesis**: ``pow`` is
        position-dependent under AVX2 (492/5,462 in the cross-check), so the
        gate runs under AVX2 and the scalar setting. If it fails, the entry
-       becomes ``owner_copy`` with a raw copy (bitwise by construction)
+       becomes ``owner_copy`` with a raw copy (bitwise by construction):
+       fallback row 16i (section 3.3), in ``reconcile`` at row 16r's
+       position, +1 round (0 if packed into 16r, **hypothesis**)
    * - cubed-sphere panel seam (row 16r)
      - the block with the smaller global rank (``SeamOwner::lower_rank``)
      - ``replace(d, faces, peer, SeamRule::owner_copy)``. S moves the owner's
        slab (``Exchange::seam_slab``). Mass, energy, species and scalar rows
-       are copied raw. Momentum rows go through
+       are mapped by the ``PanelEdge`` (4.1), then copied. Momentum rows go through
        ``PanelRotation::panel_to_panel_rows_(rows, edge, alpha, beta)``
        (owner covariant on its ``peer_dim`` face → Cartesian → receiver
        covariant on its ``dim`` face; the ``PanelEdge`` gives both)
@@ -976,9 +1075,11 @@ seams: it described the pin's process seams only. Proposed rule:
      - as the rows above
      - none at the pin (no second ``replace`` after the carry,
        R.rst:623-624). If the gate fails: a second ``replace`` in ``limit``,
-       row 16l (``mean`` on x1, ``owner_copy`` on panel seams), one more
+       fallback row 16l (section 3.3: ``mean`` on x1, ``owner_copy`` on
+       panel seams), at the end of ``limit`` after row 17 and the carry, +1
        round; lanes X and EF decide
-     - **G-S-K7** (section 5): own vs mapped peer; x1 seams all rows
+     - **G-S-K7** (section 5), gate harness only, no schedule row: own vs
+       mapped peer; x1 seams all rows
        bitwise; panel seams mass, species, scalars bitwise, momentum to the
        16r tolerance (**hypothesis**), energy an expected failure until #370
        (row 17p); lane A's G5 (seam A F·K_f, 1e-14 rel) runs at the same
@@ -989,8 +1090,8 @@ across every shared face. Today panel seams agree only to round-off
 (inventory H15: mass drift -9.9e-16 over 20 steps at 919936da), and
 same-process x1 seams to whatever G-R10 measures.
 
-**Cost.** Row 16r is one more cross-panel face-slab round per stage (34
-rounds with every option on, section 3.5).
+**Cost.** Row 16r is one more cross-panel face-slab round per stage (33
+rounds with every option on, 18 after M1-M8, section 3.5).
 
 **4.1 Panel-edge map (item 1).** R's ``replace`` takes the peer **already
 mapped** by S into this block's face dim, edge order, normal sign and basis
@@ -1108,7 +1209,9 @@ onto R's ``boundary.prescribed``:
        instance**: the hydro register and each Scalar module's own register
        (``flux_register.hpp:41``; R.rst:339-341, 590-591). Once per instance
        and active dim, redone when the solid field or the wall set changes
-       (R.rst:1395-1397), not per stage. The mask is ``[nvar, faces...]`` at
+       (R.rst:1395-1397), not per stage. ``PrescribedFaces::build`` writes
+       into tensors allocated at ``reset()`` and registered with
+       ``StateStore::register_storage`` (section 7). The mask is ``[nvar, faces...]`` at
        that instance's ``nvar`` (row dimension settled, ``:45``;
        R.rst:709-711). In a Scalar register every row is prescribed to 0 on
        wall and solid faces; in the hydro register mass, species and energy
@@ -1131,8 +1234,9 @@ onto R's ``boundary.prescribed``:
      - the cell mask: solid cells are column breaks, and are excluded from
        theta, the hit census and the neighbour minimum (EF)
 
-**Tangential momentum at solid faces (proposal; EF decides).** Free-slip,
-which is what the pin does. ``InternalBoundaryImpl::forward`` copies the
+**Tangential momentum at solid faces (settled).** EF accepted free-slip
+(EF.rst:696-699 at ``f5c8e9a7``), and R records it (R.rst:593-597 at
+``a15af816``). Free-slip is what the pin does. ``InternalBoundaryImpl::forward`` copies the
 fluid side's face state into the solid side and negates only the normal
 velocity component (``bc/internal_boundary.cpp:78-80, 84-91``), so the tangential
 velocity is mirrored equal. Reflecting walls do the same with ghost cells
@@ -1182,7 +1286,18 @@ round-off, which is R's G-R9. Hence:
   ``has_on_axis_cell``, set once at reset from ``on_axis`` (the pin does a
   host ``.item()`` on every call, ``:506``). ``cos2_lat`` is ``aam_kk_c``
   (``:175``). All of them are already built in the rotation data that stays
-  with S (``:169-221``), so section 9 does not change.
+  with S (``:169-221``), so section 9 does not change. Rev 2.1 drops
+  ``k_face2``/``k_face3`` from the public struct: no lane reads them (A
+  reads ``K_f2``/``K_f3``, ``s2`` and ``cos2_face2``/``cos2_face3``), and
+  coord keeps whatever it needs to build ``K_f`` internally. Lane A's
+  skeleton comment still lists them (A ``rotation_geometry.hpp:2-3`` at
+  ``a0b006d2``); that comment is A's to update.
+- Rev 2.1, Jiachen's nit: ``rotation_geometry()`` is a virtual member,
+  ``CoordinateImpl::rotation_geometry() const``, as lane A reads it
+  (A.rst:678-680 at ``a0b006d2``). Rev 2's skeleton declared a free
+  function under a comment that said virtual; the free function is gone
+  and the skeleton records the member in a comment, because
+  ``CoordinateImpl`` is the pin's class (``coord/coordinate.hpp``).
 - S-2: as the convention above.
 - S-3: diffusion keeps its four-round seam exchange
   (``forcing/diffusion_cubed_sphere.cpp:132-143``, row 18) until phase 3. It
@@ -1309,7 +1424,11 @@ round-off, which is R's G-R9. Hence:
   same check on 1T-3R (swap + negate) and 3L-4T (swap + reverse), so the
   three edges cover every pair of properties.
 - **G-S-K7, post-limit single-valuedness** (K7; R's Q-R-i and G-R12,
-  R.rst:623-627, 1352-1356). At the end of ``RegisterPhase::limit``, before
+  R.rst:623-627, 1352-1356). **Gate harness only** (rev 2.1 choice): it
+  runs in the debug and CI decks below, never in a production schedule, so
+  it is not a row, adds no round and has no device flag (the peer compare
+  needs its own exchange, which a production flag would add to every
+  stage). At the end of ``RegisterPhase::limit``, before
   ``divergence`` (``flux_register.hpp:17-18``), on every shared face, own
   against the mapped peer: x1 seams all rows bitwise; panel seams mass,
   species and scalar rows bitwise, momentum to the 16r tolerance, energy an
@@ -1318,8 +1437,8 @@ round-off, which is R's G-R9. Hence:
   ``pz = 2`` deck with 2 blocks in one process. That it fails today is a
   **hypothesis** (the pin does no second ``replace`` after the carry,
   R.rst:623-624). Fix if it fails: a second ``replace`` in ``limit``
-  (``mean`` on x1, ``owner_copy`` on panel seams), row "16l", one more
-  round; lanes X and EF decide. This gate answers J9: its row is G-S-K7 in
+  (``mean`` on x1, ``owner_copy`` on panel seams), fallback row 16l
+  (section 3.3), one more round; lanes X and EF decide. This gate answers J9: its row is G-S-K7 in
   the section 4 shared-face table. Lane A took J9 option (b): its G5 (seam
   ``A F · K_f``, 1e-14 relative) runs at the same point, at the end of
   ``limit``, and depends on G-S-K7, because A builds ``A F · K_f`` from the
@@ -1329,8 +1448,8 @@ round-off, which is R's G-R9. Hence:
   G-S-K7 fails, G5 is not meaningful until row 16l exists. G5 stays in
   phase 2 and A's count does not change.
 - **Transport-only rows are bitwise.** Rows that copy (4, 5, 8, 10, 13-16,
-  19, 22-25 and merges M1, M2, M4-M7, M10) must give the same bits as at the
-  pin. Gate: an nb = 1 vs nb = 2 run, and a pz = 1 vs pz = 2 run, under the
+  19, 22-25 and merges M1, M2, M4, M5, M7, M10 in phase 1; M6 in phase 3,
+  with S-3) must give the same bits as at the pin. Gate: an nb = 1 vs nb = 2 run, and a pz = 1 vs pz = 2 run, under the
   scalar CPU setting.
 - **Solid faces.** Zero mass, species, energy and scalar flux through every
   solid face. The ``boundary.prescribed`` amount equals the flux the mask
@@ -1343,9 +1462,13 @@ round-off, which is R's G-R9. Hence:
 - Exchanged fields travel in their storage dtype, and V3 adds no cast in a
   stage row. The only FP32-to-FP64 cast near an exchange is in
   ``initialize_local`` (``mesh/meshblock.cpp:448``), outside the stage.
-- ``PanelRotation`` and ``PanelGeometry`` are built in FP64 and cast once
-  per (dtype, device), as the exchange matrices are cached today
-  (``layout/cubed_sphere_layout.cpp:161-191``). Building on the CPU and moving
+- Geometry arrays are ``Quantity::kReference``: FP64 masters with cached
+  casts per use (X ``precision_policy.hpp:17``; X.rst:283 at
+  ``54ca5356``). That covers ``PanelRotation``, ``PanelGeometry``,
+  ``AxialRotationData`` and the ``PrescribedFaces`` normals. They are built
+  in FP64 and cast once per (dtype, device), as the exchange matrices are
+  cached today (``layout/cubed_sphere_layout.cpp:161-191``); masks and
+  ``solid_face_sign`` are bool/int8 and need no cast. Building on the CPU and moving
   changes the CUDA bits relative to today's lazy build on the velocity's
   device (cross-check §3 at 919936da). That is a change at round-off.
 - The reconcile slab is in the register's ``kFlux`` dtype
@@ -1366,14 +1489,47 @@ condition variable (``layout/layout.cpp:379-416``) or a stream synchronize
 (``layout/layout.cpp:757-760, 804-807``). None can be captured. S's
 contract:
 
-- **No host read inside a row.** The axial closure's ``item``
-  (``mesh/meshblock.cpp:1017-1018``) and the fixer's ``.cpu()``
-  (``:1058-1061``) move to X's single step-end read, as R's monitor does
-  (``flux_register.hpp:89, 102``).
-- **Fixed buffers.** Each row's send and receive buffers are keyed by
-  (row, shape, dtype, device), as ``exchange_buffer_cache`` is today
-  (``layout/cubed_sphere_layout.cpp:571-574``). Row 16r's slab buffer is
-  fixed per dim.
+- **No host read inside a row.** Row 29, the axial closure, is a
+  per-stage, in-stage device collective with no host read: {R, I} are two
+  FP64 device numbers, reduced on the device, and ``Fixer::apply`` scales
+  on the device (A.rst:478-499, 1057-1059 at ``a0b006d2``). The pin's
+  ``.item`` pair (``mesh/meshblock.cpp:1017-1018``) goes; the stage weight
+  ``wght2()`` (``:1027``) is a host double from ``begin_stage`` (A.rst:493-497
+  at ``a0b006d2``).
+  The gravity-work fixer's ``.cpu()`` (``:1058-1061``) goes with the fixer
+  (X.rst:452-453 at ``54ca5356``). A.rst:507-508 at ``a0b006d2`` still
+  says X reduces {R, I} "through the host"; that sentence is A's and X's
+  to align (section 11, Rev 2.1 item 5).
+- **bc's outflow checks become device flags.** ``bc/bc_func.cpp`` has 11
+  lines with ``.item<bool>()`` (12 calls in 9 ``TORCH_CHECK`` calls) on the
+  outflow path: ``:93-103`` (``check_background``, called at ``:131``),
+  ``:132``, ``:161``, ``:185``, ``:209-212`` and ``:221``. They run on every
+  outflow face call, i.e. every stage, from ``apply_boundaries``
+  (``mesh/meshblock.cpp:1846-1918``, called at ``:1006``), each a device-to-host
+  sync. In V3 each check sets one bit of a per-block int32 device word
+  (``BoundaryFlags::outflow_bad``) with no sync, and that word joins X's
+  step-end read (``mesh/meshblock.cpp:1566``; X.rst:215, 249 at
+  ``54ca5356``) as one more stacked flag. A set bit aborts at step end
+  with the pin's message for that check (abort, not a retry cause, as
+  today). The background-only checks (``:93-103`` and the reference half
+  of ``:209-212``) read the fixed reference and could instead run once at
+  ``reset()`` (proposal).
+- **Fixed buffers, allocated at** ``reset()``. Every pack and unpack op of
+  every row (rows 0-29, and 16i and 16l if they run) works on send and
+  receive buffers allocated once at ``reset()`` per (row, shape, dtype,
+  device), replacing the lazy ``exchange_buffer_cache``
+  (``layout/cubed_sphere_layout.cpp:571-574``), and registered with
+  ``StateStore::register_storage`` (X ``state_store.hpp:33-35`` at
+  ``54ca5356``). Row 16r's slab buffer is fixed per dim.
+- **Registered geometry and masks.** ``PrescribedFaces::build`` (mask,
+  value, normal, ``solid_cells``, ``solid_face_sign``) and the
+  ``AxialRotationData`` members added in rev 2 (``k_cell_lower``,
+  ``cos2_face2``/``cos2_face3``, ``K_f2``/``K_f3``, ``s2``, ``on_axis``)
+  live in tensors allocated at ``reset()`` and registered the same way. A
+  rebuild (a new solid field or wall set) either writes into the
+  registered tensors with ``copy_``, so addresses and graphs stay valid, or
+  bumps the configuration generation in ``GraphKey`` (X.rst:71-74, 83 at
+  ``54ca5356``); it never rebinds a registered tensor silently.
 - **Declared rounds.** ``ExchangeRow::rounds`` is the number of segment
   boundaries the row costs. X may merge rows only as section 3.5 lists. A
   merge that is not bitwise (M3) is flagged in section 10.
@@ -1624,9 +1780,12 @@ from rev 1.1 unchanged and were not recounted, except the coordinate row.
      - rev 1.1: ``run_flip_dim1/2/3`` become one (estimate)
    * - ``bc/bc_func.cpp``, ``bc/bc_dispatch.cpp``
      - 320
-     - 307
-     - -13
-     - rev 1.1: wall predicates become a ``FaceKind`` lookup
+     - 318
+     - -2
+     - rev 1.1 -13: wall predicates become a ``FaceKind`` lookup; rev 2.1
+       +11 (**estimate**): the 9 outflow ``TORCH_CHECK`` calls become flag
+       updates of about the same length, plus the bit-to-message table and
+       the flag word (section 7)
    * - ``bc/internal_boundary.{cpp,hpp}``
      - 225
      - 215
@@ -1641,14 +1800,15 @@ from rev 1.1 unchanged and were not recounted, except the coordinate row.
        which now have rows
    * - **total within S**
      - **8,472**
-     - **7,434**
-     - **-1,038 (-12.3%)**
+     - **7,445**
+     - **-1,027 (-12.1%)**
      -
 
 Arithmetic: rev 1.1's 7,913 - 153 (V3-1) - 127 (O) - 103 (H-S1) - 73
 (H-S2..H-S7) - 1 (recount) = 7,456 (rev 2 part 1), then - 49 + 39 (S-4 to
 S-6) = 7,446, then - 16 (AAM hooks, exact) + 4 (``rotation_geometry()``,
-estimate) = 7,434. Of the new deletions, 449 lines are exact (V3-1 153, O
+estimate) = 7,434 (rev 2), then + 11 (bc outflow flags, rev 2.1,
+estimate) = 7,445. Of the new deletions, 449 lines are exact (V3-1 153, O
 127, H-S1 103, S-4 49, hooks 16, recount 1) plus the rev 1.1 rows marked exact; the rest
 are estimates.
 
@@ -1659,20 +1819,29 @@ with S-4's on-axis mask (+6, estimate); ``panel_to_panel_rows_`` taking a
 ``PanelEdge`` stays inside its +15 (estimate, cubed-sphere utils row); the
 signed solid-face set is built with the ``PrescribedFaces`` mask from the
 same ``solidl``/``solidr`` (+20, estimate, internal-boundary row). The total
-stays 7,434.
+stays 7,434 at rev 2.
+
+Rev 2.1 changes one row: ``bc_func.cpp`` +11 (estimate, the outflow device
+flags). Removing row 30 and M9, moving M6, the fallback rows 16i/16l, the
+``reset()`` buffers and registration, dropping ``k_face2``/``k_face3`` from
+the public struct and the virtual ``rotation_geometry()`` (already booked
+as +4) change no counted line: the buffers and registration calls sit in
+``BlockExchange`` (``mesh/meshblock.cpp``, outside the baseline) and the
+dropped members are built by the rotation data S keeps. ``BlockExchange``
+itself is outside the baseline (section 1). Total 7,445.
 
 **Not counted.**
 
 - Moves B (``coord/x1_centroid.{cpp,hpp}``, -283) and C (process-group
   wrapper, ``layout/process_group*``, ``layout/distributed*``, -446) are
-  still not agreed with their receivers. With both, 6,705.
+  still not agreed with their receivers. With both, 6,716 (rev 2: 6,705).
 - ``coord/coordinate.hpp:370-373`` (``x1_mass_source_``) stays and is not
   counted. The hooks ``:375-380`` (``conserve_axial_momentum_``),
   ``:382-385`` (``axial_rate_to_rows_``, S-4) and ``:387-392``
   (``axial_x1_source_``), 16 non-blank lines, are now counted in the
   coordinate row (A.rst:267 books ``coordinate.hpp:370-392`` to S); lane A
   reads ``rotation_geometry()`` instead. The blank lines ``:381`` and
-  ``:386`` are not counted (with them, 7,432).
+  ``:386`` are not counted (with them, 7,443).
 
 **S's 149 hydro lines are counted in R.** The lines leaving hydro for S's
 transport (``hydro/hydro.cpp:344-377, 727-776``,
@@ -1696,10 +1865,11 @@ unconditionally (R.rst:196-197, 733).
 -------------
 
 **Phase 1 (transport only, bitwise).** ``Exchange`` and ``Channel`` take
-over the x1 relays and the schedule. Merges M1, M2, M4, M5, M6, M7 and M10
+over the x1 relays and the schedule. Merges M1, M2, M4, M5, M7 and M10
 (section 3.5) are copies. Gate: bitwise at nb = 1, 2 and pz = 1, 2 under the
-scalar CPU setting. M8 and M9 go in only if their bitwise **hypotheses**
-hold.
+scalar CPU setting. M8 goes in only if its bitwise **hypothesis** holds. M6
+is not in phase 1: diffusion keeps its own exchange until phase 3 (S-3;
+A.rst:160-161, 775 at ``a0b006d2``).
 
 **Phase 2 (rotation and corners, round-off).** The Cartesian route replaces
 the spherical one (T1), and diagonal corners replace synthesized ones on slab
@@ -1719,7 +1889,8 @@ round-off it is **FOR CHENG**. Row 16r and ``boundary.prescribed`` (R calls
 across panel seams (a round-off change). Zeroing the solid-face rows changes
 results by the mirror flux's leak, which is round-off if the mirror is exact
 (**hypothesis**). Otherwise **FOR CHENG**. Diffusion moves onto a face-slab
-row (S-3).
+row (S-3), and merge M6 (one 48-channel round for row 18, a copy, gated
+bitwise like phase 1's merges) goes in with it.
 
 **Not bitwise, flagged.**
 
@@ -1728,9 +1899,9 @@ row (S-3).
   sum changes the summation order of the hydrostatic scan, so the reference
   pressure changes at round-off on every x1-split run. That is round-off.
   Anything beyond it is **FOR CHENG**. It stays a proposal for lane X.
-- **The nine merges** (M1-M9) are a **hypothesis** for lane X. The earlier
-  commit counted 23 → 12 blocking points per site. This table counts 33 → 17
-  rounds per round (section 3.5).
+- **The eight merges** (M1-M8) are a **hypothesis** for lane X. The earlier
+  commit counted 23 → 12 blocking points per site. This table counts 32 → 17
+  rounds per round, 18 with row 16r (section 3.5).
 
 
 11. Open questions to other lanes
@@ -1748,23 +1919,26 @@ row (S-3).
        the peer S maps (section 4.1); the replaced amounts are
        ``reconcile.x1``/``reconcile.panel``; K6, the ``mean`` on every x1
        seam (R.rst:734-735); the mask's row dimension (``:45``;
-       R.rst:709-711); D7 (R.rst:733). Open: K7, the G-S-K7 gate (section
-       5) and who adds the second ``replace`` if it fails. **New (proposal,
-       lane A's conflict 3):** will ``RegisterMonitor::boundary(dim)`` sum
-       the fluid-solid faces S supplies (``solid_face_sign``), all rows,
-       outward from the fluid (section 3.1)? Lane O's L-3 text and
-       O.rst:2915-2917 would then name solid faces too
+       R.rst:709-711); D7 (R.rst:733). Settled by R rev 2.4 (R.rst:39-42,
+       632-657 at ``a15af816``): the ``boundary(dim)`` face set, S's
+       proposal as written (section 3.1). Open: K7, the G-S-K7 gate
+       (section 5) and who adds row 16l if it fails. Lane O's L-3 text and
+       O.rst:2915-2917 (x1 faces only on the sphere) should now name solid
+       faces too; that is O's
    * - EF, Zoey
-     - Tangential momentum at solid faces: S proposes free-slip, which is the
-       pin's mirror. No momentum row is prescribed, because zeroing a
-       covariant tangential row would remove part of the pressure force on a
-       non-orthogonal face (section 4). The final word is EF's. If EF wants
-       the tangential flux zeroed, S supplies ``face_normal(d)`` so that R can
-       zero only the tangential projection
+     - Settled: EF accepted free-slip (EF.rst:696-699 at ``f5c8e9a7``). No
+       momentum row is prescribed (section 4). ``face_normal(d)`` stays
+       supplied in case EF later wants the tangential projection zeroed.
+       Open: G-S-K7's fallback row 16l (with X)
    * - X
-     - (1) Place segment cuts at the section 3.3 rows. Do you accept the
-       merges as proposals with their bitwise labels? (2) Will you own the
-       CI flags for H18? (Move A went to lane O, section 9.)
+     - Answered (X.rst:905-910 at ``54ca5356``): (1) yes, cuts at S's rows,
+       merges as labelled (X.rst:453-458: M1, M2, M4-M7, M10 under X's
+       golden, M8 once it passes, M3 Cheng's call); (2) the options parsing
+       is not X's, X asks O (S already moved it to O, section 9); (3) yes,
+       X owns the CI build for H18 (``--fmad=false``,
+       ``-ffp-contract=off``) as capability-matrix row G0. Open: whether
+       16i and 16l, if their gates fail, get their own segment cut or pack
+       into 16r's
    * - C, Tianhao
      - The theta exclusion of solid cells uses S's cell mask. Does the hit
        census (``hydro/hydro_forward.cpp:1195-1196``) take the same mask?
@@ -1776,7 +1950,7 @@ row (S-3).
        ``nx2 >= 3`` at reset when an on-axis cell exists (``:509-512``).
        **S-5:** agreed, coord provides ``s2`` and ``K_f2``/``K_f3``, the
        exact face averages of ``K = s k`` with the radial factor of
-       ``:563-567``, next to ``k_cell``/``k_face2``/``k_face3``. **S-6:**
+       ``:563-567``, next to ``k_cell`` (rev 2.1: ``k_face2``/``k_face3`` are no longer public). **S-6:**
        agreed, coord's ``centre_frame()`` is never null on Cartesian,
        spherical-polar and gnomonic grids (today ``forcing/coriolis.cpp:
        85-151``); a grid with no rule throws at reset, never returns null.
@@ -1796,18 +1970,92 @@ row (S-3).
        **Round 2 conflicts:** (1) the missing ``AxialRotationData`` members
        are added (section 4, settled answers); (2) ``panel_to_panel_rows_`` takes
        the ``PanelEdge`` (section 4.1); (3) solid faces in ``boundary(dim)``
-       is a proposal to R (section 3.1)
+       was a proposal to R and is now the contract (R rev 2.4, section
+       3.1). **Rev 2.1:** ``rotation_geometry()`` is the virtual member A
+       reads; ``k_face2``/``k_face3`` leave the public struct (section 4)
    * - commux, Zoey
      - Move C: would commux take the process-group wrapper?
    * - PM / Cheng
      - None open: lane S has no ceiling (section 9)
 
 
+**Rev 2.1: the PM's items 1-8 on rev 2 (``c505fb87``), by number.** Lines
+are this revision's ``S.rst`` lines; the skeleton changes are in section 12.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 6 10 18 66
+
+   * - item
+     - answer
+     - S.rst line
+     - what changed
+   * - 1
+     - agree
+     - 873, 1451, 1868
+     - M6 left phase 1 and the phase-1 bitwise list; it goes in with S-3 in
+       phase 3 (section 3.5 M6 row, section 5, section 10), matching
+       A.rst:160-161, 775 at ``a0b006d2``
+   * - 2
+     - agree
+     - 34-46
+     - S owns ``BlockExchange``: ``mesh/meshblock.cpp:644-685, 1111-1205,
+       1846-1918`` less ``:1198-1200`` (X ``meshblock_parts.hpp:18-20`` at
+       ``54ca5356``); declared in ``exchange.hpp``. Lines outside S's
+       baseline (proposal: X books them)
+   * - 3
+     - agree
+     - 1503-1516
+     - bc's 11 ``.item<bool>()`` lines (12 calls) become bits of
+       ``BoundaryFlags::outflow_bad``, joined to X's step-end read; section
+       9 +11 (estimate)
+   * - 4
+     - agree
+     - 243-265
+     - block faces by ``FaceKind``; fluid-solid faces by the solid mask
+       (``solid_face_sign``); solid-solid amounts stay out of
+       ``boundary(dim)``. "Pending R" removed: R rev 2.4 (R.rst:39-42,
+       632-657 at ``a15af816``)
+   * - 5
+     - agree
+     - 803-806, 899-902, 1492-1502
+     - row 29 is a per-stage device collective, no host read (A.rst:478-499,
+       1057-1059 at ``a0b006d2``; pin ``mesh/meshblock.cpp:1017-1018,
+       1027``). Row 30 and M9 removed (X.rst:452-453). Totals 32, 17 with
+       M1-M8, 18 with 16r (X.rst:456-458). Note: A.rst:507-508 still says
+       "through the host"; A and X to align
+   * - 6
+     - agree
+     - 965-987
+     - row 9 does not run again after ``implicit``: the pin refuses an x1
+       split under an implicit scheme (``hydro/hydro.cpp:485-490``), so the
+       ``vic.*`` posts never land on an x1 seam. Read, not run; the
+       periodic-slab case is a **hypothesis**
+   * - 7
+     - agree
+     - 535, 572, 1517-1532
+     - pack/unpack buffers allocated at ``reset()`` and registered; rows
+       16i (G-R2 fallback, ``reconcile``, +1 or 0 packed) and 16l (G-S-K7
+       fallback, end of ``limit``, +1); ``PrescribedFaces::build`` and the
+       new ``AxialRotationData`` members in registered storage, rebuilt by
+       ``copy_`` or a configuration-generation bump (X.rst:71-74, 83)
+   * - 8
+     - agree
+     - 98, 703, 707, 1060, 1237, 1289, 1295, 1427, 1465, 1934
+     - geometry ``kReference`` FP64 (section 6); X's three answers (X row
+       above); G-S-K7 gate harness only; panel rows "mapped by the
+       ``PanelEdge`` (4.1), then copied"; row 28 cites ``:952``; row 29
+       "with a process group"; EF bullet reworded to EF.rst:700-704 at
+       ``f5c8e9a7`` (Zoey's note itself not seen here); free-slip settled;
+       ``k_face2``/``k_face3`` out of the public struct; ``rotation_geometry()``
+       a virtual member (Jiachen's nit)
+
+
 12. Skeleton index
 ------------------
 
-``docs/v3/skeleton/S/`` holds declarations and comments only, 259 lines
-in all (``wc -l``). It is not part of any build. It uses R's names at ``4c59162a``
+``docs/v3/skeleton/S/`` holds declarations and comments only, 291 lines
+in all (``wc -l``; rev 2: 259). It is not part of any build. It uses R's names at ``4c59162a``
 (``FluxRegister``, ``RegisterPhase::reconcile``, ``SeamRule``,
 ``replace(dim, faces, peer, rule)``, ``set_prescribed``,
 ``apply_prescribed``) and R's namespace ``snap``.
@@ -1820,26 +2068,30 @@ in all (``wc -l``). It is not part of any build. It uses R's names at ``4c59162a
      - declares
      - replaces (pin)
    * - ``coord_rotation.hpp``
-     - 87
+     - 91
      - ``RotationAxis``, ``PanelRotation`` (``panel_to_panel_rows_`` takes a
-       ``PanelEdge``), ``AxialRotationData`` (with ``k_cell_lower``,
-       ``cos2_face2``/``cos2_face3``, ``K_f2``/``K_f3``, ``s2``,
-       ``on_axis``, ``has_on_axis_cell``), ``rotation_geometry``,
-       ``centre_frame``,
+       ``PanelEdge``), ``AxialRotationData`` (``k_cell``, ``k_cell_lower``,
+       ``cos2_lat``, ``cos2_face2``/``cos2_face3``, ``K_f2``/``K_f3``,
+       ``s2``, ``on_axis``, ``has_on_axis_cell``; no ``k_face2``/``k_face3``),
+       ``CoordinateImpl::rotation_geometry()`` (virtual member, in a
+       comment), ``centre_frame``,
        ``PanelGeometry``; ``face_normal``
      - ``cs_velocity_transform_matrix`` and its callers; the layout's
        ``_velocity_transform``; Coriolis' frame
    * - ``exchange.hpp``
-     - 79
-     - ``FaceKind``, ``CornerRule``, ``Frame``, ``ExchangeRow``,
-       ``stage_schedule``, ``Channel``, ``Exchange``
+     - 103
+     - ``FaceKind``, ``CornerRule``, ``Frame``, ``ExchangeRow`` (with
+       ``fallback``), ``stage_schedule``, ``Channel``, ``Exchange`` (with
+       ``reset``), ``BoundaryFlags``, ``BlockExchange``
      - hydro's x1 relays (``hydro/hydro.cpp:344-377``, R's D7, as
-       ``x1_rows``); the three wall predicates; the board/remote pair
+       ``x1_rows``); the three wall predicates; the board/remote pair;
+       ``mesh/meshblock.cpp:644-685, 1111-1205, 1846-1918`` less
+       ``:1198-1200``; bc's 11 outflow ``.item<bool>()`` lines
    * - ``seam_register.hpp``
-     - 93
+     - 97
      - ``SeamOwner``, ``SeamGate``, ``PanelEdge``, ``SeamEntry``,
        ``seam_entries``, ``reconcile_seams``, ``PrescribedFaces`` (with
-       ``solid_face_sign``, a proposal),
+       ``solid_face_sign``, R's contract since rev 2.4),
        ``supply_prescribed``, ``post_limit_single_valued``
      - ``hydro/hydro_forward.cpp:882-946`` (as transport, every x1 seam);
        the unmasked wall and solid-face flux

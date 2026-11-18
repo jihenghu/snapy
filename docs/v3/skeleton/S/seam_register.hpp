@@ -1,5 +1,5 @@
 #pragma once
-// V3 lane S skeleton: declarations only, in no build. Revision 2.
+// V3 lane S skeleton: declarations only, in no build. Revision 2.1.
 // The two-sided register entry for every shared face (S.rst section 4) and
 // the wall/solid faces S supplies for R's "boundary.prescribed". Names are
 // R's at happysky19/snapy 4c59162a (flux_register.hpp): FluxRegister,
@@ -71,13 +71,16 @@ struct PrescribedFaces {
   torch::Tensor value[3];   // [nvar, faces...]: 0 on every set row
   torch::Tensor normal[3];  // [3, faces...], unused by the default rule
   torch::Tensor solid_cells;  // EF: column breaks; out of theta and census
-  //! PROPOSAL (L-3 amendment, until R agrees): fluid-solid faces, all rows,
-  //! are physical for RegisterMonitor::boundary(dim). int8 [faces...]: +1
-  //! solid on the high side, -1 on the low side, 0 otherwise (solid-solid
-  //! too); R sums sign * A_f S_d there, outward from the fluid
+  //! fluid-solid faces for RegisterMonitor::boundary(dim), from the solid
+  //! mask, not FaceKind (closed by R rev 2.4, R.rst:632-657 at a15af816).
+  //! int8 [faces...]: +1 solid on the high side, -1 on the low side, 0 on
+  //! fluid-fluid and solid-solid faces; R sums sign * A_f S_d, all rows
   torch::Tensor solid_face_sign[3];
-  static PrescribedFaces build(torch::Tensor const& solid, int nvar,
-                               std::vector<int> const& zero_rows);
+  //! writes with copy_ into tensors allocated at reset() and registered
+  //! with StateStore::register_storage; a new shape bumps the configuration
+  //! generation instead (X.rst:71-74, 83 at 54ca5356)
+  static void build(PrescribedFaces& into, torch::Tensor const& solid,
+                    int nvar, std::vector<int> const& zero_rows);
 };
 
 //! S's only call into R for boundaries: set_prescribed(dim, mask, value)
@@ -86,7 +89,8 @@ struct PrescribedFaces {
 void supply_prescribed(FluxRegister& reg, PrescribedFaces const& faces);
 
 //! gate G-S-K7 (S.rst s5): end of RegisterPhase::limit, own vs mapped peer
-//! on every shared face; debug and CI only
+//! on every shared face; gate harness only (debug and CI decks), no
+//! schedule row, no device flag. If it fails: fallback row 16l
 bool post_limit_single_valued(FluxRegister const& reg, Exchange& ex,
                               PanelRotation const& rot);
 

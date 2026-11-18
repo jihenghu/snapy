@@ -1,5 +1,5 @@
 #pragma once
-// V3 lane S skeleton: declarations only, in no build. Revision 2.
+// V3 lane S skeleton: declarations only, in no build. Revision 2.1.
 // Pin chengcli/snapy 9e5de2d4ce497d0b2d4da3295fc1fe969fe7e410; lines at the
 // pin. Untested claims: "hypothesis". S-1 (settled): coord owns ONE rotation
 // and the rotation data; lane A owns the Omega and mass-flux consumers.
@@ -51,10 +51,14 @@ class PanelRotation {
 
 //! the rotation data coord owns (gnomonic_equiangle.cpp:18-36, 169-221).
 //! rate_to_rows (:485-525) is lane A's (S-4); A reads these, never casts.
-//! Members A reads: A skeleton rotation_geometry.hpp:16-27 at c3ac77f3
+//! Members A reads: A skeleton rotation_geometry.hpp:16-27 at c3ac77f3.
+//! kReference: FP64 masters, cached casts per use (X precision_policy.hpp:17
+//! at 54ca5356). Tensors allocated at reset() and registered with
+//! StateStore::register_storage; a rebuild writes with copy_ or bumps the
+//! configuration generation. k_face2/k_face3 are not public (rev 2.1).
 struct AxialRotationData {
   RotationAxis axis;
-  torch::Tensor k_cell, k_face2, k_face3;  // contravariant, unit radius
+  torch::Tensor k_cell;        // contravariant, unit radius, at centres
   torch::Tensor k_cell_lower;  // covariant k at centres (aam_kl_c, :173-174)
   torch::Tensor cos2_lat;      // k . k = cos^2(lat) at centres (aam_kk_c)
   torch::Tensor cos2_face2, cos2_face3;  // at the face mid-direction
@@ -65,11 +69,11 @@ struct AxialRotationData {
   bool has_on_axis_cell;     // set at reset from on_axis; no per-call .item()
 };
 
-//! A's read of the rotation data. Declared on CoordinateImpl as
+//! A's read of the rotation data: a virtual MEMBER of the pin's class
+//! CoordinateImpl (coord/coordinate.hpp), not a free function (rev 2.1):
 //!   virtual AxialRotationData const* rotation_geometry() const;
 //! null without an axis; GnomonicEquiangle overrides. Replaces the hooks at
 //! coordinate.hpp:375-392 (16 non-blank lines); +4 lines, an estimate
-AxialRotationData const* rotation_geometry(CoordinateImpl const& coord);
 
 //! S-6: centre frame on every grid, never null (Cartesian, spherical-polar,
 //! gnomonic; replaces coriolis.cpp:85-151). No rule: throws at reset
