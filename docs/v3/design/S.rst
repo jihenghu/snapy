@@ -94,7 +94,8 @@ numbers match, but I did not see the brief's own file list.
    the 16 ``coordinate.hpp`` AAM hook lines, ``rotation_geometry()`` (+4,
    estimate) and the overlap counted once.
 4. The K7/J9 post-limit gate G-S-K7 (section 5; its row in the section 4
-   shared-face table answers J9) and the CPU-vs-GPU
+   shared-face table answers J9; lane A's G5 runs at the same point and
+   depends on it) and the CPU-vs-GPU
    tolerance of row H18, a **hypothesis**.
 5. ``set_prescribed`` on the hydro register and on each Scalar register
    (section 4, "boundary.prescribed").
@@ -220,7 +221,22 @@ Only ``wall``, ``outflow`` and ``custom`` faces are physical: R's
 ``RegisterMonitor::boundary(dim)`` sums those (plus R's
 ``boundary.prescribed`` entries), never an ``interior``, ``seam_x1``,
 ``panel`` or ``periodic`` face, which ``replace`` reconciles instead (lane
-O's L-3).
+O's L-3). **Proposal (lane A's conflict 3; until R agrees):** fluid-solid
+faces also count as physical, all rows. S supplies the face set
+(``PrescribedFaces::solid_face_sign``: +1 where the solid cell is on the
+high side, -1 on the low side, 0 on fluid-fluid and solid-solid faces) and
+R sums ``sign * A_f S_d`` there in ``boundary(dim)``. Reason: the momentum
+rows at a solid face keep the mirror flux ``p* n`` (section 4,
+"Tangential momentum at solid faces"), which is not zero, and the solid
+cell is overwritten every stage (``fill_cons_solid_``,
+``bc/internal_boundary.cpp:62-68``, called at ``mesh/meshblock.cpp:936-938``),
+while ``domain_total`` sums fluid cells only
+(R.rst:417, 533-534 at ``4c59162a``). Without the faces, O's identity
+(``residual = delta domain_total + sum_d boundary(d) - sum amounts``,
+O.rst:808, 970 at ``4afdbf37``) leaves the wall pressure force in the
+momentum residual. O.rst:2915-2917 (on the sphere ``boundary`` uses x1
+faces only) then holds only without solids. Mass, species, energy and
+scalar rows there are prescribed to zero, so they add nothing.
 
 **Corners.** ``CornerRule::diagonal`` on slab and cubed layouts, using the
 diagonal neighbour that ``for_each_direction`` can already visit
@@ -943,8 +959,9 @@ seams: it described the pin's process seams only. Proposed rule:
      - ``replace(d, faces, peer, SeamRule::owner_copy)``. S moves the owner's
        slab (``Exchange::seam_slab``). Mass, energy, species and scalar rows
        are copied raw. Momentum rows go through
-       ``PanelRotation::panel_to_panel_rows_`` (owner covariant → Cartesian
-       → receiver covariant)
+       ``PanelRotation::panel_to_panel_rows_(rows, edge, alpha, beta)``
+       (owner covariant on its ``peer_dim`` face → Cartesian → receiver
+       covariant on its ``dim`` face; the ``PanelEdge`` gives both)
      - non-momentum rows bitwise equal. Momentum rows rotated back to the
        owner's basis match to 1e-14 relative. Reason: two panels' covariant
        bases joined by one floating-point rotation (6.2e-16 between routes
@@ -964,7 +981,8 @@ seams: it described the pin's process seams only. Proposed rule:
      - **G-S-K7** (section 5): own vs mapped peer; x1 seams all rows
        bitwise; panel seams mass, species, scalars bitwise, momentum to the
        16r tolerance (**hypothesis**), energy an expected failure until #370
-       (row 17p)
+       (row 17p); lane A's G5 (seam A F·K_f, 1e-14 rel) runs at the same
+       point and depends on it (A.rst:736-750 at ``c3ac77f3``, D22)
 
 **What this buys.** Mass, energy, species and scalars telescope exactly
 across every shared face. Today panel seams agree only to round-off
@@ -1043,7 +1061,15 @@ it agrees with R.rst:712-719.
 ``reconcile_seams`` maps the owner's slab before ``replace``: transpose to
 ``peer_dim`` if it differs, reverse along the edge if ``reversed``, multiply
 every row by ``normal_sign``, then rotate the momentum rows with
-``PanelRotation::panel_to_panel_rows_``. ``owner_copy`` copies the mapped
+``PanelRotation::panel_to_panel_rows_``, which takes the ``PanelEdge``
+(lane A's conflict 2). On the 4 swap edges (1B-5R, 1T-3R, 3L-4T, 4B-5L)
+the owner's face is an x3 face and the receiver's an x2 face, or the
+reverse, and the two covariant face bases use different metrics
+(``flux2global2_`` uses ``cosine_face2_kj``,
+``coord/gnomonic_equiangle.cpp:452-453``; ``flux2global3_`` uses
+``cosine_face3_kj``, ``:481-482``), so one ``dim`` cannot name both. R
+expects the peer mapped in basis as well (``flux_register.hpp:62`` at
+``4c59162a``). ``owner_copy`` copies the mapped
 slab, and ``reconcile.panel`` is computed after the mapping (R.rst:727-729).
 The map is ``SeamEntry::edges`` (``seam_register.hpp``).
 
@@ -1143,6 +1169,20 @@ round-off, which is R's G-R9. Hence:
   closure, ``omega_local`` and the m1 weights. ``RotationAxis`` refuses
   anything but z (``check_supported``). The FOR CHENG item about other axes
   sits in lane A.
+- Lane A's conflict 1: ``AxialRotationData`` carries every member A's read
+  view lists (A ``rotation_geometry.hpp:16-27`` at ``c3ac77f3``). Added in
+  rev 2, each checked at the pin and none derivable without coord's
+  metric or a host read: covariant ``k`` at the centres,
+  ``k_cell_lower`` (``aam_kl_c``, ``coord/gnomonic_equiangle.cpp:173-174``,
+  read at ``:494, 522-523``; lowering needs coord's ``cosine_cell_kj``);
+  ``cos^2(lat)`` on both face sets, ``cos2_face2``/``cos2_face3``
+  (``aam_c2_f2``/``aam_c2_f3``, ``:194, 215-216``, read at ``:705, 714``;
+  taken at the face mid-direction, so not ``k_face . k_face``, which
+  carries the face-average factor ``2 sin(dth/2)/dth``); and
+  ``has_on_axis_cell``, set once at reset from ``on_axis`` (the pin does a
+  host ``.item()`` on every call, ``:506``). ``cos2_lat`` is ``aam_kk_c``
+  (``:175``). All of them are already built in the rotation data that stays
+  with S (``:169-221``), so section 9 does not change.
 - S-2: as the convention above.
 - S-3: diffusion keeps its four-round seam exchange
   (``forcing/diffusion_cubed_sphere.cpp:132-143``, row 18) until phase 3. It
@@ -1280,7 +1320,14 @@ round-off, which is R's G-R9. Hence:
   R.rst:623-624). Fix if it fails: a second ``replace`` in ``limit``
   (``mean`` on x1, ``owner_copy`` on panel seams), row "16l", one more
   round; lanes X and EF decide. This gate answers J9: its row is G-S-K7 in
-  the section 4 shared-face table.
+  the section 4 shared-face table. Lane A took J9 option (b): its G5 (seam
+  ``A F · K_f``, 1e-14 relative) runs at the same point, at the end of
+  ``limit``, and depends on G-S-K7, because A builds ``A F · K_f`` from the
+  post-carry rows (A.rst:736-750 at JiachenLiu-Atmos/snapy ``c3ac77f3``,
+  D22; the carry is ``hydro/flux_positivity.cpp:150-152``, called at
+  ``hydro/hydro_forward.cpp:1234-1235`` before the scale at ``:1237``). If
+  G-S-K7 fails, G5 is not meaningful until row 16l exists. G5 stays in
+  phase 2 and A's count does not change.
 - **Transport-only rows are bitwise.** Rows that copy (4, 5, 8, 10, 13-16,
   19, 22-25 and merges M1, M2, M4-M7, M10) must give the same bits as at the
   pin. Gate: an nb = 1 vs nb = 2 run, and a pz = 1 vs pz = 2 run, under the
@@ -1605,6 +1652,15 @@ estimate) = 7,434. Of the new deletions, 449 lines are exact (V3-1 153, O
 127, H-S1 103, S-4 49, hooks 16, recount 1) plus the rev 1.1 rows marked exact; the rest
 are estimates.
 
+Lane A's conflicts 1-3 change no counted line: the new ``AxialRotationData``
+members are buffers the pin already builds in the rotation data S keeps
+(``coord/gnomonic_equiangle.cpp:169-221``) and ``has_on_axis_cell`` is set
+with S-4's on-axis mask (+6, estimate); ``panel_to_panel_rows_`` taking a
+``PanelEdge`` stays inside its +15 (estimate, cubed-sphere utils row); the
+signed solid-face set is built with the ``PrescribedFaces`` mask from the
+same ``solidl``/``solidr`` (+20, estimate, internal-boundary row). The total
+stays 7,434.
+
 **Not counted.**
 
 - Moves B (``coord/x1_centroid.{cpp,hpp}``, -283) and C (process-group
@@ -1693,7 +1749,11 @@ row (S-3).
        ``reconcile.x1``/``reconcile.panel``; K6, the ``mean`` on every x1
        seam (R.rst:734-735); the mask's row dimension (``:45``;
        R.rst:709-711); D7 (R.rst:733). Open: K7, the G-S-K7 gate (section
-       5) and who adds the second ``replace`` if it fails
+       5) and who adds the second ``replace`` if it fails. **New (proposal,
+       lane A's conflict 3):** will ``RegisterMonitor::boundary(dim)`` sum
+       the fluid-solid faces S supplies (``solid_face_sign``), all rows,
+       outward from the fluid (section 3.1)? Lane O's L-3 text and
+       O.rst:2915-2917 would then name solid faces too
    * - EF, Zoey
      - Tangential momentum at solid faces: S proposes free-slip, which is the
        pin's mirror. No momentum row is prescribed, because zeroing a
@@ -1731,7 +1791,12 @@ row (S-3).
        agreed: ``x1_mass_source_`` already takes ``m1`` as an argument
        (``coord/gnomonic_equiangle.cpp:664-667``), so coord reads whatever
        A's ``X1Momentum`` provides, with no Coriolis private; the call order
-       is R's (R-7). The non-z axis stays FOR CHENG in A (settled)
+       is R's (R-7). The non-z axis stays FOR CHENG in A (settled).
+       **J9:** option (b) taken, G5 depends on G-S-K7 (section 5).
+       **Round 2 conflicts:** (1) the missing ``AxialRotationData`` members
+       are added (section 4, settled answers); (2) ``panel_to_panel_rows_`` takes
+       the ``PanelEdge`` (section 4.1); (3) solid faces in ``boundary(dim)``
+       is a proposal to R (section 3.1)
    * - commux, Zoey
      - Move C: would commux take the process-group wrapper?
    * - PM / Cheng
@@ -1741,8 +1806,8 @@ row (S-3).
 12. Skeleton index
 ------------------
 
-``docs/v3/skeleton/S/`` holds declarations and comments only, 242 lines
-in all. It is not part of any build. It uses R's names at ``4c59162a``
+``docs/v3/skeleton/S/`` holds declarations and comments only, 259 lines
+in all (``wc -l``). It is not part of any build. It uses R's names at ``4c59162a``
 (``FluxRegister``, ``RegisterPhase::reconcile``, ``SeamRule``,
 ``replace(dim, faces, peer, rule)``, ``set_prescribed``,
 ``apply_prescribed``) and R's namespace ``snap``.
@@ -1755,9 +1820,11 @@ in all. It is not part of any build. It uses R's names at ``4c59162a``
      - declares
      - replaces (pin)
    * - ``coord_rotation.hpp``
-     - 75
-     - ``RotationAxis``, ``PanelRotation``, ``AxialRotationData`` (with
-       ``K_f2``/``K_f3``, ``s2``, ``on_axis``), ``rotation_geometry``,
+     - 87
+     - ``RotationAxis``, ``PanelRotation`` (``panel_to_panel_rows_`` takes a
+       ``PanelEdge``), ``AxialRotationData`` (with ``k_cell_lower``,
+       ``cos2_face2``/``cos2_face3``, ``K_f2``/``K_f3``, ``s2``,
+       ``on_axis``, ``has_on_axis_cell``), ``rotation_geometry``,
        ``centre_frame``,
        ``PanelGeometry``; ``face_normal``
      - ``cs_velocity_transform_matrix`` and its callers; the layout's
@@ -1769,9 +1836,10 @@ in all. It is not part of any build. It uses R's names at ``4c59162a``
      - hydro's x1 relays (``hydro/hydro.cpp:344-377``, R's D7, as
        ``x1_rows``); the three wall predicates; the board/remote pair
    * - ``seam_register.hpp``
-     - 88
+     - 93
      - ``SeamOwner``, ``SeamGate``, ``PanelEdge``, ``SeamEntry``,
-       ``seam_entries``, ``reconcile_seams``, ``PrescribedFaces``,
+       ``seam_entries``, ``reconcile_seams``, ``PrescribedFaces`` (with
+       ``solid_face_sign``, a proposal),
        ``supply_prescribed``, ``post_limit_single_valued``
      - ``hydro/hydro_forward.cpp:882-946`` (as transport, every x1 seam);
        the unmasked wall and solid-face flux

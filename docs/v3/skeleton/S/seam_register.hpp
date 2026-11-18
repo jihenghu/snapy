@@ -71,6 +71,11 @@ struct PrescribedFaces {
   torch::Tensor value[3];   // [nvar, faces...]: 0 on every set row
   torch::Tensor normal[3];  // [3, faces...], unused by the default rule
   torch::Tensor solid_cells;  // EF: column breaks; out of theta and census
+  //! PROPOSAL (L-3 amendment, until R agrees): fluid-solid faces, all rows,
+  //! are physical for RegisterMonitor::boundary(dim). int8 [faces...]: +1
+  //! solid on the high side, -1 on the low side, 0 otherwise (solid-solid
+  //! too); R sums sign * A_f S_d there, outward from the fluid
+  torch::Tensor solid_face_sign[3];
   static PrescribedFaces build(torch::Tensor const& solid, int nvar,
                                std::vector<int> const& zero_rows);
 };
