@@ -1562,13 +1562,13 @@ contract:
   cross-panel round packs only after the intra-panel round's unpack,
   because its extended strip reads the halo that unpack wrote (pin comment
   ``mesh/meshblock.cpp:645-649``).
-- **Corners.** Synthesized corners (``CornerRule::synthesized``, panel
-  corners of the cubed sphere) are filled in the ``unpack`` of the row's
-  last round, a device op in that ``kUnpack`` segment, after both halves:
-  the pin fills them once at ``mesh/meshblock.cpp:657`` and never in a half
-  (``layout/layout.cpp:736-741``). Diagonal corners arrive as messages and
-  are written by the unpack of the round that carries them; ``x1_full``
-  rows carry their corners in the x1 rows.
+- **Corners (RULING V3-4).** Synthesized corners are filled in the unpack
+  of the last round of each field set, on that field set only, under the
+  pin's ``skip_corner`` condition (``mesh/meshblock.cpp:655-657, 1121,
+  1127``; ``layout/layout.cpp:681-700``): row 0 fills ``hydro_u`` in round 1
+  and ``scalar_s`` in round 3, rows 1-3 in round 1 (rounds from 0); a row
+  with one field set is unchanged. Diagonal corners arrive in the round
+  that carries them; ``x1_full`` rows carry theirs in the x1 rows.
 - **Row 28.** ``gather_x1`` splits the same way on buffers registered at
   ``reset()``: ``pack_gather_x1(round, piece)`` writes the piece into its
   slot of the registered column buffer and the send buffers,
@@ -2231,6 +2231,14 @@ trimmed, no declaration removed). Section 9 +10 (estimate), 7,460 ->
      - already in rev 2.2: EF accepted free-slip (EF.rst:696-699 at
        ``f5c8e9a7``) in the EF bullet, section 4's "Tangential momentum at
        solid faces (settled)" and the EF row above
+   * - V3-4
+     - agree
+     - 1565-1571
+     - RULING V3-4 (rev 2.4): synthesized corners in the unpack of the last
+       round of each field set, that set only, under ``skip_corner``; row 0
+       ``hydro_u`` round 1, ``scalar_s`` round 3; rows 1-3 round 1.
+       ``exchange.hpp:79-80`` comment only; no declaration, round or
+       section 9 change
 
 
 12. Skeleton index

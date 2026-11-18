@@ -76,8 +76,8 @@ class Exchange {
   torch::Tensor anchor_scan(torch::Tensor const& local_drop);  // M3
   //! X's kPack | kHost | kUnpack for round r in [0, ExchangeRow::rounds)
   //! (X stage_executor.hpp:27-29 at 7bed6980). pack writes, unpack reads
-  //! only buffers registered at reset(). Synthesized corners: in the unpack
-  //! of the row's last round; diagonal corners arrive in each round
+  //! only buffers registered at reset(). Synthesized corners (V3-4): unpack
+  //! of each field set's last round, that set only, if skip_corner (pin)
   void pack_ghosts(int row, int round, std::vector<torch::Tensor> const& f);
   void unpack_ghosts(int row, int round, std::vector<torch::Tensor> f);
   void pack_x1_rows(int row, std::vector<torch::Tensor> const& f, int m,
