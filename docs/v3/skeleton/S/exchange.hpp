@@ -1,5 +1,5 @@
 #pragma once
-// V3 lane S skeleton: declarations only, in no build. Revision 2.1.
+// V3 lane S skeleton: declarations only, in no build. Revision 2.2.
 // Pin chengcli/snapy 9e5de2d4ce497d0b2d4da3295fc1fe969fe7e410. S owns the
 // transport of every within-stage exchange (S.rst section 3 table); the
 // rules for registered fluxes are R's (flux_register.hpp:62-65 at 4c59162a).
@@ -73,6 +73,24 @@ class Exchange {
   //! every x1 seam incl. same-process ones, and panel seams; returns, per
   //! shared face, the peer's values in the receiver's basis
   torch::Tensor seam_slab(int dim, torch::Tensor const& slab, int tag);
+  //! ghosts, x1_rows and seam_slab above are conveniences: pack, host_wait,
+  //! unpack. X schedules the parts as its kPack, kHost and kUnpack segments
+  //! (X stage_executor.hpp:27-29 at e5a6abaa). pack_* only writes the row's
+  //! send buffers registered at reset(); unpack_* only reads its receive
+  //! buffers, after host_wait. No part allocates.
+  void pack_ghosts(std::vector<torch::Tensor> const& fields, int type);
+  void unpack_ghosts(std::vector<torch::Tensor> fields, int type,
+                     bool interpolate);
+  void pack_x1_rows(std::vector<torch::Tensor> const& fields, int m,
+                    bool faces, int tag);
+  void unpack_x1_rows(std::vector<torch::Tensor> fields, int m, bool faces,
+                      int tag);
+  void pack_seam_slab(int dim, torch::Tensor const& slab, int tag);
+  //! a view of the fixed receive buffer, in the receiver's basis
+  torch::Tensor unpack_seam_slab(int dim, int tag);
+  //! kHost: post, progress and complete the row's messages over Channel;
+  //! never captured. row is ExchangeRow::id
+  void host_wait(int row, int tag);
   //! x1 column gather (row 28) and the reference anchor scan (rows 6-7)
   torch::Tensor gather_x1(torch::Tensor const& piece);
   torch::Tensor anchor_scan(torch::Tensor const& local_drop);  // M3, non-bitwise

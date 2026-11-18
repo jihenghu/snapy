@@ -60,6 +60,10 @@ call sites: ``hydro/hydro_forward.cpp``, ``hydro/hydro.cpp:344-377, 606-776``,
   (happysky19/snapy, R.rst only; the header stays at ``4c59162a``); lane EF
   ``f5c8e9a76f2b06045b545cc692bff7262f13ac0d`` (zoeyzyhu/snapy; EF.rst:N).
   A cite to one of these names its sha.
+- Rev 2.2 adds lane X rev 3.18
+  ``36d4986fcf17da330f8678946401a7f39ee9db81`` (UCzhangxi/snapy, fetched
+  read-only) for row 29's phase, and rev 3.19
+  ``e5a6abaa9152980b1da9278d361d9cd4324d51ef`` for the segment kinds (X-3).
 - #370 (open; species enthalpy and donor velocity across seams) is used only
   through its PR text. It appears as the pending row 17p.
 
@@ -112,7 +116,7 @@ numbers match, but I did not see the brief's own file list.
    is ``layout/cubed_sphere_layout.cpp:320-350``.
 2. RULING V3-3: one sentence in section 4.
 3. Section 9 on real counts: 8,472 -> 7,434 (-1,038, -12.3%; 7,445 at
-   rev 2.1, section 9), with the 153
+   rev 2.1, 7,460 at rev 2.2, section 9), with the 153
    AAM lines (V3-1), D7, H-S1..H-S7, lane O's 127 options lines (99 stay),
    the 16 ``coordinate.hpp`` AAM hook lines, ``rotation_geometry()`` (+4,
    estimate) and the overlap counted once.
@@ -712,8 +716,9 @@ Column meanings:
      - n/a
      - 1
      - pin: allreduce ``wait`` (``layout/process_group.cpp:184-195``) and a
-       host read ``item`` (``mesh/meshblock.cpp:1017-1018``). V3: an
-       in-stage device collective with no host read (section 7)
+       host read ``item`` (``mesh/meshblock.cpp:1017-1018``). V3: device
+       partial sums -> host allreduce -> device apply, no ``.item()``
+       read (section 7; X.rst:112 at ``36d4986f``)
      - ``mesh/meshblock.cpp:983-990``
 
 Gates (when a row runs at all):
@@ -738,7 +743,8 @@ Gates (when a row runs at all):
   (``:952``) only on the last stage with thermo reactions (``:950-951``);
 - row 29: ``conserve_axial_momentum_closure`` with a process group
   (``mesh/meshblock.cpp:983-988``); on one rank the closure has no
-  collective and is not a row;
+  allreduce and no host segment (X.rst:119-120 at ``36d4986f``) and is
+  not a row;
 - rows 16i and 16l: only if their gates fail (G-R2, G-S-K7).
 
 The gravity-work fixer's reduction (row 30 up to rev 2,
@@ -1489,17 +1495,21 @@ condition variable (``layout/layout.cpp:379-416``) or a stream synchronize
 (``layout/layout.cpp:757-760, 804-807``). None can be captured. S's
 contract:
 
-- **No host read inside a row.** Row 29, the axial closure, is a
-  per-stage, in-stage device collective with no host read: {R, I} are two
-  FP64 device numbers, reduced on the device, and ``Fixer::apply`` scales
-  on the device (A.rst:478-499, 1057-1059 at ``a0b006d2``). The pin's
+- **No host read inside a row.** Row 29, the axial closure, is lane X's
+  global phase, every stage: ``[global: device partial sums] -> host
+  allreduce -> [global: apply]`` (X.rst:112 at ``36d4986f``). {R, I} are
+  two FP64 device partial sums; there is no ``.item()`` read. With a
+  process group the allreduce is a host step between the two device
+  segments; on one rank there is no allreduce and no host segment, and
+  the device sums feed ``Fixer::apply`` in the same graph (X.rst:119-120
+  at ``36d4986f``; A.rst:478-499, 1057-1059 at ``a0b006d2``). The pin's
   ``.item`` pair (``mesh/meshblock.cpp:1017-1018``) goes; the stage weight
   ``wght2()`` (``:1027``) is a host double from ``begin_stage`` (A.rst:493-497
   at ``a0b006d2``).
   The gravity-work fixer's ``.cpu()`` (``:1058-1061``) goes with the fixer
-  (X.rst:452-453 at ``54ca5356``). A.rst:507-508 at ``a0b006d2`` still
-  says X reduces {R, I} "through the host"; that sentence is A's and X's
-  to align (section 11, Rev 2.1 item 5).
+  (X.rst:452-453 at ``54ca5356``). A.rst:507-508 at ``a0b006d2`` says X
+  reduces {R, I} "through the host"; lane A is asked to align it to
+  X.rst:112, 119-120 (section 11, Rev 2.1 item 5).
 - **bc's outflow checks become device flags.** ``bc/bc_func.cpp`` has 11
   lines with ``.item<bool>()`` (12 calls in 9 ``TORCH_CHECK`` calls) on the
   outflow path: ``:93-103`` (``check_background``, called at ``:131``),
@@ -1521,6 +1531,15 @@ contract:
   (``layout/cubed_sphere_layout.cpp:571-574``), and registered with
   ``StateStore::register_storage`` (X ``state_store.hpp:33-35`` at
   ``54ca5356``). Row 16r's slab buffer is fixed per dim.
+  ``ghosts``, ``x1_rows`` and ``seam_slab`` each split into the parts X
+  schedules (X ``stage_executor.hpp:27-29``, X.rst:100, 107 at
+  ``e5a6abaa``): ``pack_*`` is X's ``kPack`` and only writes the row's
+  registered send buffers; ``host_wait`` is ``kHost`` (post, progress,
+  complete; never captured); ``unpack_*`` is ``kUnpack`` and only reads the
+  registered receive buffers (``unpack_seam_slab`` returns a view of
+  them). The blocking call stays as a convenience: pack, then
+  ``host_wait``, then unpack (``exchange.hpp``). Each row still has one
+  host wait, so the round counts (32, 17, 18) do not change.
 - **Registered geometry and masks.** ``PrescribedFaces::build`` (mask,
   value, normal, ``solid_cells``, ``solid_face_sign``) and the
   ``AxialRotationData`` members added in rev 2 (``k_cell_lower``,
@@ -1764,10 +1783,12 @@ from rev 1.1 unchanged and were not recounted, except the coordinate row.
        repeated intra-panel loops (measured span, net of about +10)
    * - ``layout/layout.{cpp,hpp}``
      - 1,338
-     - 1,304
-     - -34
+     - 1,319
+     - -19
      - rev 1.1 -10 (estimate; includes D7's ``x1_rows`` +30); O's options
-       -24 (exact)
+       -24 (exact); rev 2.2 +15 (**estimate**): ``ghosts``, ``x1_rows`` and
+       ``seam_slab`` each split into pack, ``host_wait`` and unpack, with
+       the blocking call kept as a three-call convenience (about +5 each)
    * - ``layout/connectivity.hpp``
      - 234
      - 220
@@ -1800,15 +1821,16 @@ from rev 1.1 unchanged and were not recounted, except the coordinate row.
        which now have rows
    * - **total within S**
      - **8,472**
-     - **7,445**
-     - **-1,027 (-12.1%)**
+     - **7,460**
+     - **-1,012 (-11.9%)**
      -
 
 Arithmetic: rev 1.1's 7,913 - 153 (V3-1) - 127 (O) - 103 (H-S1) - 73
 (H-S2..H-S7) - 1 (recount) = 7,456 (rev 2 part 1), then - 49 + 39 (S-4 to
 S-6) = 7,446, then - 16 (AAM hooks, exact) + 4 (``rotation_geometry()``,
 estimate) = 7,434 (rev 2), then + 11 (bc outflow flags, rev 2.1,
-estimate) = 7,445. Of the new deletions, 449 lines are exact (V3-1 153, O
+estimate) = 7,445 (rev 2.1), then + 15 (pack/unpack split, rev 2.2,
+estimate) = 7,460. Of the new deletions, 449 lines are exact (V3-1 153, O
 127, H-S1 103, S-4 49, hooks 16, recount 1) plus the rev 1.1 rows marked exact; the rest
 are estimates.
 
@@ -1828,7 +1850,8 @@ the public struct and the virtual ``rotation_geometry()`` (already booked
 as +4) change no counted line: the buffers and registration calls sit in
 ``BlockExchange`` (``mesh/meshblock.cpp``, outside the baseline) and the
 dropped members are built by the rotation data S keeps. ``BlockExchange``
-itself is outside the baseline (section 1). Total 7,445.
+itself is outside the baseline (section 1). Total 7,445. Rev 2.2 adds the
+layout row's +15 (estimate, the pack/unpack split, section 7): total 7,460.
 
 **Not counted.**
 
@@ -1980,7 +2003,7 @@ bitwise like phase 1's merges) goes in with it.
 
 
 **Rev 2.1: the PM's items 1-8 on rev 2 (``c505fb87``), by number.** Lines
-are this revision's ``S.rst`` lines; the skeleton changes are in section 12.
+are rev 2.1's ``S.rst`` lines (``4b96f4ea``); the skeleton changes are in section 12.
 
 .. list-table::
    :header-rows: 1
@@ -2019,11 +2042,13 @@ are this revision's ``S.rst`` lines; the skeleton changes are in section 12.
    * - 5
      - agree
      - 803-806, 899-902, 1492-1502
-     - row 29 is a per-stage device collective, no host read (A.rst:478-499,
+     - row 29 is X's global phase: device partial sums -> host allreduce
+       (with a process group only) -> device apply, no ``.item()`` read
+       (rev 2.2; X.rst:112, 119-120 at ``36d4986f``; A.rst:478-499,
        1057-1059 at ``a0b006d2``; pin ``mesh/meshblock.cpp:1017-1018,
        1027``). Row 30 and M9 removed (X.rst:452-453). Totals 32, 17 with
-       M1-M8, 18 with 16r (X.rst:456-458). Note: A.rst:507-508 still says
-       "through the host"; A and X to align
+       M1-M8, 18 with 16r (X.rst:456-458). Note: A.rst:507-508 says
+       "through the host"; lane A is asked to align it to X's wording
    * - 6
      - agree
      - 965-987
@@ -2050,12 +2075,46 @@ are this revision's ``S.rst`` lines; the skeleton changes are in section 12.
        ``k_face2``/``k_face3`` out of the public struct; ``rotation_geometry()``
        a virtual member (Jiachen's nit)
 
+**Rev 2.2 on rev 2.1 (``4b96f4ea``): the PM's row 29 wording fix and
+Xi's lane X notes.** Lines are this revision's ``S.rst`` lines. Row 29
+now uses lane X's wording (X.rst:112, 119-120 at ``36d4986f``): device
+partial sums, then a host allreduce only with a process group, then the
+device apply; no ``.item()`` read. Xi's other lane X notes on rev 2.1 are
+closed.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 6 10 18 66
+
+   * - note
+     - answer
+     - S.rst line
+     - what changed
+   * - X-3
+     - agree
+     - 118-119, 1534-1542, 1786-1791, 1824-1825,
+       1832-1833, 1853-1854, 2116-2117, 2140-2146
+     - ``ghosts``, ``x1_rows`` and ``seam_slab`` split into ``pack_*``
+       (``kPack``), ``host_wait`` (``kHost``) and ``unpack_*``
+       (``kUnpack``) on the buffers registered at ``reset()``; the
+       blocking call stays as a convenience (X ``stage_executor.hpp:27-29``,
+       X.rst:100, 107 at ``e5a6abaa``). Skeleton ``exchange.hpp`` 103 -> 121
+       lines, 291 -> 309 in all (section 12). Section 9: layout row +15
+       (estimate), total 7,445 -> 7,460. Rounds 32, 17, 18 unchanged (one
+       host wait per row, as before)
+   * - X-5
+     - closed by rev 2.2
+     - 63-66, 718-721, 744-747, 1498-1512,
+       2045-2051
+     - row 29 in X's wording: the pins, the row 29 cell and gate (section
+       3.3), the first bullet of section 7 and item 5 above
+
 
 12. Skeleton index
 ------------------
 
-``docs/v3/skeleton/S/`` holds declarations and comments only, 291 lines
-in all (``wc -l``; rev 2: 259). It is not part of any build. It uses R's names at ``4c59162a``
+``docs/v3/skeleton/S/`` holds declarations and comments only, 309 lines
+in all (``wc -l``; rev 2: 259; rev 2.1: 291). It is not part of any build. It uses R's names at ``4c59162a``
 (``FluxRegister``, ``RegisterPhase::reconcile``, ``SeamRule``,
 ``replace(dim, faces, peer, rule)``, ``set_prescribed``,
 ``apply_prescribed``) and R's namespace ``snap``.
@@ -2079,10 +2138,12 @@ in all (``wc -l``; rev 2: 259). It is not part of any build. It uses R's names a
      - ``cs_velocity_transform_matrix`` and its callers; the layout's
        ``_velocity_transform``; Coriolis' frame
    * - ``exchange.hpp``
-     - 103
+     - 121
      - ``FaceKind``, ``CornerRule``, ``Frame``, ``ExchangeRow`` (with
        ``fallback``), ``stage_schedule``, ``Channel``, ``Exchange`` (with
-       ``reset``), ``BoundaryFlags``, ``BlockExchange``
+       ``reset``; rev 2.2: ``pack_*``/``unpack_*`` for ``ghosts``,
+       ``x1_rows``, ``seam_slab`` and ``host_wait``), ``BoundaryFlags``,
+       ``BlockExchange``
      - hydro's x1 relays (``hydro/hydro.cpp:344-377``, R's D7, as
        ``x1_rows``); the three wall predicates; the board/remote pair;
        ``mesh/meshblock.cpp:644-685, 1111-1205, 1846-1918`` less
