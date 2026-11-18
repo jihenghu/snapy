@@ -89,10 +89,12 @@ numbers match, but I did not see the brief's own file list.
    2T:3T with a negative control: section 4.1 and section 5. The table cite
    is ``layout/cubed_sphere_layout.cpp:320-350``.
 2. RULING V3-3: one sentence in section 4.
-3. Section 9 on real counts: 8,472 -> 7,446 (-1,026, -12.1%), with the 153
-   AAM lines (V3-1), D7, H-S1..H-S7, lane O's 127 options lines (99 stay)
-   and the overlap counted once.
-4. The K7/J9 post-limit gate G-S-K7 (section 5) and the CPU-vs-GPU
+3. Section 9 on real counts: 8,472 -> 7,434 (-1,038, -12.3%), with the 153
+   AAM lines (V3-1), D7, H-S1..H-S7, lane O's 127 options lines (99 stay),
+   the 16 ``coordinate.hpp`` AAM hook lines, ``rotation_geometry()`` (+4,
+   estimate) and the overlap counted once.
+4. The K7/J9 post-limit gate G-S-K7 (section 5; its row in the section 4
+   shared-face table answers J9) and the CPU-vs-GPU
    tolerance of row H18, a **hypothesis**.
 5. ``set_prescribed`` on the hydro register and on each Scalar register
    (section 4, "boundary.prescribed").
@@ -214,6 +216,11 @@ bitwise end to end is a **hypothesis**. The spherical-frame code is deleted
 **FaceKind.** Each block face has one kind (``exchange.hpp``). The three
 wall predicates become one lookup. ``periodic`` is a seam to self: the layout
 wraps where it can, and slab x1 keeps the bc copy as the declared fallback.
+Only ``wall``, ``outflow`` and ``custom`` faces are physical: R's
+``RegisterMonitor::boundary(dim)`` sums those (plus R's
+``boundary.prescribed`` entries), never an ``interior``, ``seam_x1``,
+``panel`` or ``periodic`` face, which ``replace`` reconciles instead (lane
+O's L-3).
 
 **Corners.** ``CornerRule::diagonal`` on slab and cubed layouts, using the
 diagonal neighbour that ``for_each_direction`` can already visit
@@ -947,6 +954,17 @@ seams: it described the pin's process seams only. Proposed rule:
      - the edge faces of a panel seam are x2/x3 faces, which row 9 never
        touches
      - as the two rows above
+   * - every shared face after the carry: end of ``RegisterPhase::limit``,
+       before ``divergence`` (K7, J9)
+     - as the rows above
+     - none at the pin (no second ``replace`` after the carry,
+       R.rst:623-624). If the gate fails: a second ``replace`` in ``limit``,
+       row 16l (``mean`` on x1, ``owner_copy`` on panel seams), one more
+       round; lanes X and EF decide
+     - **G-S-K7** (section 5): own vs mapped peer; x1 seams all rows
+       bitwise; panel seams mass, species, scalars bitwise, momentum to the
+       16r tolerance (**hypothesis**), energy an expected failure until #370
+       (row 17p)
 
 **What this buys.** Mass, energy, species and scalars telescope exactly
 across every shared face. Today panel seams agree only to round-off
@@ -1118,7 +1136,10 @@ round-off, which is R's G-R9. Hence:
 **Settled answers recorded here.**
 
 - S-1: coord owns ``PanelRotation`` and ``AxialRotationData``
-  (``coord_rotation.hpp``). Lane A reads them, and owns the Coriolis rate, the
+  (``coord_rotation.hpp``). Lane A reads them through
+  ``CoordinateImpl::rotation_geometry()`` (null without an axis; the
+  gnomonic grid overrides it), which replaces the hooks at
+  ``coord/coordinate.hpp:375-392``, and owns the Coriolis rate, the
   closure, ``omega_local`` and the m1 weights. ``RotationAxis`` refuses
   anything but z (``check_supported``). The FOR CHENG item about other axes
   sits in lane A.
@@ -1258,8 +1279,8 @@ round-off, which is R's G-R9. Hence:
   **hypothesis** (the pin does no second ``replace`` after the carry,
   R.rst:623-624). Fix if it fails: a second ``replace`` in ``limit``
   (``mean`` on x1, ``owner_copy`` on panel seams), row "16l", one more
-  round; lanes X and EF decide. J9's text was not found; if it asks for
-  more, this gate changes.
+  round; lanes X and EF decide. This gate answers J9: its row is G-S-K7 in
+  the section 4 shared-face table.
 - **Transport-only rows are bitwise.** Rows that copy (4, 5, 8, 10, 13-16,
   19, 22-25 and merges M1, M2, M4-M7, M10) must give the same bits as at the
   pin. Gate: an nb = 1 vs nb = 2 run, and a pz = 1 vs pz = 2 run, under the
@@ -1497,11 +1518,14 @@ from rev 1.1 unchanged and were not recounted, except the coordinate row.
      - rev 1.1: ``UniformCoord``, no caller (exact)
    * - ``coord/coordinate.{cpp,hpp}``
      - 1,297
-     - 1,166
-     - -131
+     - 1,154
+     - -143
      - rev 1.1 -25 (recount, exact); H-S1 -26 (exact); O's options -80
        (exact); H-S2 -31 +6 (estimate); ``face_normal`` +10 cancelled by
-       H-S7 -10 (estimate); S-6 ``centre_frame`` +25 (estimate)
+       H-S7 -10 (estimate); S-6 ``centre_frame`` +25 (estimate); AAM hooks
+       ``coordinate.hpp:375-380, 382-385, 387-392`` -16 (exact, non-blank;
+       ``:370-373`` stays); ``rotation_geometry()`` +4 (**estimate**: the
+       virtual and the gnomonic override, booked here)
    * - ``coord/coord_dispatch.{cpp,hpp,cu}``
      - 218
      - 132
@@ -1570,27 +1594,29 @@ from rev 1.1 unchanged and were not recounted, except the coordinate row.
        which now have rows
    * - **total within S**
      - **8,472**
-     - **7,446**
-     - **-1,026 (-12.1%)**
+     - **7,434**
+     - **-1,038 (-12.3%)**
      -
 
 Arithmetic: rev 1.1's 7,913 - 153 (V3-1) - 127 (O) - 103 (H-S1) - 73
 (H-S2..H-S7) - 1 (recount) = 7,456 (rev 2 part 1), then - 49 + 39 (S-4 to
-S-6) = 7,446. Of the new deletions, 433 lines are exact (V3-1 153, O 127,
-H-S1 103, S-4 49, recount 1) plus the rev 1.1 rows marked exact; the rest
+S-6) = 7,446, then - 16 (AAM hooks, exact) + 4 (``rotation_geometry()``,
+estimate) = 7,434. Of the new deletions, 449 lines are exact (V3-1 153, O
+127, H-S1 103, S-4 49, hooks 16, recount 1) plus the rev 1.1 rows marked exact; the rest
 are estimates.
 
 **Not counted.**
 
 - Moves B (``coord/x1_centroid.{cpp,hpp}``, -283) and C (process-group
   wrapper, ``layout/process_group*``, ``layout/distributed*``, -446) are
-  still not agreed with their receivers. With both, 6,717.
-- The virtual hooks ``coord/coordinate.hpp:375-380``
-  (``conserve_axial_momentum_``), ``:382-385`` (``axial_rate_to_rows_``,
-  S-4) and ``:387-392`` (``axial_x1_source_``), up to 16 lines, belong to
-  the moved physics. A.rst:267 books
-  ``coordinate.hpp:370-392`` to S, but whether they go depends on how lane A
-  calls the moved code. Open with lane A.
+  still not agreed with their receivers. With both, 6,705.
+- ``coord/coordinate.hpp:370-373`` (``x1_mass_source_``) stays and is not
+  counted. The hooks ``:375-380`` (``conserve_axial_momentum_``),
+  ``:382-385`` (``axial_rate_to_rows_``, S-4) and ``:387-392``
+  (``axial_x1_source_``), 16 non-blank lines, are now counted in the
+  coordinate row (A.rst:267 books ``coordinate.hpp:370-392`` to S); lane A
+  reads ``rotation_geometry()`` instead. The blank lines ``:381`` and
+  ``:386`` are not counted (with them, 7,432).
 
 **S's 149 hydro lines are counted in R.** The lines leaving hydro for S's
 transport (``hydro/hydro.cpp:344-377, 727-776``,
@@ -1715,7 +1741,7 @@ row (S-3).
 12. Skeleton index
 ------------------
 
-``docs/v3/skeleton/S/`` holds declarations and comments only, 236 lines
+``docs/v3/skeleton/S/`` holds declarations and comments only, 242 lines
 in all. It is not part of any build. It uses R's names at ``4c59162a``
 (``FluxRegister``, ``RegisterPhase::reconcile``, ``SeamRule``,
 ``replace(dim, faces, peer, rule)``, ``set_prescribed``,
@@ -1729,9 +1755,10 @@ in all. It is not part of any build. It uses R's names at ``4c59162a``
      - declares
      - replaces (pin)
    * - ``coord_rotation.hpp``
-     - 69
+     - 75
      - ``RotationAxis``, ``PanelRotation``, ``AxialRotationData`` (with
-       ``K_f2``/``K_f3``, ``s2``, ``on_axis``), ``centre_frame``,
+       ``K_f2``/``K_f3``, ``s2``, ``on_axis``), ``rotation_geometry``,
+       ``centre_frame``,
        ``PanelGeometry``; ``face_normal``
      - ``cs_velocity_transform_matrix`` and its callers; the layout's
        ``_velocity_transform``; Coriolis' frame

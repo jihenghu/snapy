@@ -53,6 +53,12 @@ struct AxialRotationData {
   torch::Tensor on_axis;     // S-4: bool mask; reset checks nx2 >= 3 if any
 };
 
+//! A's read of the rotation data. Declared on CoordinateImpl as
+//!   virtual AxialRotationData const* rotation_geometry() const;
+//! null without an axis; GnomonicEquiangle overrides. Replaces the hooks at
+//! coordinate.hpp:375-392 (16 non-blank lines); +4 lines, an estimate
+AxialRotationData const* rotation_geometry(CoordinateImpl const& coord);
+
 //! S-6: centre frame on every grid, never null (Cartesian, spherical-polar,
 //! gnomonic; replaces coriolis.cpp:85-151). No rule: throws at reset
 torch::Tensor centre_frame(CoordinateImpl const& coord);
