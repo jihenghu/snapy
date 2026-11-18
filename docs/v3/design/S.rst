@@ -116,7 +116,7 @@ numbers match, but I did not see the brief's own file list.
    is ``layout/cubed_sphere_layout.cpp:320-350``.
 2. RULING V3-3: one sentence in section 4.
 3. Section 9 on real counts: 8,472 -> 7,434 (-1,038, -12.3%; 7,445 at
-   rev 2.1, 7,460 at rev 2.2, section 9), with the 153
+   rev 2.1, 7,470 at rev 2.3, section 9), with the 153
    AAM lines (V3-1), D7, H-S1..H-S7, lane O's 127 options lines (99 stay),
    the 16 ``coordinate.hpp`` AAM hook lines, ``rotation_geometry()`` (+4,
    estimate) and the overlap counted once.
@@ -229,8 +229,8 @@ flux.
 
 S moves bytes and rotates. R decides what a seam face's value is and keeps
 it. Each stage exchange is one row of the declared schedule
-(``stage_schedule()``, ``exchange.hpp``), and lane X cuts segments at its
-rows.
+(``stage_schedule(stage, last)``, ``exchange.hpp``); lane X cuts at each
+of its rounds (section 7).
 
 **One rotation.** ``PanelRotation`` (``coord_rotation.hpp``) is the only
 code that changes a vector's basis between panels. It goes through the
@@ -747,6 +747,19 @@ Gates (when a row runs at all):
   not a row;
 - rows 16i and 16l: only if their gates fail (G-R2, G-S-K7).
 
+Transport entries (rev 2.3), split per round as section 7 says:
+
+- rows 11-12: ``Exchange::ghosts`` on the face-state keys ``hydro_wl:+`` and
+  ``hydro_wr:-``, cross-panel only, ``kPrimitive`` rotation without
+  interpolation, one round shared by both rows and no corner fill
+  (``hydro/hydro_forward.cpp:1005-1048``, ``layout/layout.cpp:736-741``);
+- rows 20-21: the same entry on ``scalar_wl:+`` and ``scalar_wr:-``,
+  ``kScalar`` raw, from the scalar forward (``scalar/scalar.cpp:109-147``);
+- row 18: ``Exchange::ghosts`` on diffusion's registered 12-channel
+  ``kScalar`` buffer, one round per streamed side (rounds 0-3, as
+  ``forcing/diffusion_cubed_sphere.cpp:136-143``), called from diffusion's
+  own loop until phase 3, when it moves to ``seam_slab`` with M6 (S-3).
+
 The gravity-work fixer's reduction (row 30 up to rev 2,
 ``mesh/meshblock.cpp:997-1004``) is gone: the fixer is removed (Cheng's
 ruling (b); X.rst:452-453 at ``54ca5356``; A.rst:501-505 at
@@ -815,7 +828,11 @@ adds one round on the cubed sphere (33). The last stage adds row 28's
 second call at ``mesh/meshblock.cpp:952`` when the thermo has reactions:
 +2 rounds (+1 with M8), so 34 on that stage (35 with 16r). The fallback
 rows add +1 each only if their gates fail: 16l (G-S-K7), and 16i (G-R2;
-0 if packed into 16r's round, **hypothesis**). The earlier local
+0 if packed into 16r's round, **hypothesis**). X's cuts for them
+(X.rst:932-934 at ``7bed6980``): 16i shares 16r's cut when packed into its
+round, else has its own; 16l is always its own cut, as it reads the
+post-carry flux. This agrees with rows 16i and 16l of section 3.3
+(lines 549-550 and 584-589). The earlier local
 commit 9c568b92 counted per exchange site and reported 23 points, with nine
 merges to 12. That commit could not be fetched from here, so I could not
 reconcile its count with this one. Counted per site, this table has 25 points
@@ -1531,15 +1548,52 @@ contract:
   (``layout/cubed_sphere_layout.cpp:571-574``), and registered with
   ``StateStore::register_storage`` (X ``state_store.hpp:33-35`` at
   ``54ca5356``). Row 16r's slab buffer is fixed per dim.
-  ``ghosts``, ``x1_rows`` and ``seam_slab`` each split into the parts X
-  schedules (X ``stage_executor.hpp:27-29``, X.rst:100, 107 at
-  ``e5a6abaa``): ``pack_*`` is X's ``kPack`` and only writes the row's
-  registered send buffers; ``host_wait`` is ``kHost`` (post, progress,
-  complete; never captured); ``unpack_*`` is ``kUnpack`` and only reads the
-  registered receive buffers (``unpack_seam_slab`` returns a view of
-  them). The blocking call stays as a convenience: pack, then
-  ``host_wait``, then unpack (``exchange.hpp``). Each row still has one
-  host wait, so the round counts (32, 17, 18) do not change.
+  Every exchange splits into X's segments per sequential blocking round,
+  not per row (X.rst:442, 922-925 at ``7bed6980``; X
+  ``stage_executor.hpp:27-29``): for round ``r`` in ``[0,
+  ExchangeRow::rounds)``, ``pack_*`` (``kPack``) writes only the row's
+  registered send buffers, ``host_wait(row, r)`` (``kHost``: post,
+  progress, complete; never captured) waits for that round alone, and
+  ``unpack_*`` (``kUnpack``) reads only the registered receive buffers.
+  Rows with sequential rounds: row 0 (4: ``hydro_u`` then ``scalar_s``,
+  each intra-panel then cross-panel), rows 1-3 (2 each: intra-panel, then
+  cross-panel, ``mesh/meshblock.cpp:651-658``), row 18 (4, one per
+  streamed side) and row 28 (1-2 per call: cloud, then vapor). The
+  cross-panel round packs only after the intra-panel round's unpack,
+  because its extended strip reads the halo that unpack wrote (pin comment
+  ``mesh/meshblock.cpp:645-649``).
+- **Corners.** Synthesized corners (``CornerRule::synthesized``, panel
+  corners of the cubed sphere) are filled in the ``unpack`` of the row's
+  last round, a device op in that ``kUnpack`` segment, after both halves:
+  the pin fills them once at ``mesh/meshblock.cpp:657`` and never in a half
+  (``layout/layout.cpp:736-741``). Diagonal corners arrive as messages and
+  are written by the unpack of the round that carries them; ``x1_full``
+  rows carry their corners in the x1 rows.
+- **Row 28.** ``gather_x1`` splits the same way on buffers registered at
+  ``reset()``: ``pack_gather_x1(round, piece)`` writes the piece into its
+  slot of the registered column buffer and the send buffers,
+  ``host_wait(28, round)`` waits, and ``unpack_gather_x1(round)`` returns a
+  view of the column buffer. This replaces the pin's ``torch::empty_like``
+  and ``torch::cat`` (``layout/layout.cpp:778, 804``); that X's segment
+  order also replaces its two stream synchronizes (``:759``, ``:807``) is
+  a **hypothesis**. The blocking ``gather_x1`` is the convenience and
+  returns the same view; nothing allocates per call.
+- **Rows 6-7.** The bitwise anchor relay stays a serial chain (M3's
+  non-bitwise scan is ``anchor_scan``): row 6 is ``host_wait(6, 0)`` then
+  ``unpack_anchor()``, a view of its registered receive buffer; row 7 is
+  ``pack_anchor(face)`` then ``host_wait(7, 0)``. Across processes the
+  waits order the column. In one process the pin's board waits up to 5
+  minutes and needs local blocks to run concurrently or from the x1 top
+  down (``layout/layout.cpp:858-868``). That X's executor runs a column's
+  same-process blocks in that order is a **hypothesis**, untested.
+- **Schedule per stage.** ``stage_schedule(stage, last_stage)`` returns the
+  stage's rows; the last stage with reactions adds row 28's second call
+  (+2 rounds, +1 with M8).
+- **Counts.** The ``rounds`` column already counts sequential rounds, so
+  32, 17 and 18 (section 3.5) are cut counts and do not change in rev 2.3;
+  X's sum is the same (X.rst:470-473 at ``7bed6980``). The blocking
+  ``ghosts``, ``x1_rows``, ``seam_slab`` and ``gather_x1`` stay as
+  conveniences: per round, pack, ``host_wait``, unpack (``exchange.hpp``).
 - **Registered geometry and masks.** ``PrescribedFaces::build`` (mask,
   value, normal, ``solid_cells``, ``solid_face_sign``) and the
   ``AxialRotationData`` members added in rev 2 (``k_cell_lower``,
@@ -1783,12 +1837,14 @@ from rev 1.1 unchanged and were not recounted, except the coordinate row.
        repeated intra-panel loops (measured span, net of about +10)
    * - ``layout/layout.{cpp,hpp}``
      - 1,338
-     - 1,319
-     - -19
+     - 1,329
+     - -9
      - rev 1.1 -10 (estimate; includes D7's ``x1_rows`` +30); O's options
        -24 (exact); rev 2.2 +15 (**estimate**): ``ghosts``, ``x1_rows`` and
        ``seam_slab`` each split into pack, ``host_wait`` and unpack, with
-       the blocking call kept as a three-call convenience (about +5 each)
+       the blocking call kept as a three-call convenience (about +5 each);
+       rev 2.3 +10 (**estimate**): the same split for ``gather_x1`` and the
+       anchor relay (``layout/layout.cpp:748-818, 850-893``), about +5 each
    * - ``layout/connectivity.hpp``
      - 234
      - 220
@@ -1821,8 +1877,8 @@ from rev 1.1 unchanged and were not recounted, except the coordinate row.
        which now have rows
    * - **total within S**
      - **8,472**
-     - **7,460**
-     - **-1,012 (-11.9%)**
+     - **7,470**
+     - **-1,002 (-11.8%)**
      -
 
 Arithmetic: rev 1.1's 7,913 - 153 (V3-1) - 127 (O) - 103 (H-S1) - 73
@@ -1830,7 +1886,8 @@ Arithmetic: rev 1.1's 7,913 - 153 (V3-1) - 127 (O) - 103 (H-S1) - 73
 S-6) = 7,446, then - 16 (AAM hooks, exact) + 4 (``rotation_geometry()``,
 estimate) = 7,434 (rev 2), then + 11 (bc outflow flags, rev 2.1,
 estimate) = 7,445 (rev 2.1), then + 15 (pack/unpack split, rev 2.2,
-estimate) = 7,460. Of the new deletions, 449 lines are exact (V3-1 153, O
+estimate) = 7,460 (rev 2.2), then + 10 (gather and anchor split, rev
+2.3, estimate) = 7,470. Of the new deletions, 449 lines are exact (V3-1 153, O
 127, H-S1 103, S-4 49, hooks 16, recount 1) plus the rev 1.1 rows marked exact; the rest
 are estimates.
 
@@ -1852,6 +1909,8 @@ as +4) change no counted line: the buffers and registration calls sit in
 dropped members are built by the rotation data S keeps. ``BlockExchange``
 itself is outside the baseline (section 1). Total 7,445. Rev 2.2 adds the
 layout row's +15 (estimate, the pack/unpack split, section 7): total 7,460.
+Rev 2.3 adds +10 (estimate, the ``gather_x1`` and anchor-relay split;
+round arguments add no lines): total 7,470.
 
 **Not counted.**
 
@@ -2076,7 +2135,7 @@ are rev 2.1's ``S.rst`` lines (``4b96f4ea``); the skeleton changes are in sectio
        a virtual member (Jiachen's nit)
 
 **Rev 2.2 on rev 2.1 (``4b96f4ea``): the PM's row 29 wording fix and
-Xi's lane X notes.** Lines are this revision's ``S.rst`` lines. Row 29
+Xi's lane X notes.** Lines are rev 2.2's (``7ca6d21c``). Row 29
 now uses lane X's wording (X.rst:112, 119-120 at ``36d4986f``): device
 partial sums, then a host allreduce only with a process group, then the
 device apply; no ``.item()`` read. Xi's other lane X notes on rev 2.1 are
@@ -2100,8 +2159,8 @@ closed.
        blocking call stays as a convenience (X ``stage_executor.hpp:27-29``,
        X.rst:100, 107 at ``e5a6abaa``). Skeleton ``exchange.hpp`` 103 -> 121
        lines, 291 -> 309 in all (section 12). Section 9: layout row +15
-       (estimate), total 7,445 -> 7,460. Rounds 32, 17, 18 unchanged (one
-       host wait per row, as before)
+       (estimate), total 7,445 -> 7,460. Rounds 32, 17, 18 unchanged
+       (rev 2.3: one host wait per round, not per row)
    * - X-5
      - closed by rev 2.2
      - 63-66, 718-721, 744-747, 1498-1512,
@@ -2109,12 +2168,77 @@ closed.
      - row 29 in X's wording: the pins, the row 29 cell and gate (section
        3.3), the first bullet of section 7 and item 5 above
 
+**Rev 2.3 on rev 2.2 (``7ca6d21c``): the PM's items 1-6 from Tianhao's
+review, and EF's notes 3 and 4.** Lines are this revision's ``S.rst``
+lines; lane X at ``7bed6980dbf572233c09d64e2d40bbf29eed0b7d``
+(UCzhangxi/snapy, fetched read-only). Skeleton 309 -> 294 lines (comments
+trimmed, no declaration removed). Section 9 +10 (estimate), 7,460 ->
+7,470. Rounds 32, 17, 18 unchanged.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 6 10 18 66
+
+   * - item
+     - answer
+     - S.rst line
+     - what changed
+   * - 1
+     - agree
+     - 232-233, 1551-1571, 1592-1596, 2162-2163
+     - rounds, not rows: ``pack_*``, ``host_wait(row, round)`` and
+       ``unpack_*`` per sequential round (rows 0-3, 18, 28); synthesized
+       corners in the last round's unpack; the "one host wait per row"
+       text replaced (X.rst:442, 922-925). The ``rounds`` column already
+       counted rounds, so 32, 17, 18 hold (X.rst:470-473).
+       ``exchange.hpp:42, 67-100``
+   * - 2
+     - agree
+     - 1572-1580
+     - ``pack_gather_x1``/``unpack_gather_x1`` on the registered column
+       buffer; no ``empty_like`` or ``cat`` per call. ``exchange.hpp:75,
+       89-90``
+   * - 3
+     - agree
+     - 1581-1588
+     - ``pack_anchor`` (row 7) and ``unpack_anchor`` (row 6); same-process
+       top-down order is a **hypothesis**, untested. ``exchange.hpp:91-94``
+   * - 4
+     - agree
+     - 232, 1589-1591
+     - ``stage_schedule(stage, last_stage)``; the last stage adds row 28's
+       second call. ``exchange.hpp:46-48``
+   * - 5
+     - agree
+     - 750-761
+     - one transport sentence each for rows 11-12, 20-21 and 18
+   * - 6
+     - agree
+     - 831-835
+     - X.rst:932-934 recorded: 16i shares 16r's cut when packed, 16l is
+       always its own cut; agrees with lines 549-550 and 584-589
+   * - EF-3
+     - agree
+     - 102-109, 1223-1226
+     - already in rev 2.2: rev 1.1's "posted as one named boundary
+       increment" (``d03e4888`` S.rst:78-79) is gone; the EF bullet says
+       R's ``boundary.prescribed`` zeroes the rows, and the mapping table
+       says R calls ``apply_prescribed(d)``, S makes no ``add`` call, R
+       books it as ``boundary.prescribed`` (R.rst:407-417)
+   * - EF-4
+     - agree
+     - 108-109, 1260-1262, 2010-2013
+     - already in rev 2.2: EF accepted free-slip (EF.rst:696-699 at
+       ``f5c8e9a7``) in the EF bullet, section 4's "Tangential momentum at
+       solid faces (settled)" and the EF row above
+
 
 12. Skeleton index
 ------------------
 
-``docs/v3/skeleton/S/`` holds declarations and comments only, 309 lines
-in all (``wc -l``; rev 2: 259; rev 2.1: 291). It is not part of any build. It uses R's names at ``4c59162a``
+``docs/v3/skeleton/S/`` holds declarations and comments only, 294 lines
+in all (``wc -l``; rev 2: 259; rev 2.1: 291; rev 2.2: 309; rev 2.3 trims
+comments only). It is not part of any build. It uses R's names at ``4c59162a``
 (``FluxRegister``, ``RegisterPhase::reconcile``, ``SeamRule``,
 ``replace(dim, faces, peer, rule)``, ``set_prescribed``,
 ``apply_prescribed``) and R's namespace ``snap``.
@@ -2127,7 +2251,7 @@ in all (``wc -l``; rev 2: 259; rev 2.1: 291). It is not part of any build. It us
      - declares
      - replaces (pin)
    * - ``coord_rotation.hpp``
-     - 91
+     - 80
      - ``RotationAxis``, ``PanelRotation`` (``panel_to_panel_rows_`` takes a
        ``PanelEdge``), ``AxialRotationData`` (``k_cell``, ``k_cell_lower``,
        ``cos2_lat``, ``cos2_face2``/``cos2_face3``, ``K_f2``/``K_f3``,
@@ -2140,16 +2264,17 @@ in all (``wc -l``; rev 2: 259; rev 2.1: 291). It is not part of any build. It us
    * - ``exchange.hpp``
      - 121
      - ``FaceKind``, ``CornerRule``, ``Frame``, ``ExchangeRow`` (with
-       ``fallback``), ``stage_schedule``, ``Channel``, ``Exchange`` (with
-       ``reset``; rev 2.2: ``pack_*``/``unpack_*`` for ``ghosts``,
-       ``x1_rows``, ``seam_slab`` and ``host_wait``), ``BoundaryFlags``,
+       ``fallback``), ``stage_schedule(stage, last_stage)``, ``Channel``,
+       ``Exchange`` (with ``reset``; ``pack_*``/``unpack_*`` for
+       ``ghosts``, ``x1_rows``, ``seam_slab``, ``gather_x1`` and the
+       anchor, ``host_wait(row, round)``), ``BoundaryFlags``,
        ``BlockExchange``
      - hydro's x1 relays (``hydro/hydro.cpp:344-377``, R's D7, as
        ``x1_rows``); the three wall predicates; the board/remote pair;
        ``mesh/meshblock.cpp:644-685, 1111-1205, 1846-1918`` less
        ``:1198-1200``; bc's 11 outflow ``.item<bool>()`` lines
    * - ``seam_register.hpp``
-     - 97
+     - 93
      - ``SeamOwner``, ``SeamGate``, ``PanelEdge``, ``SeamEntry``,
        ``seam_entries``, ``reconcile_seams``, ``PrescribedFaces`` (with
        ``solid_face_sign``, R's contract since rev 2.4),

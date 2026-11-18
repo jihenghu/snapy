@@ -1,11 +1,8 @@
 #pragma once
-// V3 lane S skeleton: declarations only, in no build. Revision 2.1.
-// The two-sided register entry for every shared face (S.rst section 4) and
-// the wall/solid faces S supplies for R's "boundary.prescribed". Names are
-// R's at happysky19/snapy 4c59162a (flux_register.hpp): FluxRegister,
-// RegisterPhase::reconcile, SeamRule {mean, owner_copy} (:24),
-// replace(dim, faces, peer, rule) (:62-64), set_prescribed(dim, mask,
-// value) (:45-47); R itself calls apply_prescribed(dim) (:65).
+// V3 lane S skeleton: declarations only, in no build. Revision 2.3. Shared
+// faces (S.rst s4) and S's faces for R's "boundary.prescribed". R's names at
+// 4c59162a (flux_register.hpp): SeamRule (:24), replace (:62-64),
+// set_prescribed (:45-47); R itself calls apply_prescribed(dim) (:65).
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -60,12 +57,11 @@ std::vector<SeamEntry> const& seam_entries();
 void reconcile_seams(FluxRegister& reg, Exchange& ex,
                      PanelRotation const& rot);
 
-//! wall and immersed-solid faces for R's "boundary.prescribed". A face is
-//! prescribed if it is a reflecting wall or either neighbour cell is solid
-//! (internal_boundary.cpp:74-76). Rows set: mass, species, energy, scalars,
-//! value 0. Momentum rows are not set: they keep the mirror-Riemann flux
-//! (free-slip, internal_boundary.cpp:78-80, 84-91). normal is coord's face
-//! unit normal in the post frame, supplied for EF's tangential option only.
+//! wall and solid faces for R's "boundary.prescribed": a reflecting wall or
+//! a solid neighbour cell (internal_boundary.cpp:74-76). Rows mass, species,
+//! energy, scalars set to 0; momentum keeps the mirror-Riemann flux
+//! (free-slip, internal_boundary.cpp:78-80, 84-91). normal: coord's face
+//! unit normal in the post frame, for EF's tangential option only.
 struct PrescribedFaces {
   torch::Tensor mask[3];    // bool [nvar, faces...]: row prescribed on face
   torch::Tensor value[3];   // [nvar, faces...]: 0 on every set row

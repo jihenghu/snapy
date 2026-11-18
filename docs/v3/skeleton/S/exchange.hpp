@@ -1,5 +1,5 @@
 #pragma once
-// V3 lane S skeleton: declarations only, in no build. Revision 2.2.
+// V3 lane S skeleton: declarations only, in no build. Revision 2.3.
 // Pin chengcli/snapy 9e5de2d4ce497d0b2d4da3295fc1fe969fe7e410. S owns the
 // transport of every within-stage exchange (S.rst section 3 table); the
 // rules for registered fluxes are R's (flux_register.hpp:62-65 at 4c59162a).
@@ -39,12 +39,13 @@ struct ExchangeRow {
   Frame frame;
   CornerRule corners;
   bool interpolate;       // cubed-sphere ghost interpolation (delta form)
-  int rounds;             // blocking rounds with every option on
+  int rounds;             // sequential blocking rounds; X cuts at each
   bool fallback;          // 16i, 16l: in the schedule only if their gate fails
 };
 
-//! the declared schedule of one stage; X reads it to place segment cuts
-std::vector<ExchangeRow> const& stage_schedule();
+//! one stage's schedule, built at reset(); the last stage adds row 28's
+//! second call. X reads it to place one cut per round
+std::vector<ExchangeRow> const& stage_schedule(int stage, bool last_stage);
 
 //! one transport for same-process boards and the process group (today two
 //! paths: layout.cpp:312-500, 895-940 and 556-653)
@@ -58,45 +59,44 @@ class Channel {
 };
 
 //! S's transport API. Replaces the hand-written relays in hydro
-//! (hydro.cpp:344-377, 727-776; hydro_forward.cpp:882-946).
+//! (hydro.cpp:344-377, 622-776; hydro_forward.cpp:882-946)
 class Exchange {
  public:
   explicit Exchange(MeshBlockImpl const* pmb);
   FaceKind kind(int face) const;  // face 0..5 as bfuncs()
-  //! ghost fill of cell fields (rows 1-3, 17, 26, 27)
-  void ghosts(std::vector<torch::Tensor> fields, int type, bool interpolate);
-  //! m x1 rows over every x2/x3 column, packed in one message (rows 4, 5,
-  //! 8, 10, 13-16, 19, 22-25; merges M4, M5). Takes over
-  //! HydroImpl::_x1_ghost_rows (hydro.cpp:344-377, R's D7)
-  void x1_rows(std::vector<torch::Tensor> fields, int m, bool faces, int tag);
-  //! the peer entry for R's replace(dim, faces, peer, rule) (rows 9, 16r):
-  //! every x1 seam incl. same-process ones, and panel seams; returns, per
-  //! shared face, the peer's values in the receiver's basis
-  torch::Tensor seam_slab(int dim, torch::Tensor const& slab, int tag);
-  //! ghosts, x1_rows and seam_slab above are conveniences: pack, host_wait,
-  //! unpack. X schedules the parts as its kPack, kHost and kUnpack segments
-  //! (X stage_executor.hpp:27-29 at e5a6abaa). pack_* only writes the row's
-  //! send buffers registered at reset(); unpack_* only reads its receive
-  //! buffers, after host_wait. No part allocates.
-  void pack_ghosts(std::vector<torch::Tensor> const& fields, int type);
-  void unpack_ghosts(std::vector<torch::Tensor> fields, int type,
-                     bool interpolate);
-  void pack_x1_rows(std::vector<torch::Tensor> const& fields, int m,
-                    bool faces, int tag);
-  void unpack_x1_rows(std::vector<torch::Tensor> fields, int m, bool faces,
-                      int tag);
-  void pack_seam_slab(int dim, torch::Tensor const& slab, int tag);
-  //! a view of the fixed receive buffer, in the receiver's basis
-  torch::Tensor unpack_seam_slab(int dim, int tag);
-  //! kHost: post, progress and complete the row's messages over Channel;
-  //! never captured. row is ExchangeRow::id
-  void host_wait(int row, int tag);
-  //! x1 column gather (row 28) and the reference anchor scan (rows 6-7)
-  torch::Tensor gather_x1(torch::Tensor const& piece);
-  torch::Tensor anchor_scan(torch::Tensor const& local_drop);  // M3, non-bitwise
-  //! allocates every row's pack/unpack buffers once per (row, shape, dtype,
-  //! device) and registers them (StateStore::register_storage, X
-  //! state_store.hpp:33-35); pack and unpack ops only use these
+  //! blocking conveniences: for each round r of the row, pack(r),
+  //! host_wait(r), unpack(r). None allocates
+  void ghosts(std::vector<torch::Tensor> fields, int type,
+              bool interpolate);  // rows 0-3, 11-12, 17, 18, 20-21, 26-27
+  void x1_rows(std::vector<torch::Tensor> fields, int m, bool faces,
+               int tag);  // rows 4-5, 8, 10, 13-16, 19, 22-25 (R's D7)
+  torch::Tensor seam_slab(int dim, torch::Tensor const& slab,
+                          int tag);  // rows 9, 16r, 16i, 16l
+  torch::Tensor gather_x1(torch::Tensor const& piece);  // row 28: a view
+  torch::Tensor anchor_scan(torch::Tensor const& local_drop);  // M3
+  //! X's kPack | kHost | kUnpack for round r in [0, ExchangeRow::rounds)
+  //! (X stage_executor.hpp:27-29 at 7bed6980). pack writes, unpack reads
+  //! only buffers registered at reset(). Synthesized corners: in the unpack
+  //! of the row's last round; diagonal corners arrive in each round
+  void pack_ghosts(int row, int round, std::vector<torch::Tensor> const& f);
+  void unpack_ghosts(int row, int round, std::vector<torch::Tensor> f);
+  void pack_x1_rows(int row, std::vector<torch::Tensor> const& f, int m,
+                    bool faces);
+  void unpack_x1_rows(int row, std::vector<torch::Tensor> f, int m,
+                      bool faces);
+  void pack_seam_slab(int row, int dim, torch::Tensor const& slab);
+  torch::Tensor unpack_seam_slab(int row, int dim);  // view, receiver basis
+  void pack_gather_x1(int round, torch::Tensor const& piece);  // row 28
+  torch::Tensor unpack_gather_x1(int round);  // view of the column buffer
+  //! rows 6-7, bitwise serial relay down the x1 column. Same-process
+  //! top-down order under X's executor: hypothesis, untested
+  torch::Tensor unpack_anchor();                // row 6, after its wait
+  void pack_anchor(torch::Tensor const& face);  // row 7, before its wait
+  //! kHost: post, progress and complete one round; never captured
+  void host_wait(int row, int round);
+  //! buffers per (row, round, shape, dtype, device), registered with
+  //! StateStore::register_storage (X state_store.hpp:33-35); builds the
+  //! stage schedules
   void reset(StateStore& store);
 };
 
