@@ -232,14 +232,38 @@ it. Each stage exchange is one row of the declared schedule
 (``stage_schedule(stage, last)``, ``exchange.hpp``); lane X cuts at each
 of its rounds (section 7).
 
-**One rotation.** ``PanelRotation`` (``coord_rotation.hpp``) is the only
-code that changes a vector's basis between panels. It goes through the
-global Cartesian frame (contravariant A → Cartesian → contravariant B),
-which needs no ``atan2``. Under AVX2 the cross-check measured its matrices
-as strip-independent (0 of 8,640) and found it agrees with the spherical
-route to 6.2e-16. Both numbers are at 919936da. That nb = 4 then becomes
-bitwise end to end is a **hypothesis**. The spherical-frame code is deleted
-(section 9).
+**One rotation (RULINGS S-1.route, rev 2.5).** ``PanelRotation``
+(``coord_rotation.hpp``) is the only code that changes a vector's basis
+between panels. A vector goes from panel A's contravariant components
+through the global Cartesian frame into the local up/south/east frame at
+its point, and from that frame through Cartesian into panel B's
+contravariant components. The local frame is built algebraically from the
+point's Cartesian position (up = the unit position, east = (-y, x, 0)/s,
+s = sqrt(x^2 + y^2), south completing the triad), so it needs no
+``atan2``. Exchanged values are carried, and ghost-interpolated, in that
+frame, as at the pin, where the same frame came from ``atan2``. Each
+matrix equals the pin's spherical matrix to 6.7e-16 and is
+strip-independent; the pin's ``atan2`` route gives different bits in 7 of
+150 strip placements (jihenghu/snapy ``68a97f03``,
+``tests/test_panel_rotation.cpp``).
+
+Evidence for the frame. Rev 2.4's route (contravariant A → Cartesian →
+contravariant B, values carried in Cartesian components) failed the
+exact-field test ``test_cubed_sphere_vertical_velocity_exchange``: a
+uniform radial wind through one primitive ghost exchange came back with
+error 8.1e-3 with ghost interpolation and 0.40 without. The local frame
+gives 2.2e-16 and 6.7e-16 (the pin: 4.4e-16). That test is the route's
+RED/GREEN: RED on ``0bbb5271``, GREEN on ``68a97f03``. Why Cartesian
+components fail is a **hypothesis**: a vector's components are used at a
+point other than the one they were taken at (by interpolation, or by
+placement across a panel edge), and a radial or zonal wind is uniform in
+the local frame only. Measured at ``68a97f03`` against base ``9e22bb89``
+on one six-panel deck (16 x 16 x 4 per panel, x2/x3 seams not overwritten
+by a boundary function), CPU and CUDA sm_61: nb = 1 and nb = 4 are
+bitwise, on the base as well (so this deck does not reproduce H16); the
+step differs from the base in 323 of 30,720 entries at round-off, and its
+errors against an exact solid-body state equal the base's to 2.6e-11
+relative. The spherical-frame code is deleted (section 9).
 
 **FaceKind.** Each block face has one kind (``exchange.hpp``). The three
 wall predicates become one lookup. ``periodic`` is a seam to self: the layout
@@ -1402,7 +1426,10 @@ round-off, which is R's G-R9. Hence:
      - still open: ``coord/cubed_sphere_utils.cpp:189`` feeds the exchange
        matrices
      - T1: nb = 1 vs 4 bitwise under AVX2, default and CUDA, after the
-       Cartesian route replaces the spherical one (**hypothesis**)
+       local-frame route (RULINGS S-1.route, section 3.1) replaces the
+       ``atan2`` one. Measured bitwise at ``68a97f03`` on one six-panel deck,
+       CPU (AVX2) and CUDA sm_61, and on its base ``9e22bb89`` too; the
+       ``ATEN_CPU_CAPABILITY=default`` arm was not run
    * - H18 CPU equals GPU
      - GPU = ``std::fma`` on all outputs. CPU = unfused, so 16.9-18.5% of
        outputs differ, max 2.8e-14
@@ -1630,8 +1657,8 @@ contract:
   frame matrices and calls coord's ``centre_frame`` (S-6). A owns
   ``rate_to_rows`` (S-4) and reads ``K_f`` and ``s2`` from coord (S-5).
   Coord's ``x1_mass_source_`` reads A's ``X1Momentum`` m1 (S-8).
-- **Merge order.** (1) ``PanelRotation`` plus the Cartesian exchange route
-  (T1). (2) FaceKind and corners (P, T4). (3) ``Exchange`` with the x1 relays
+- **Merge order.** (1) ``PanelRotation`` plus the local-frame exchange
+  route (T1; RULINGS S-1.route). (2) FaceKind and corners (P, T4). (3) ``Exchange`` with the x1 relays
   moved out of hydro (bitwise gate). (4) Row 16r, the same-process x1 mean
   and ``boundary.prescribed``, after
   R's register lands. (5) The deletions of section 9.
@@ -1953,9 +1980,10 @@ scalar CPU setting. M8 goes in only if its bitwise **hypothesis** holds. M6
 is not in phase 1: diffusion keeps its own exchange until phase 3 (S-3;
 A.rst:160-161, 775 at ``a0b006d2``).
 
-**Phase 2 (rotation and corners, round-off).** The Cartesian route replaces
-the spherical one (T1), and diagonal corners replace synthesized ones on slab
-and cubed layouts (P). Both change bits: at round-off for T1, and by up to
+**Phase 2 (rotation and corners, round-off).** The local-frame route
+(RULINGS S-1.route) replaces the ``atan2`` spherical one (T1), and diagonal
+corners replace synthesized ones on slab and cubed layouts (P). Both change
+bits: at round-off for T1 (measured at ``68a97f03``, section 3.1), and by up to
 0.11 for wrong periodic corners, which is a correction. **FOR CHENG**: the
 periodic-corner correction changes results beyond round-off on decks with
 periodic x2 and x3. Affected decks are listed in the PR.
@@ -2239,6 +2267,16 @@ trimmed, no declaration removed). Section 9 +10 (estimate), 7,460 ->
        ``hydro_u`` round 1, ``scalar_s`` round 3; rows 1-3 round 1.
        ``exchange.hpp:79-80`` comment only; no declaration, round or
        section 9 change
+
+
+**Rev 2.5 on rev 2.4 (``76204d46``): RULINGS S-1.route.** Xi accepted
+S-1 at jihenghu/snapy ``68a97f03d9aac7edb1f482a463b0322a46ccf710``
+(parent ``9e22bb89``) with the local up/south/east route as a named design
+change; this revision makes the text match that code. Changed: section 3.1
+"One rotation" (route, evidence, the **hypothesis** for why Cartesian
+components fail), the T1 row of section 5, the merge order of section 8,
+phase 2 of section 10, and one comment in ``coord_rotation.hpp``. No
+declaration, round, gate id or section 9 number changes.
 
 
 12. Skeleton index

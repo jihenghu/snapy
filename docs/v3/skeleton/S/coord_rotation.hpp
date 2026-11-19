@@ -16,9 +16,9 @@ struct RotationAxis {
   void check_supported() const;  // throws unless unit == z
 };
 
-//! the one rotation; replaces cubed_sphere_utils.cpp:146-193, 259-334,
-//! cubed_sphere_layout.cpp:132-191, coriolis.cpp:128-142 and
-//! diffusion_cubed_sphere.cpp:193, 371. No atan2 (H16: utils.cpp:189)
+//! the one rotation (replaces utils.cpp:146-193, 259-334, layout.cpp:132-191,
+//! coriolis.cpp:128-142, diffusion :193, 371); no atan2 (H16). Values cross a
+//! seam in the local up/south/east frame (RULINGS S-1.route, S.rst 3.1)
 class PanelRotation {
  public:
   //! panel contravariant <-> global Cartesian (cubed_sphere_utils.cpp:194-243)
