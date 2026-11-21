@@ -912,14 +912,29 @@ is a property of the code. A changed summation order is not bitwise.
      - 3
      - yes (pure copies)
    * - M6
-     - send the four diffusion sides in one 48-channel round, as before the
-       streaming change (``forcing/diffusion_cubed_sphere.cpp:132-136``)
+     - send the four diffusion sides in one round again, replacing the four
+       streamed 12-channel ghost exchanges
+       (``forcing/diffusion_cubed_sphere.cpp:132-136``): each side's 12
+       channels (5 signed area-weighted fluxes, 7 trace channels) go to the
+       neighbour across it as one face slab, through
+       ``Exchange::seam_slab(dim, lower, upper, tag, process_only)``, a
+       sibling of ``x1_seam_slab``. ``lower`` and ``upper`` are the slabs
+       next to the lower and upper face of direction ``dim`` (2: x2, 3: x3),
+       each ``[C, n, ni]`` with ``n`` the cells along the edge in this
+       block's index order. It returns the neighbours' slabs, {across the
+       lower face, across the upper face}, in the same layout and in this
+       block's along-edge order: an edge with ``CS_FACE_EDGES`` ``rev``
+       arrives reversed along ``n``. Raw copy, same-panel neighbours
+       included; no sign change and no rotation (row 16r applies its own).
+       The message carries tag + the receiver's side. A panel seam can join
+       an x2 face to an x3 face, so a row calls ``dim`` 2, then 3, on every
+       block with one tag
      - 18
      - 3
-     - yes per the code comment ("four completed rounds reproduce the old
-       48-channel round"). Costs 4x the buffer. **Phase 3**, with S-3: it
-       goes in when diffusion leaves its own exchange for
-       ``Exchange::seam_slab`` (A.rst:160-161, 775 at ``a0b006d2``)
+     - yes: the slabs are the same values the ghost exchange copied, in the
+       flux dtype; #348, #349 and the cubed-sphere gates are bitwise against
+       the base. **Phase 3**, with S-3. ``reconcile_panel_seams`` (row 16r)
+       keeps its own send and receive
    * - M7
      - one theta sync for hydro and scalar species, by running the scalar
        lower-bound theta before row 17
