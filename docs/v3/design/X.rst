@@ -851,6 +851,8 @@ Deck (G7; names are Cheng's call, ``V3_ROADMAP.md:301``)::
     execution: eager        # eager | cuda-graph
     execution-strict: false # true: reject a case with any eager segment
 
+Host-exchange and global segments are boundaries, not refusals: strict mode counts them as ``host`` and does not refuse them (Xi's ruling, graph thread).
+
 Capability matrix (numerical support is the eager columns; graph support is
 separate):
 
