@@ -110,6 +110,8 @@ std::condition_variable g_local_exchange_cv;
 //! (mesh, process, local block index)
 std::map<std::tuple<int64_t, int, int>, LayoutImpl*> g_local_layouts;
 std::map<LocalExchangeKey, LocalExchangeState> g_local_exchange_states;
+//! per Mesh, whether its same-process exchange is abandoned
+std::map<int64_t, std::function<bool()>> g_local_exchange_abort;
 std::mutex g_process_comm_mutex;
 
 //! same-process pieces of one x1 column, posted by its blocks (gather_x1)
@@ -313,6 +315,19 @@ LayoutImpl::~LayoutImpl() {
     g_local_layouts.erase(it);
 }
 
+void set_local_exchange_abort(int64_t mesh_id, std::function<bool()> failed) {
+  std::lock_guard<std::mutex> lock(g_local_exchange_mutex);
+  if (failed)
+    g_local_exchange_abort[mesh_id] = std::move(failed);
+  else
+    g_local_exchange_abort.erase(mesh_id);
+}
+
+void wake_local_exchanges() {
+  std::lock_guard<std::mutex> lock(g_local_exchange_mutex);
+  g_local_exchange_cv.notify_all();
+}
+
 void LayoutImpl::_prepare_local_exchange(MeshBlockImpl const* pmb,
                                          SyncOptions const& opts) {
   if (options->blocks_per_process() <= 1) return;
@@ -329,6 +344,14 @@ void LayoutImpl::_prepare_local_exchange(MeshBlockImpl const* pmb,
   std::unique_lock<std::mutex> lock(g_local_exchange_mutex);
   auto& state = g_local_exchange_states[key];
   int generation = state.generation;
+  // a block of this Mesh failed in this stage: its round never completes
+  auto it = g_local_exchange_abort.find(options->mesh_id());
+  auto abandoned = [&]() {
+    return it != g_local_exchange_abort.end() && it->second();
+  };
+  TORCH_CHECK(!abandoned(),
+              "same-process exchange abandoned: another block of this Mesh "
+              "failed in this stage");
 
 #ifdef USE_CUDA
   if (current_stream) {
@@ -380,8 +403,15 @@ void LayoutImpl::_prepare_local_exchange(MeshBlockImpl const* pmb,
     state.released = expected;
     g_local_exchange_cv.notify_all();
   } else {
-    g_local_exchange_cv.wait(
-        lock, [&]() { return state.ready && state.generation == generation; });
+    g_local_exchange_cv.wait(lock, [&]() {
+      return (state.ready && state.generation == generation) || abandoned();
+    });
+    if (!(state.ready && state.generation == generation)) {
+      state.arrived -= 1;  // leave the round that cannot complete
+      TORCH_CHECK(false,
+                  "same-process exchange abandoned: another block of this "
+                  "Mesh failed in this stage");
+    }
   }
 
 #ifdef USE_CUDA

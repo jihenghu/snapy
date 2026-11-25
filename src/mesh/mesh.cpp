@@ -93,8 +93,14 @@ c10::cuda::CUDAStream worker_stream(int device, size_t index) {
 
 class MeshImpl::BlockWorkerPool {
  public:
-  BlockWorkerPool(size_t count, torch::Device device)
-      : device_(std::move(device)), remaining_(count) {
+  BlockWorkerPool(size_t count, torch::Device device, int64_t mesh_id)
+      : device_(std::move(device)), remaining_(count), mesh_id_(mesh_id) {
+    // a job's stored error abandons the Mesh's same-process exchange, so the
+    // blocks waiting there for the failed one throw and their jobs end too
+    set_local_exchange_abort(mesh_id_, [this]() {
+      std::lock_guard<std::mutex> lock(mutex_);
+      return error_ != nullptr;
+    });
 #ifdef USE_CUDA
     if (device_.is_cuda()) {
       c10::cuda::CUDAGuard device_guard(device_.index());
@@ -114,7 +120,10 @@ class MeshImpl::BlockWorkerPool {
     }
   }
 
-  ~BlockWorkerPool() { stop(); }
+  ~BlockWorkerPool() {
+    set_local_exchange_abort(mesh_id_, {});
+    stop();
+  }
 
   //! the pool's CUDA streams: one per block on a CUDA device, else none
   std::vector<void*> streams() const {
@@ -213,10 +222,13 @@ class MeshImpl::BlockWorkerPool {
       try {
         func(index);
       } catch (...) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        if (error_ == nullptr) {
-          error_ = std::current_exception();
+        {
+          std::lock_guard<std::mutex> lock(mutex_);
+          if (error_ == nullptr) {
+            error_ = std::current_exception();
+          }
         }
+        wake_local_exchanges();
       }
 
 #ifdef USE_CUDA
@@ -245,6 +257,7 @@ class MeshImpl::BlockWorkerPool {
   size_t generation_ = 0;
   size_t remaining_ = 0;
   bool stopping_ = false;
+  int64_t mesh_id_;
 
 #ifdef USE_CUDA
   std::vector<c10::cuda::CUDAStream> streams_;
@@ -310,7 +323,8 @@ void MeshImpl::reset() {
 
   if (blocks.size() > 1) {
     workers_ = std::make_shared<BlockWorkerPool>(
-        blocks.size(), torch::Device(blocks.front()->options->device_str()));
+        blocks.size(), torch::Device(blocks.front()->options->device_str()),
+        mesh_id);
   }
 }
 

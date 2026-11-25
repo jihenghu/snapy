@@ -175,6 +175,14 @@ bool buffer_matches(torch::Tensor const& buffer, torch::Tensor const& source);
 //! Reallocate `buffer` (torch::empty_like) unless it can take `source`.
 void ensure_like(torch::Tensor& buffer, torch::Tensor const& source);
 
+//! the same-process exchange of Mesh `mesh_id` is abandoned while `failed`
+//! is true (the Mesh's block worker pool holds a job's error): a block at its
+//! rendezvous, or arriving there, throws instead of waiting for a block that
+//! left its stage. An empty `failed` unregisters the Mesh.
+void set_local_exchange_abort(int64_t mesh_id, std::function<bool()> failed);
+//! wakes the blocks waiting at a rendezvous, so they read their Mesh's abort
+void wake_local_exchanges();
+
 //! exchange_each_var adds n * 65536 for variable n, so the tag must stay in
 //! [0, 65536) for the tags of different variables to stay distinct.
 inline int make_comm_tag(int local_block_index,
