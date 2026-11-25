@@ -410,8 +410,16 @@ void MeshImpl::forward(MeshVariables& vars, double dt, int stage) {
   // B3: a segment one block must (re)capture is captured by all of them (its
   // exchanges meet at the same-process rendezvous)
   executor_->align_captures(vars, dt, stage);
-  run_block_jobs(
-      [&](size_t i) { executor_->run_stage(i, vars[i], dt, stage); });
+  try {
+    run_block_jobs(
+        [&](size_t i) { executor_->run_stage(i, vars[i], dt, stage); });
+  } catch (...) {
+    // under the default execution, a capture out of device memory: every
+    // block finishes this stage eagerly, together, from where it stopped
+    if (!executor_->eager_after(std::current_exception())) throw;
+    run_block_jobs(
+        [&](size_t i) { executor_->resume_eager(i, vars[i], dt, stage); });
+  }
   // conserve-axial-momentum-closure: R and I summed over the local blocks,
   // one reduction, then each block's solid-body increment
   auto root = blocks.front();

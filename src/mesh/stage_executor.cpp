@@ -131,6 +131,7 @@ StageExecutor::StageExecutor(std::vector<MeshBlockImpl*> blocks)
   _schedule_rebuilt.assign(_blocks.size(), 0);
   _pools.assign(_blocks.size(), {0, 0});
   _capture_streams.assign(_blocks.size(), nullptr);
+  _resume.assign(_blocks.size(), -1);
   for (int b = 0; b < num_blocks(); ++b) build_schedule(b);
 }
 StageExecutor::~StageExecutor() = default;
@@ -608,6 +609,8 @@ std::vector<std::string> StageExecutor::config_reasons(int block) const {
   auto* pmb = block_at(block);
   auto const& op = pmb->options;
   auto const& hydro = op->hydro();
+  if (_capture_oom)
+    why.push_back("a capture ran out of device memory: the Mesh runs eager");
 #ifndef USE_CUDA
   why.push_back("snapy was built without CUDA");
 #endif
@@ -793,6 +796,7 @@ void StageExecutor::check_strict(int block, Variables const& vars,
 
 void StageExecutor::run_stage(int block, Variables& vars, double dt,
                               int stage) {
+  _resume[block] = -1;
   if (mode(block) != "cuda-graph") {
     ++_eager;
     run_eager(block, vars, dt, stage);
@@ -806,7 +810,46 @@ void StageExecutor::run_stage(int block, Variables& vars, double dt,
     run_eager(block, vars, dt, stage);
     return;
   }
-  run_segments(block, vars, dt, stage);
+  try {
+    run_segments(block, vars, dt, stage);
+  } catch (...) {
+    // a bare block falls back here; a Mesh's blocks together in Mesh::forward
+    if (block_at(block)->_mesh_executor ||
+        !eager_after(std::current_exception()))
+      throw;
+    resume_eager(block, vars, dt, stage);
+  }
+}
+
+bool StageExecutor::eager_after(std::exception_ptr const& error) {
+  bool oom = false;
+  try {
+    std::rethrow_exception(error);
+  } catch (c10::OutOfMemoryError const&) {
+    oom = true;
+  } catch (c10::Error const& e) {  // cudaErrorMemoryAllocation
+    oom = std::string(e.what()).find("out of memory") != std::string::npos;
+  } catch (...) {
+  }
+  if (!oom) return false;
+  for (int b = 0; b < num_blocks(); ++b) {
+    auto const& op = block_at(b)->options;
+    if (op->execution() != "auto" || op->execution_strict() || _resume[b] < -1)
+      return false;
+  }
+  _capture_oom = true;
+  invalidate();
+  return true;
+}
+
+void StageExecutor::resume_eager(int block, Variables& vars, double dt,
+                                 int stage) {
+  int from = _resume[block];
+  _resume[block] = -1;
+  if (from < 0) return;
+  ++_eager;
+  auto n = static_cast<int>(schedule(block).segments().size());
+  for (int i = from; i < n; ++i) run_eager(block, vars, dt, stage, i);
 }
 
 std::shared_ptr<StageExecutor::Captured> StageExecutor::graph_at(
@@ -823,6 +866,7 @@ void StageExecutor::run_segments(int block, Variables& vars, double dt,
   auto const& segs = schedule(block).segments();
   pmb->_state.adopt(vars);  // a rebound tensor bumps the generation
   pmb->register_flux_storage();
+  _resume[block] = -2;
   for (int i = 0; i < static_cast<int>(segs.size()); ++i) {
     if (runs_on_host(segs[i].kind)) {  // the exchange: a boundary
       ++_host;
@@ -836,10 +880,17 @@ void StageExecutor::run_segments(int block, Variables& vars, double dt,
       continue;
     }
     auto g = graph_at({block, stage, i});
-    if (!g || g->key != make_key(block, i, vars, dt, stage))
-      capture(block, i, vars, dt, stage);
+    if (!g || g->key != make_key(block, i, vars, dt, stage)) {
+      try {
+        capture(block, i, vars, dt, stage);
+      } catch (...) {
+        _resume[block] = i;  // the capture restored the segment's input
+        throw;
+      }
+    }
     replay(block, i, vars, dt, stage);
   }
+  _resume[block] = -1;
 #endif
 }
 
@@ -941,6 +992,17 @@ void StageExecutor::capture(int block, int segment, Variables& vars, double dt,
   auto restore = [&]() {
     for (auto const& [name, t] : handles) t.copy_(saved.at(name));
   };
+  // a warm-up or capture that throws leaves the segment's input as it found
+  // it: the variables' bindings and the save list, after the side stream
+  auto const bound = vars;
+  auto fail = [&]() {
+    at::cuda::CUDAEvent failed;
+    failed.record(side);
+    failed.block(current);
+    vars = bound;
+    restore();
+    pmb->register_flux_storage();
+  };
 
   // warm-up on a side stream with the step's dt, then the save list back;
   // stream order only. Warm-up is eager and builds what a first call builds
@@ -949,10 +1011,13 @@ void StageExecutor::capture(int block, int segment, Variables& vars, double dt,
   at::cuda::CUDAEvent ready;
   ready.record(current);
   ready.block(side);
-  {
+  try {
     SyncDebugOff off;
     c10::cuda::CUDAStreamGuard guard(side);
     for (int i = 0; i < 3; ++i) run_eager(block, vars, wdt, stage, segment);
+  } catch (...) {
+    fail();
+    throw;
   }
   at::cuda::CUDAEvent warm;
   warm.record(side);
@@ -984,7 +1049,7 @@ void StageExecutor::capture(int block, int segment, Variables& vars, double dt,
     auto id = at::cuda::graph_pool_handle();
     _pools[block] = {id.first, id.second};
   }
-  {
+  try {
     c10::cuda::CUDAStreamGuard guard(side);
     // a multi-block executor's other blocks keep launching from their worker
     // threads meanwhile: thread-local mode confines the capture to this one
@@ -1003,6 +1068,9 @@ void StageExecutor::capture(int block, int segment, Variables& vars, double dt,
       throw;
     }
     cut.close();
+  } catch (...) {
+    fail();
+    throw;
   }
   at::cuda::CUDAEvent captured;
   captured.record(side);

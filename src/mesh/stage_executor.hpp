@@ -116,6 +116,16 @@ class StageExecutor {
   //! the stage's ops without the stage-entry exchange, eagerly
   //! (MeshBlockImpl::advance_local)
   void run_local(int block, Variables& vars, double dt, int stage);
+  //! after a stage threw: under the default execution, a capture that ran
+  //! out of device memory makes every block eager (a capture reason from now
+  //! on) and drops the graphs. True when each block can finish the stage
+  //! with resume_eager (a failed capture restored its state); false (any
+  //! other error, an explicit or strict execution, a block that stopped
+  //! outside a capture) to rethrow
+  bool eager_after(std::exception_ptr const& error);
+  //! the rest of the block's stage, eagerly, from the segment whose capture
+  //! failed (nothing for a block that finished it)
+  void resume_eager(int block, Variables& vars, double dt, int stage);
   //! a multi-block executor's captures are collective (B3): its blocks meet
   //! at the same-process rendezvous inside a segment with a cut at an
   //! exchange, in the warm-up and the capture alike. Called on the calling
@@ -211,6 +221,11 @@ class StageExecutor {
   std::vector<std::pair<uint64_t, uint64_t>> _pools;
   //! per block, its own capture stream (a cudaStream_t), never destroyed
   std::vector<void*> _capture_streams;
+  //! per block, where its last stage stopped: -1 finished, a segment index
+  //! when that segment's capture failed (its state restored), -2 elsewhere
+  std::vector<int> _resume;
+  //! a capture ran out of device memory under the default execution
+  std::atomic<bool> _capture_oom{false};
   int _config_generation = 0;
   //! run_stage runs on the block worker pool
   std::atomic<int64_t> _captures{0}, _replays{0}, _eager{0};
