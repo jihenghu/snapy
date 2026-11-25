@@ -1,5 +1,6 @@
 // C/C++
 #include <algorithm>
+#include <cstdlib>
 #include <functional>
 #include <set>
 
@@ -888,6 +889,14 @@ void StageExecutor::capture(int block, int segment, Variables& vars, double dt,
     std::lock_guard<std::mutex> lock(_graphs_mutex);
     _graphs.erase({block, stage, segment});
   }
+  // a test's injected capture failure (SNAP_TEST_CAPTURE_FAIL=<block>): the
+  // out-of-memory error a real capture can throw (CUDAGraph::instantiate or
+  // the caching allocator), here before this block's capture begins
+  if (char const* fail = std::getenv("SNAP_TEST_CAPTURE_FAIL");
+      fail && std::atoi(fail) == block)
+    TORCH_CHECK_WITH(OutOfMemoryError, false,
+                     "injected capture failure: block ", block,
+                     " (SNAP_TEST_CAPTURE_FAIL)");
   auto const& sched = schedule(block);
   auto const& seg = sched.segments().at(segment);
   auto device = vars.at("hydro_u").device().index();
