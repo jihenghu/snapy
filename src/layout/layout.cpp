@@ -315,6 +315,20 @@ LayoutImpl::~LayoutImpl() {
     g_local_layouts.erase(it);
 }
 
+namespace {
+// whether the Mesh's same-process exchange is abandoned (its block worker
+// pool holds a job's error); g_local_exchange_mutex held
+bool abandoned(int64_t mesh_id) {
+  auto it = g_local_exchange_abort.find(mesh_id);
+  return it != g_local_exchange_abort.end() && it->second();
+}
+void check_not_abandoned(int64_t mesh_id) {
+  TORCH_CHECK(!abandoned(mesh_id),
+              "same-process exchange abandoned: another block of this Mesh "
+              "failed in this stage");
+}
+}  // namespace
+
 void set_local_exchange_abort(int64_t mesh_id, std::function<bool()> failed) {
   std::lock_guard<std::mutex> lock(g_local_exchange_mutex);
   if (failed)
@@ -326,6 +340,21 @@ void set_local_exchange_abort(int64_t mesh_id, std::function<bool()> failed) {
 void wake_local_exchanges() {
   std::lock_guard<std::mutex> lock(g_local_exchange_mutex);
   g_local_exchange_cv.notify_all();
+}
+
+void reset_local_exchange(int64_t mesh_id) {
+  std::lock_guard<std::mutex> lock(g_local_exchange_mutex);
+  auto drop = [&](auto& map) {
+    for (auto it = map.begin(); it != map.end();)
+      it = std::get<0>(it->first) == mesh_id ? map.erase(it) : std::next(it);
+  };
+  drop(g_local_mail);
+  drop(g_x1_anchors);
+  drop(g_column_boards);
+  for (auto it = g_local_exchange_states.begin();
+       it != g_local_exchange_states.end();)
+    it = it->first.mesh_id == mesh_id ? g_local_exchange_states.erase(it)
+                                      : std::next(it);
 }
 
 void LayoutImpl::_prepare_local_exchange(MeshBlockImpl const* pmb,
@@ -345,13 +374,8 @@ void LayoutImpl::_prepare_local_exchange(MeshBlockImpl const* pmb,
   auto& state = g_local_exchange_states[key];
   int generation = state.generation;
   // a block of this Mesh failed in this stage: its round never completes
-  auto it = g_local_exchange_abort.find(options->mesh_id());
-  auto abandoned = [&]() {
-    return it != g_local_exchange_abort.end() && it->second();
-  };
-  TORCH_CHECK(!abandoned(),
-              "same-process exchange abandoned: another block of this Mesh "
-              "failed in this stage");
+  int64_t mesh = options->mesh_id();
+  check_not_abandoned(mesh);
 
 #ifdef USE_CUDA
   if (current_stream) {
@@ -404,13 +428,11 @@ void LayoutImpl::_prepare_local_exchange(MeshBlockImpl const* pmb,
     g_local_exchange_cv.notify_all();
   } else {
     g_local_exchange_cv.wait(lock, [&]() {
-      return (state.ready && state.generation == generation) || abandoned();
+      return (state.ready && state.generation == generation) || abandoned(mesh);
     });
     if (!(state.ready && state.generation == generation)) {
       state.arrived -= 1;  // leave the round that cannot complete
-      TORCH_CHECK(false,
-                  "same-process exchange abandoned: another block of this "
-                  "Mesh failed in this stage");
+      check_not_abandoned(mesh);
     }
   }
 
@@ -813,13 +835,18 @@ torch::Tensor LayoutImpl::gather_x1(torch::Tensor const& piece) {
   if (nlocal > 1) {
     std::unique_lock<std::mutex> lock(g_local_exchange_mutex);
     auto& board = g_column_boards[{options->mesh_id(), proc, rx, ry}];
-    g_local_exchange_cv.wait(lock, [&]() { return !board.full; });
+    int64_t mesh = options->mesh_id();
+    g_local_exchange_cv.wait(lock,
+                             [&]() { return !board.full || abandoned(mesh); });
+    check_not_abandoned(mesh);
     board.pieces[rz] = pieces[rz];
     if (++board.posted == nlocal) {
       board.full = true;
       g_local_exchange_cv.notify_all();
     } else {
-      g_local_exchange_cv.wait(lock, [&]() { return board.full; });
+      g_local_exchange_cv.wait(lock,
+                               [&]() { return board.full || abandoned(mesh); });
+      check_not_abandoned(mesh);
     }
     for (int k : local) pieces[k] = board.pieces.at(k);
   }
@@ -889,7 +916,9 @@ torch::Tensor LayoutImpl::take_x1_anchor(int above, torch::Tensor const& like,
       options->mesh_id(), options->process_rank(), options->rank()};
   std::unique_lock<std::mutex> lock(g_local_exchange_mutex);
   bool posted = g_local_exchange_cv.wait_for(
-      lock, std::chrono::minutes(5), [&]() { return g_x1_anchors.count(key); });
+      lock, std::chrono::minutes(5),
+      [&]() { return g_x1_anchors.count(key) || abandoned(std::get<0>(key)); });
+  check_not_abandoned(std::get<0>(key));
   TORCH_CHECK(posted, "[Layout:take_x1_anchor] block ", options->rank(),
               " waited 5 min for the x1 reference of block ", above,
               " above it in this process; local blocks must run concurrently "
@@ -938,8 +967,10 @@ void LayoutImpl::post_to_local_block(int block_rank, torch::Tensor const& t,
   // one message per (sender, receiver, tag) in flight: wait for the previous
   // one to be taken
   bool free =
-      g_local_exchange_cv.wait_for(lock, std::chrono::minutes(5),
-                                   [&]() { return !g_local_mail.count(key); });
+      g_local_exchange_cv.wait_for(lock, std::chrono::minutes(5), [&]() {
+        return !g_local_mail.count(key) || abandoned(std::get<0>(key));
+      });
+  check_not_abandoned(std::get<0>(key));
   TORCH_CHECK(free, "[Layout:post_to_local_block] block ", options->rank(),
               " waited 5 min for block ", block_rank,
               " to take its previous message, tag ", tag);
@@ -957,7 +988,9 @@ torch::Tensor LayoutImpl::take_from_local_block(int block_rank, int tag) {
       tag};
   std::unique_lock<std::mutex> lock(g_local_exchange_mutex);
   bool posted = g_local_exchange_cv.wait_for(
-      lock, std::chrono::minutes(5), [&]() { return g_local_mail.count(key); });
+      lock, std::chrono::minutes(5),
+      [&]() { return g_local_mail.count(key) || abandoned(std::get<0>(key)); });
+  check_not_abandoned(std::get<0>(key));
   TORCH_CHECK(posted, "[Layout:take_from_local_block] block ", options->rank(),
               " waited 5 min for block ", block_rank, ", tag ", tag,
               "; local blocks must run concurrently");

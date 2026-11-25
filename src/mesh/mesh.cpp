@@ -167,6 +167,8 @@ class MeshImpl::BlockWorkerPool {
     if (error_ != nullptr) {
       auto error = error_;
       error_ = nullptr;
+      // every job has returned: no block of this Mesh is in an exchange
+      reset_local_exchange(mesh_id_);
       std::rethrow_exception(error);
     }
   }

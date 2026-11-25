@@ -182,6 +182,9 @@ void ensure_like(torch::Tensor& buffer, torch::Tensor const& source);
 void set_local_exchange_abort(int64_t mesh_id, std::function<bool()> failed);
 //! wakes the blocks waiting at a rendezvous, so they read their Mesh's abort
 void wake_local_exchanges();
+//! drops the Mesh's same-process exchange state (rendezvous rounds, mail,
+//! boards) after a round of its blocks failed; no block of it is running
+void reset_local_exchange(int64_t mesh_id);
 
 //! exchange_each_var adds n * 65536 for variable n, so the tag must stay in
 //! [0, 65536) for the tags of different variables to stay distinct.
