@@ -204,6 +204,10 @@ void clear_local_exchange(int64_t mesh_id) {
       it = std::get<0>(it->first) == mesh_id ? m.erase(it) : std::next(it);
   };
   drop(g_local_mail), drop(g_x1_anchors), drop(g_column_boards);
+  for (auto it = g_local_exchange_states.begin();
+       it != g_local_exchange_states.end();)
+    it = it->first.mesh_id == mesh_id ? g_local_exchange_states.erase(it)
+                                      : std::next(it);
 }
 std::string exchange_buffer_key(SyncOptions const& opts,
                                 Variables const& vars) {
