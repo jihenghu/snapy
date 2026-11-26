@@ -28,6 +28,10 @@
 
 #include "cuda_test_gate.hpp"
 
+#ifdef NETCDFOUTPUT
+#include <netcdf.h>
+#endif
+
 using namespace snap;
 namespace fs = std::filesystem;
 
@@ -147,6 +151,19 @@ void expect_equal(BudgetRecord const& a, BudgetRecord const& b) {
   EXPECT_TRUE(torch::equal(a.minimum, b.minimum));
 }
 
+#ifdef NETCDFOUTPUT
+// the records in a budget series file: the length of its time dimension
+size_t records_in(fs::path const& file) {
+  int nc, dim;
+  size_t n = 0;
+  EXPECT_EQ(nc_open(file.c_str(), NC_NOWRITE, &nc), NC_NOERR) << file;
+  EXPECT_EQ(nc_inq_dimid(nc, "time", &dim), NC_NOERR);
+  EXPECT_EQ(nc_inq_dimlen(nc, dim, &n), NC_NOERR);
+  nc_close(nc);
+  return n;
+}
+#endif
+
 fs::path restart_file(fs::path const& dir, int number) {
   char name[32];
   snprintf(name, sizeof(name), "budget.%05d.restart", number);
@@ -242,4 +259,20 @@ TEST(Budget, a_file_without_a_carry_starts_at_the_first_observe) {
         {std::abs(next.total[n].item<double>()), std::abs(out), 1.e-300});
     EXPECT_LT(std::abs(change + out), 1.e-12 * scale) << next.rows[n];
   }
+}
+
+// a second run in the same process that writes the same series file starts a
+// new file: it holds the second run's records only, not the first run's too
+TEST(Budget, a_second_run_with_the_same_name_starts_a_new_file) {
+  if (kCuda && !snapy_cuda_test_enabled()) GTEST_SKIP() << "no CUDA";
+#ifndef NETCDFOUTPUT
+  GTEST_SKIP() << "the budget series needs NETCDF=ON";
+#else
+  auto dir = fresh_dir("rerun");
+  auto first = run(make_mesh(dir, true, false), 12);
+  auto second = run(make_mesh(dir, true, false), 6);
+  ASSERT_LT(second.records.size(), first.records.size());
+  EXPECT_EQ(records_in(dir / "budget.budget.nc"), second.records.size())
+      << "the first run left " << first.records.size() << " records";
+#endif
 }
