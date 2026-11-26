@@ -37,7 +37,7 @@ book:
     - chapters/07-time-integration.qmd
     - chapters/08-positivity.qmd
     - chapters/09-diffusion-forcing.qmd
-    - chapters/10-moist-coupling.qmd
+    - chapters/10-flux-register.qmd
     - chapters/11-boundaries.qmd
     - chapters/12-configuration.qmd
     - chapters/13-diagnostics.qmd

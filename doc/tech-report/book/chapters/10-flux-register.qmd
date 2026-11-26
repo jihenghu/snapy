@@ -1,0 +1,45 @@
+# The flux register, monitor amounts and conservation budgets {#sec-ch10}
+
+<!-- PROVENANCE
+pin: snapy@73c45a7c8c991209924e1137992352c335575062 (UCzhangxi/snapy v3/final)
+sources: STRUCTURE.md chapter 10 and section 4.1; src/hydro/flux_register.hpp, src/hydro/flux_register.cpp, src/diagnostics/budget.cpp, src/output/budget_series.cpp
+status: draft
+author: jihenghu
+reviewer: XinyueWang05
+-->
+
+Every face flux of a stage goes through one object per module, the flux register. The hydro module has one, and
+so has the scalar module. A producer writes its flux into the register; the register knows which faces are
+prescribed walls, books every change it makes to a flux as an amount, counts the events its producers report,
+and folds the stages of a step into the step's totals. After a step is accepted, the conservation budget reads
+the register and the state. This chapter describes the register's writes in the order a stage makes them, then
+how the budget and the cycle line read them. Which faces are walls, and with what values, is the subject of the
+boundary chapter (@sec-ch11-reflecting); how a captured stage is replayed is the execution chapter's. The schemes
+are listed in @tbl-ch10-schemes.
+
+| scheme | switch | default | order | main test |
+|---|---|---|---|---|
+| posts (@sec-ch10-posts) | none (bookkeeping) | always on | exact (plain adds) | `test_flux_register` |
+| prescribed faces and their reapplication (@sec-ch10-prescribed) | a wall boundary condition | on at a wall | exact on the wall face | `test_prescribed_after_sources` |
+| the wall batch (@sec-ch10-wallbatch) | none | on with a wall | exact (deterministic sum) | `test_graph_monitor_amounts` |
+| amounts and the stage fold (@sec-ch10-amounts) | none | always on | exact recursion | `test_flux_register` |
+| monitor counts (@sec-ch10-counts) | none | always on | exact (integer) | `test_fp32_face_floor_counts` |
+| rollback and redo, through replay (@sec-ch10-rollback) | none | on a rejected attempt | exact | `test_graph_monitor_amounts` |
+| budgets, the budget series and the cycle line (@sec-ch10-budget) | `outputs: - {type: budget}`, `ncycle_out` | off; cycle line every `ncycle_out` | round-off | `test_budget` |
+
+: The schemes of this chapter. Test names omit the `.release` and `_python` suffixes of their ctest entries.
+{#tbl-ch10-schemes}
+
+{{< include 10-flux-register/_posts.qmd >}}
+
+{{< include 10-flux-register/_prescribed.qmd >}}
+
+{{< include 10-flux-register/_wallbatch.qmd >}}
+
+{{< include 10-flux-register/_amounts.qmd >}}
+
+{{< include 10-flux-register/_counts.qmd >}}
+
+{{< include 10-flux-register/_rollback.qmd >}}
+
+{{< include 10-flux-register/_budget.qmd >}}

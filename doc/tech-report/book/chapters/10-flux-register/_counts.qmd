@@ -1,0 +1,90 @@
+## Monitor counts (no switch) {#sec-ch10-counts}
+
+<!-- PROVENANCE
+pin: snapy@73c45a7c8c991209924e1137992352c335575062 (UCzhangxi/snapy v3/final)
+sources: src/hydro/flux_register.hpp, src/hydro/flux_register.cpp, src/hydro/sweep.cpp, tests/test_flux_register.cpp, tests/test_fp32_face_floor_counts.py
+status: draft
+author: jihenghu
+reviewer: XinyueWang05
+-->
+
+### Summary
+
+Some events are counted, not booked: how many faces a floor lifted, how many Riemann solves fell back. The
+monitor keeps one integer counter per named event. A producer hands it a mask; the masks of a stage are summed
+together at the stage's end without atomic additions, so the counts are exact and the same under capture.
+
+::: {.callout-note title="At a glance"}
+**Purpose.** Integer counts per event name, summed per stage from the producers' masks ([-@eq-ch10-counts-sum]).
+
+**Data.** `counters` (int64), `minima` (FP64, $+\infty$ when unset), `retry_flags` (int32); the stage's masks in
+one fixed buffer.
+
+**Placement.** Masks posted inside the stage; summed by `end_stage`.
+
+**Activation.** Always; the names are declared at the register's reset.
+
+**Guarantee / limits.** Exact (integer sums); counts never enter a budget row.
+
+**Evidence.** The Tests layer of this section.
+:::
+
+Local symbols: $\mathbf b$ is the stage's count buffer, $\mathbf b[0] = 0$ followed by the masks; $C$ is a
+counter's cumulative-sum view of $\mathbf b$.
+
+### Derivation
+
+Let $C[j] = \sum_{i \le j}\mathbf b[i]$ be the integer cumulative sum of the buffer. A mask posted at offset $o$ with
+$n$ elements counts
+
+$$
+C[o+n] - C[o],
+$$ {#eq-ch10-counts-sum}
+
+The sum is {{< code src/hydro/flux_register.cpp RegisterMonitor::flush_counts >}}.
+
+and a counter's stage count is the sum of this over its masks. All terms are integers, so the sum is exact in any
+order.
+
+### Numerical method
+
+A reduced count (a zero-dimensional tensor) adds into its counter at once. A mask or a vector is copied into its slot
+of the stage's buffer; the slot pattern (which counter, how many elements) is built eagerly at the first post and
+reused. `flush_counts`, called by `end_stage`, takes one cumulative sum, gathers the segment ends of every counter
+(padded to the largest number of segments with the leading zero), adds the differences into the counters, and
+zeroes the buffer. The face-floor and Riemann-event masks of the sweep are posted this way. No scatter-add is used;
+an FP64 scatter-add would add atomically on CUDA. The buffer is fixed storage registered with the state store, so a
+captured combine reduces what the replayed advance wrote. Where the flush falls is shown in
+@fig-ch10-register-order.
+
+### Code
+
+| what | code link | symbol | switch |
+|---|---|---|---|
+| post a count | {{< code src/hydro/flux_register.cpp RegisterMonitor::count >}} | `count` | none |
+| the stage's sum | {{< code src/hydro/flux_register.cpp RegisterMonitor::flush_counts >}} | `flush_counts` | none |
+| the slot pattern | {{< code src/hydro/flux_register.cpp RegisterMonitor::pend_slot_ >}} | `pend_slot_` | none |
+| a minimum | {{< code src/hydro/flux_register.cpp RegisterMonitor::record_min >}} | `record_min` | none |
+| a retry flag | {{< code src/hydro/flux_register.cpp RegisterMonitor::flag_retry >}} | `flag_retry` | none |
+| the sweep's face-floor masks | {{< code src/hydro/sweep.cpp post_face_floors >}} | `post_face_floors` | none |
+
+: The code of monitor counts. {#tbl-ch10-counts-code}
+
+Walk-through: `count` looks the name up (an undeclared name stops with an error), then either adds a reduced count or
+copies a mask into its slot; `end_stage` calls `flush_counts`.
+
+### Tests
+
+| test (ctest name) | what it asserts | tolerance | where the tolerance comes from |
+|---|---|---|---|
+| `tests/test_flux_register.cpp` (`test_flux_register.release`), `RegisterMonitor.census_counts_minima_and_retry_flags` | counts, minima and retry flags hold their hand-computed values and dtypes | exact | the test source |
+| `tests/test_fp32_face_floor_counts.py` (`test_fp32_face_floor_counts_python`) | a raised pressure floor makes the FP32 sweep count floored faces; the deck's own floor counts none | pass/fail (no numeric tolerance) | the test source |
+
+: The tests of monitor counts, with their tolerances. {#tbl-ch10-counts-tests}
+
+Evidence: missing evidence at the pin; not run for this chapter. CPU.
+
+### Limits
+
+The counts are per accepted step only through the rollback (@sec-ch10-rollback). A slot pattern built inside a
+capture is not allowed. Switch combinations are in @sec-ch12-matrix.

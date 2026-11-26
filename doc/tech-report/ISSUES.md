@@ -178,3 +178,13 @@ distance across a block edge; $\sigma$ is the cell variance), $\mathcal G^{ab}$ 
 $g_{ab}$ is the normalised panel metric), $b_{\mathrm{SD}}$ (the SDIRK stage coefficient; $\gamma$ and $\beta$ are taken)
 and $\mathsf M$, $\mathsf K$, $\mathbf S$ (the radial solve's matrices and source). NOTATION.md is unchanged; the
 editor owns their registration.
+
+## Chapter 10 local symbols, the flux register (draft)
+
+`book/chapters/10-flux-register/` defines, after its glance boxes: $\mathbf T_d$ (the stage total of direction $d$),
+$\mathbf q$ and $\phi$ (a producer's increment and scale factor), $\mathcal W_d$, $\mathbf T^{\mathrm{p}}_d$ and
+$\mathbf M_{\mathrm{p}}$ (the prescribed faces and rows, their values and the booked amount), $\boldsymbol\delta_k$ and
+$\mathbf w_k$ (a wall-batch slot's change and weights), $\mathbf a^{(s)}_k$, $\mathbf p^{(s)}_k$, $c^{(s)}$, $\mathbf M_k$
+and $\mathbf S_d$ (a stage's booked rate and post, the fold coefficient, the step amount and the step field),
+$\mathbf b$ and $C$ (the count buffer and its cumulative sum), and $\mathbf Q$ and $\mathbf B$ (the row totals and the
+boundary transfer of a budget interval). NOTATION.md is unchanged; the editor owns their registration.

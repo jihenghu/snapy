@@ -1,0 +1,82 @@
+## Rollback and redo, through replay (no switch) {#sec-ch10-rollback}
+
+<!-- PROVENANCE
+pin: snapy@73c45a7c8c991209924e1137992352c335575062 (UCzhangxi/snapy v3/final)
+sources: src/hydro/flux_register.hpp, src/hydro/flux_register.cpp, src/mesh/meshblock_redo.cpp, src/mesh/meshblock_advance.cpp, tests/test_flux_register.cpp, tests/test_graph_monitor_amounts.cpp
+status: draft
+author: jihenghu
+reviewer: XinyueWang05
+-->
+
+### Summary
+
+A step that fails its checks is redone with a smaller step, from the saved state. Whatever the rejected attempt
+booked and counted must not survive into the accepted step. The register therefore drops the attempt's device
+values. It keeps the host record of the stages' weights, because a redo that replays captured stages does not run
+the host code that would write that record again.
+
+::: {.callout-note title="At a glance"}
+**Purpose.** Zero the attempt's step fields, amounts, counts, minima and retry flags; keep the host stage
+bookkeeping.
+
+**Data.** The device slots of the register and its monitor; the host stage index, ended-stage count and the
+recorded $w_1$ and $w_2\Delta t$ per stage.
+
+**Placement.** In the redo branch of the step's acceptance, before the state is restored.
+
+**Activation.** On every rejected attempt.
+
+**Guarantee / limits.** The accepted step's amounts equal those of a step that was never rejected.
+
+**Evidence.** The Tests layer of this section.
+:::
+
+No local symbols beyond those of @sec-ch10-amounts.
+
+### Derivation
+
+No equation: a rule about what is reset. After a rollback the device slots hold zero, as at the start of a step,
+so the redo's bookings are the only ones ([-@eq-ch10-amounts-fold] sums only them). The host values $w_1^{(s)}$ and
+$w_2^{(s)}\Delta t$ are not reset. Eager execution writes them again at the redo's own `end_stage`; a replayed
+stage does not run `begin_stage` or `end_stage` on the host, so without them the fold would see no ended stage, and
+read zero amounts, for the redo and every replayed step after it.
+
+### Numerical method
+
+`FluxRegister::rollback` starts a fresh attempt (zero the step fields, drop the step's split posts, leave the stage)
+and calls the monitor's rollback, which zeroes the counters, minima, retry flags, amount slots and the pending
+count buffer, but not the stage bookkeeping. The step's acceptance calls it when the redo flags are set, then
+restores the saved state. The wall batch is cleared at the redo's stage 0. The step start (`begin_step`) does the
+same zeroing and also resets the stage bookkeeping, which is right there because every stage of a new step runs
+again. Where the zeroed slots sit in a stage is shown in @fig-ch10-register-order.
+
+### Code
+
+| what | code link | symbol | switch |
+|---|---|---|---|
+| the register's rollback | {{< code src/hydro/flux_register.cpp FluxRegister::rollback >}} | `rollback` | none |
+| the monitor's rollback | {{< code src/hydro/flux_register.cpp RegisterMonitor::rollback >}} | `rollback` | none |
+| what both zero | {{< code src/hydro/flux_register.cpp RegisterMonitor::zero_attempt_ >}} | `zero_attempt_` | none |
+| a fresh attempt's step fields | {{< code src/hydro/flux_register.cpp FluxRegister::begin_attempt_ >}} | `begin_attempt_` | none |
+| the redo branch | {{< code src/mesh/meshblock_redo.cpp MeshBlockImpl::apply_redo >}} | `apply_redo` | none |
+
+: The code of rollback and redo. {#tbl-ch10-rollback-code}
+
+Walk-through: `apply_redo` with a nonzero cause logs the causes, raises the redo count, stops after the allowed
+number of redos, then rolls the register back and restores the state.
+
+### Tests
+
+| test (ctest name) | what it asserts | tolerance | where the tolerance comes from |
+|---|---|---|---|
+| `tests/test_flux_register.cpp` (`test_flux_register.release`), `FluxRegister.a_rolled_back_attempt_leaves_the_amounts_of_the_redo` | after a rollback, the amounts equal those of the redo alone | exact (`torch::equal`) | the test source |
+| `tests/test_graph_monitor_amounts.cpp` (`test_graph_monitor_amounts.release`), `GraphSaveList.monitor_amounts_match_eager_after_a_rollback` | a replayed redo's amounts equal eager's | exact | graph equals eager |
+
+: The tests of rollback and redo, with their tolerances. {#tbl-ch10-rollback-tests}
+
+Evidence: missing evidence at the pin; not run for this chapter. The graph test needs CUDA.
+
+### Limits
+
+The rollback covers the register and its monitor; the state, the split sources and the active set are restored by
+the step's acceptance, not here. Switch combinations are in @sec-ch12-matrix.

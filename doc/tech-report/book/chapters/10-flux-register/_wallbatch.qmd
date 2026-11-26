@@ -1,0 +1,95 @@
+## The wall batch: booking the wall changes of a stage at once (no switch) {#sec-ch10-wallbatch}
+
+<!-- PROVENANCE
+pin: snapy@73c45a7c8c991209924e1137992352c335575062 (UCzhangxi/snapy v3/final)
+sources: src/hydro/flux_register.hpp, src/hydro/flux_register.cpp, src/mesh/meshblock_advance.cpp, src/mesh/meshblock.cpp, tests/test_graph_monitor_amounts.cpp, tests/test_flux_register.cpp
+status: draft
+author: jihenghu
+reviewer: XinyueWang05
+-->
+
+### Summary
+
+Each prescribed-face apply (@sec-ch10-prescribed) books a weighted sum per row. Booking each apply separately would
+cost a few launches every time; the wall batch instead collects every apply's changes of a stage, for the hydro
+and scalar registers and all three directions, and books them together at the end of the stage. It keeps the
+changes in fixed device storage, so that a captured stage books exactly what the eager stage books.
+
+::: {.callout-note title="At a glance"}
+**Purpose.** Collect each apply's change (after minus before) with its face-area weights, then book every slot's
+weighted row sums at the stage's end ([-@eq-ch10-wallbatch-flush]).
+
+**Data.** One fixed buffer per block, one slot per register and direction in the stage's push order, with the
+face areas laid out the same way.
+
+**Placement.** Started at the top of the stage's advance; flushed in the stage combine, before `end_stage`.
+
+**Activation.** On for every block (the hydro and scalar registers share it); a register without a batch books at
+the call.
+
+**Guarantee / limits.** Graph equals eager bitwise: every slot is a plain weighted sum, no scatter-add.
+
+**Evidence.** The Tests layer of this section.
+:::
+
+Local symbols: $\boldsymbol\delta_k$ is slot $k$'s change, rows by faces; $\mathbf w_k$ its face-area weights.
+
+### Derivation
+
+A push copies $\boldsymbol\delta_k = \mathbf T^{\mathrm{after}} - \mathbf T^{\mathrm{before}}$ on the written faces into
+slot $k$. The flush books, for each slot and row $r$,
+
+$$
+\mathbf M_{\mathrm{p}}[r] \mathrel{+}= \sum_{f} \mathbf w_k[r, f]\,\boldsymbol\delta_k[r, f],
+$$ {#eq-ch10-wallbatch-flush}
+
+The flush is {{< code src/hydro/flux_register.cpp WallBatch::flush >}}.
+
+which is ([-@eq-ch10-prescribed-book]) summed over the stage's applies. The order of the slots is the order of the
+pushes, so a register and direction applied twice in a stage (the explicit total, then after the implicit
+correction) books both applies.
+
+### Numerical method
+
+The batch registers a slot at its first push of a stage pattern (eager, before any capture); the slot remembers
+the monitor and amount it books, the number of rows and faces, and the weight tensor it was registered with. A
+later push to the same slot only copies into the buffer. A register that rebuilds its weights is a new slot. The
+flush computes each slot's product with its weights, sums the rows, books one rate per row, then zeroes the
+buffer. Fixed storage matters for capture: a host queue of the changes would be emptied by the first warm-up of a
+captured combine and never refilled by a replayed advance, so the replayed stages would book nothing while the
+state stayed equal. The buffer is registered with the block's state store, so a capture's warm-ups restore it.
+The batch's place in the stage is shown in @fig-ch10-register-order.
+
+### Code
+
+| what | code link | symbol | switch |
+|---|---|---|---|
+| push a change | {{< code src/hydro/flux_register.cpp WallBatch::push >}} | `push` | none |
+| book and zero | {{< code src/hydro/flux_register.cpp WallBatch::flush >}} | `flush` | none |
+| drop a rejected attempt's changes | {{< code src/hydro/flux_register.cpp WallBatch::clear >}} | `clear` | none |
+| start the stage's slots | {{< code src/mesh/meshblock_advance.cpp MeshBlockImpl::stage_advance >}} | `stage_advance` | none |
+| flush before `end_stage` | {{< code src/mesh/meshblock_advance.cpp MeshBlockImpl::stage_combine >}} | `stage_combine` | none |
+| fixed storage | {{< code src/mesh/meshblock.cpp MeshBlockImpl::register_flux_storage >}} | `register_flux_storage` | none |
+
+: The code of the wall batch. {#tbl-ch10-wallbatch-code}
+
+Walk-through: `stage_advance` starts the batch at its first slot every pass and clears it at stage 0, so a
+rejected attempt's changes are dropped; `overwrite_` pushes; `stage_combine` flushes, then calls `end_stage`.
+
+### Tests
+
+| test (ctest name) | what it asserts | tolerance | where the tolerance comes from |
+|---|---|---|---|
+| `tests/test_graph_monitor_amounts.cpp` (`test_graph_monitor_amounts.release`), `GraphSaveList.user_forcing_graph_books_wall_rates_like_eager` | a captured stage split by a user forcing books the same wall rates as eager | exact (`torch::equal`) | graph equals eager by construction |
+| `tests/test_flux_register.cpp` (`test_flux_register.release`), `FluxRegister.the_wall_batch_books_with_the_rebuilt_weights` | a rebuilt weight tensor gets a new slot and books with the new weights | relative $10^{-12}$ | the test source |
+| same file, `FluxRegister.wall_prescription_books_in_float32_on_the_device` | the booking in the narrow dtype | relative $10^{-12}$ | the test source |
+
+: The tests of the wall batch, with their tolerances. {#tbl-ch10-wallbatch-tests}
+
+Evidence: missing evidence at the pin; not run for this chapter. The graph test skips without CUDA, so on a CPU
+build only the `test_flux_register` cases run.
+
+### Limits
+
+A slot pattern that changes inside a capture is not allowed: slots are registered eagerly, and a new pattern
+rebuilds the buffer. Switch combinations are in @sec-ch12-matrix.

@@ -1,0 +1,122 @@
+## Budgets, the budget series and the cycle line (`outputs: - {type: budget}`, `ncycle_out`) {#sec-ch10-budget}
+
+<!-- PROVENANCE
+pin: snapy@73c45a7c8c991209924e1137992352c335575062 (UCzhangxi/snapy v3/final)
+sources: src/diagnostics/budget.hpp, src/diagnostics/budget.cpp, src/output/budget_series.hpp, src/output/budget_series.cpp, src/mesh/meshblock_redo.cpp, tests/test_budget.cpp, tests/test_conservation_budget.cpp, tests/test_cycle_diagnostics.cpp
+status: draft
+author: jihenghu
+reviewer: XinyueWang05
+-->
+
+### Summary
+
+A conservation budget answers whether each conserved row changed only by what crossed the domain's boundary. The
+budget consumer reads the register after each accepted step: the step field gives what crossed each boundary face,
+and the state gives the totals. A budget output writes one record per interval to a NetCDF time series; the cycle
+line printed every `ncycle_out` steps uses the same totals.
+
+::: {.callout-note title="At a glance"}
+**Purpose.** Per interval and row: the total, its change and the outward boundary transfer, which balance when no
+source acts ([-@eq-ch10-budget-close]).
+
+**Data.** FP64 sums on the CPU per record: totals, change, boundary, monitor counters and minima; written to
+`<basename>.budget.nc`.
+
+**Placement.** Observed after each accepted step; recorded at the output's cadence and on the final write.
+
+**Activation.** `outputs: - {type: budget, dt: ...}`; off by default. The cycle line prints every `ncycle_out`
+steps.
+
+**Guarantee / limits.** Closes to round-off on a source-free run; the fixer, source and residual columns are not
+written yet.
+
+**Evidence.** The Tests layer of this section.
+:::
+
+Local symbols: $\mathbf Q$ is the vector of row totals, $\mathbf Q = \sum_i \mathbf U_i V_i$ over interior cells;
+$\mathbf B$ is the outward boundary transfer of an interval, one value per row.
+
+### Derivation
+
+Integrate the conservation law $\partial_t\mathbf U + \nabla\cdot\mathbf F = 0$ over the fluid domain and over one
+step. The finite-volume update changes $\mathbf Q$ only through the face fluxes, and interior faces cancel in
+pairs, so the change of $\mathbf Q$ over a step is minus the time-integrated flux through the boundary faces. The
+step field of @sec-ch10-amounts is exactly that time integral per face, $\mathbf S_d$, so with outward signs
+$\sigma_f = \pm 1$
+
+$$
+\mathbf B = \sum_{\text{steps}}\ \sum_{f \in \partial\Omega} \sigma_f A_f\,\mathbf S_d[f], \qquad
+\mathbf Q^{\mathrm{end}} - \mathbf Q^{\mathrm{start}} + \mathbf B = 0
+$$ {#eq-ch10-budget-close}
+
+The boundary sum is {{< code src/diagnostics/budget.cpp BudgetConsumer::boundary >}}.
+
+up to round-off, when no cell source, floor or fixer changes a row. The boundary faces are the block faces with a
+physical boundary condition that is not periodic, whose interior cell is fluid, and the faces of an immersed solid
+with one solid neighbour, outward from the fluid; interior, seam, panel and periodic faces are never counted.
+
+### Numerical method
+
+`observe` runs in the acceptance branch of each step: it adds the step's boundary transfer, the monitor's counters
+and minima to the block's pending sums and the step length to the interval. The face weights $\sigma_f A_f$ are built
+once. An interval starts at a record, from a restart's carry, or, with neither, at the first observe, whose own step
+then stays out. A record closes the interval: each local block's part is summed in block order, then over the
+processes, and the root appends the record to the series. A restart stores the open interval's sums, so the
+resumed run's next record equals the uninterrupted run's. The cycle line takes its conserved totals from the same
+function, in the same summation order, and reads the kinetic and potential energy and the meters from the hydro
+module (@fig-ch10-cycle-line).
+
+```{python}
+#| label: fig-ch10-cycle-line
+#| fig-cap: "One cycle line, token by token: what each token sums over interior cells and local blocks, and how it is reduced to the root process. The conserved totals come from the budget's totals; the meters below the line are run-to-date values read from the hydro module."
+#| fig-alt: "A table of nine tokens of the cycle line; each row gives the token, the volume integral or meter it prints, and the reduction (sum, minimum or maximum) used across blocks and processes."
+#| echo: false
+from snapy_report.ch10.figures.fig_cycle_line import make_fig
+make_fig()
+```
+
+### Code
+
+| what | code link | symbol | switch |
+|---|---|---|---|
+| observe an accepted step | {{< code src/diagnostics/budget.cpp BudgetConsumer::observe >}} | `observe` | `type: budget` |
+| the boundary transfer | {{< code src/diagnostics/budget.cpp BudgetConsumer::boundary >}} | `boundary` | none |
+| the row totals | {{< code src/diagnostics/budget.cpp BudgetConsumer::totals >}} | `totals` | none |
+| close an interval | {{< code src/diagnostics/budget.cpp BudgetConsumer::flush >}} | `flush` | none |
+| sum blocks and processes | {{< code src/diagnostics/budget.cpp reduce_budget >}} | `reduce_budget` | none |
+| the series file | {{< code src/output/budget_series.hpp BudgetSeries >}} | `BudgetSeries` | `type: budget` |
+| a record | {{< code src/output/budget_series.cpp BudgetOutput::write_output_file >}} | `write_output_file` | `dt` |
+| the observe call | {{< code src/mesh/meshblock_redo.cpp MeshBlockImpl::apply_redo >}} | `apply_redo` | none |
+| the cycle line | {{< code src/diagnostics/budget.cpp print_cycle_line >}} | `print_cycle_line` | `ncycle_out` |
+
+: The code of budgets and the cycle line. {#tbl-ch10-budget-code}
+
+Walk-through: `apply_redo`, when no cause is set, calls each output's `observe` with the step length; a budget
+output passes it to its consumer. `write_output_file` closes the block's interval and, when the last local block of
+the process has recorded, reduces and appends. A build without NetCDF stops at the first record with an error that
+names `NETCDF=ON`.
+
+### Tests
+
+| test (ctest name) | what it asserts | tolerance | where the tolerance comes from |
+|---|---|---|---|
+| `tests/test_budget.cpp` (`test_budget.release`), `Budget.every_row_closes_on_the_boundary_transfer` | every row of a source-free outflow run closes on the boundary transfer | $|\Delta Q + B| < 10^{-12}\max(|Q|, |B|)$ per row | the test source: round-off on sums over the domain and the steps |
+| same file, `Budget.a_restart_resumes_the_interval_from_its_carry` | a resumed run's records equal the uninterrupted run's | exact (`torch::equal`) | restart is bitwise |
+| same file, `Budget.a_file_without_a_carry_starts_at_the_first_observe` | without a carry the interval starts after the first accepted step | exact; closure as above | the test source |
+| `tests/test_conservation_budget.cpp` (`test_conservation_budget.release`), `Decks/Budget.closes_to_round_off` | mass, species, energy and the periodic momentum close every step on closed decks | relative $C\,n\,\epsilon$ with $C = 4$, $n$ the step, $\epsilon = 2^{-52}$; $x_1$ wall mass flux below $10\,\epsilon$ of the wall mass | the test source |
+| `tests/test_cycle_diagnostics.cpp` (`test_cycle_diagnostics.release`), `cycle_info.*` | the cycle line's tokens, its totals and meters, one line per Mesh | `EXPECT_NEAR` relative $10^{-9}$ on the energies; exact on the meters | the test source |
+
+: The tests of budgets and the cycle line, with their tolerances. {#tbl-ch10-budget-tests}
+
+Evidence: missing evidence at the pin; these tests were not run for this chapter. `test_budget` and
+`test_conservation_budget` also run as CUDA ctest entries on a CUDA build; this chapter cites no CUDA run.
+
+### Limits
+
+The record has no fixer, source or residual column: those need the register's cell amounts and come with a later
+step, so a run with cell sources does not close on the boundary column alone. With the default face-flux covariance
+on, the covariance's energy increment does not reach the register's boundary faces, so the energy row of an outflow
+run does not close on the boundary column alone; the closure test turns the covariance off, and how much the energy
+row then misses is not measured at the pin (missing evidence). Two Meshes of one process that write the same
+`basename` share one series file. Switch combinations are in @sec-ch12-matrix; the restart file's contents are in
+@sec-ch14-restart.

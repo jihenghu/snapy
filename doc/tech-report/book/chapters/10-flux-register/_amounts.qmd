@@ -1,0 +1,117 @@
+## Amounts and the stage fold (no switch) {#sec-ch10-amounts}
+
+<!-- PROVENANCE
+pin: snapy@73c45a7c8c991209924e1137992352c335575062 (UCzhangxi/snapy v3/final)
+sources: src/hydro/flux_register.hpp, src/hydro/flux_register.cpp, tests/test_flux_register.cpp, tests/test_graph_monitor_amounts.cpp
+status: draft
+author: jihenghu
+reviewer: XinyueWang05
+-->
+
+### Summary
+
+An amount is how much of each conserved row a named mechanism changed during a step: the seam reconciliation, the
+wall prescription, a cell source. The register books an amount stage by stage, but a stage's change does not enter
+the step's state with weight one: the Runge-Kutta combination scales it. The monitor keeps each stage's booking in
+its own slot and folds them with the stage weights only when someone reads the amounts.
+
+::: {.callout-note title="At a glance"}
+**Purpose.** The step amount of each name, $\mathbf M_k = \sum_s c^{(s)} (w_2^{(s)}\Delta t\,\mathbf a^{(s)}_k +
+\mathbf p^{(s)}_k)$ ([-@eq-ch10-amounts-fold]).
+
+**Data.** Per stage and name: booked rates $\mathbf a^{(s)}_k$ and weighted posts $\mathbf p^{(s)}_k$, one value per
+row, FP64 (FP32 on MPS).
+
+**Placement.** Booked inside the stages; `end_stage` records the weights; folded on the device at each read.
+
+**Activation.** Always; the three flux corrections exist from reset, a cell source's name at its first post.
+
+**Guarantee / limits.** The fold equals the step field's recursion (@eq-ch10-amounts-recursion).
+
+**Evidence.** The Tests layer of this section.
+:::
+
+Local symbols: $\mathbf a^{(s)}_k$ is the rate booked for amount $k$ in stage $s$ (a flux times an area, per unit
+time); $\mathbf p^{(s)}_k$ is a post already in amount units; $c^{(s)}$ is the product of the later stages' $w_1$;
+$\mathbf M_k$ is the step amount; $\mathbf S_d$ is the step field of direction $d$.
+
+### Derivation
+
+A stage of the integrator updates $\mathbf U \leftarrow w_0^{(s)}\mathbf U^n + w_1^{(s)}\mathbf U + w_2^{(s)}\Delta t\,
+\mathcal L(\mathbf U)$. A face rate $\mathbf a^{(s)}$ booked in stage $s$ enters that stage's update with weight
+$w_2^{(s)}\Delta t$, and every later stage $s' > s$ multiplies the running state by $w_1^{(s')}$. The step's share of
+it is therefore
+
+$$
+c^{(s)} = \prod_{s' > s} w_1^{(s')}, \qquad
+\mathbf M_k = \sum_s c^{(s)}\left(w_2^{(s)}\Delta t\,\mathbf a^{(s)}_k + \mathbf p^{(s)}_k\right).
+$$ {#eq-ch10-amounts-fold}
+
+The fold is {{< code src/hydro/flux_register.cpp RegisterMonitor::fold_ >}}.
+
+A post $\mathbf p^{(s)}_k$ is a change already in the state (or already weighted by its caller), so it takes only
+the later stages' $w_1$. The step field obeys the same weights as a recursion, stage by stage,
+
+$$
+\mathbf S_d \leftarrow w_1^{(s)}\mathbf S_d + w_2^{(s)}\Delta t\,\mathbf T_d ,
+$$ {#eq-ch10-amounts-recursion}
+
+The recursion is {{< code src/hydro/flux_register.cpp FluxRegister::end_stage >}}.
+
+which unrolls to $\sum_s c^{(s)} w_2^{(s)}\Delta t\,\mathbf T^{(s)}_d$: the fold of ([-@eq-ch10-amounts-fold]) is the
+same sum for the amounts. For a constant rate the weights sum to $\Delta t$, as @fig-ch10-stage-fold shows for the
+three-stage scheme.
+
+### Numerical method
+
+`end_stage` records the stage's $w_1$ and $w_2\Delta t$ (a device value in a captured stage) and launches nothing.
+A read of the amounts runs one device fold over the stages ended so far: the posts of a stage still open count at
+once, its rates wait for its $w_2\Delta t$. The folded result is written into a fixed tensor, so a captured stage
+and a replay read the same storage.
+
+```{python}
+#| label: fig-ch10-stage-fold
+#| fig-cap: "The fold coefficients of the three-stage strong-stability-preserving Runge-Kutta weights: the product of the later stages' w1, the weight of a booked rate and the weight of a post. The rate weights sum to the step."
+#| fig-alt: "A table of three rows, one per stage, giving the coefficient c, the rate weight and the post weight; a note below says the rate weights sum to the time step."
+#| echo: false
+from snapy_report.ch10.figures.fig_stage_fold import make_fig
+make_fig()
+```
+
+### Code
+
+| what | code link | symbol | switch |
+|---|---|---|---|
+| the fold | {{< code src/hydro/flux_register.cpp RegisterMonitor::fold_ >}} | `fold_` | none |
+| read an amount | {{< code src/hydro/flux_register.cpp RegisterMonitor::amounts >}} | `amounts` | none |
+| book a rate | {{< code src/hydro/flux_register.cpp RegisterMonitor::book >}} | `book` | none |
+| post an amount | {{< code src/hydro/flux_register.cpp RegisterMonitor::post >}} | `post` | none |
+| a cell amount | {{< code src/hydro/flux_register.cpp FluxRegister::cell_amount >}} | `cell_amount` | none |
+| record the weights | {{< code src/hydro/flux_register.cpp RegisterMonitor::end_stage >}} | `end_stage` | none |
+| the step-field recursion | {{< code src/hydro/flux_register.cpp FluxRegister::end_stage >}} | `end_stage` | none |
+
+: The code of amounts and the stage fold. {#tbl-ch10-amounts-code}
+
+Walk-through: the three flux-correction names (`reconcile.x1`, `reconcile.panel`, `boundary.prescribed`) are made at
+reset; `post` makes a cell source's name at its first post with its kind and stops on a second kind for the same
+name. The amounts live on the register's device in the wide dtype; the cast happens on the host before a move,
+because MPS has no FP64.
+
+### Tests
+
+| test (ctest name) | what it asserts | tolerance | where the tolerance comes from |
+|---|---|---|---|
+| `tests/test_flux_register.cpp` (`test_flux_register.release`), `FluxRegister.step_field_recursion_equals_the_weighted_stage_sum` | the recursion equals the weighted sum of the stage totals | relative $10^{-15}$ | the test source: a few roundings of FP64 terms |
+| same file, `FluxRegister.amounts_fold_like_the_step_field` | the fold of a booked rate equals the step-field weights | relative $10^{-15}$ | the test source |
+| same file, `FluxRegister.cell_amounts_fold_with_their_stage_weight` | a cell amount takes its stage weight | relative $10^{-15}$ | the test source |
+| `tests/test_graph_monitor_amounts.cpp` (`test_graph_monitor_amounts.release`), `GraphSaveList.monitor_amounts_match_eager_bitwise` | captured amounts equal eager amounts every step | exact | graph equals eager |
+
+: The tests of amounts and the stage fold, with their tolerances. {#tbl-ch10-amounts-tests}
+
+Evidence: missing evidence at the pin; not run for this chapter. The graph test needs CUDA.
+
+### Limits
+
+The fold reads only the stages ended this step, so an amount read inside a stage misses that stage's rates until it
+ends. The fixer, source and residual columns of the budget are not read from these amounts yet
+(@sec-ch10-budget). Switch combinations are in @sec-ch12-matrix.

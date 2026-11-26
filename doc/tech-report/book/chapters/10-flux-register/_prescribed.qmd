@@ -1,0 +1,103 @@
+## Prescribed faces and their reapplication (a wall boundary condition) {#sec-ch10-prescribed}
+
+<!-- PROVENANCE
+pin: snapy@73c45a7c8c991209924e1137992352c335575062 (UCzhangxi/snapy v3/final)
+sources: src/hydro/flux_register.cpp, src/hydro/hydro_forward.cpp, src/scalar/scalar.cpp, tests/test_prescribed_after_sources.cpp, tests/test_flux_positivity_carry.cpp
+status: draft
+author: jihenghu
+reviewer: XinyueWang05
+-->
+
+### Summary
+
+At a wall the face flux is not computed: it is prescribed. A reflecting wall passes no mass and no energy, so
+those rows of the wall face must be zero whatever a producer wrote there. Producers such as diffusion add their
+flux on every face, walls included. The register therefore applies the prescription itself, after the producers
+and before the divergence reads the totals, and books what it removed, so the budget can see it.
+
+::: {.callout-note title="At a glance"}
+**Purpose.** Overwrite the prescribed rows of the wall faces with their values and book the change
+([-@eq-ch10-prescribed-book]).
+
+**Data.** Per direction: the wall planes and each plane's free rows, or a mask and values shaped like
+$\mathbf T_d$; the amount `boundary.prescribed`.
+
+**Placement.** After each direction's posts, again after all sources' posts and before the divergence, and once
+more after the implicit correction when it ran or a writer marked $x_1$.
+
+**Activation.** A wall boundary condition supplies the planes; without one the apply is a no-op.
+
+**Guarantee / limits.** No producer's post on a wall face reaches the state increment.
+
+**Evidence.** The Tests layer of this section.
+:::
+
+Local symbols: $\mathcal W_d$ is the set of prescribed faces and rows of direction $d$; $\mathbf T^{\mathrm{p}}_d$ is
+their prescribed value; $\mathbf M_{\mathrm{p}}$ is the booked amount, one value per row.
+
+### Derivation
+
+On a prescribed face and row $(f, r) \in \mathcal W_d$ the apply sets $\mathbf T_d[r, f] \leftarrow
+\mathbf T^{\mathrm{p}}_d[r, f]$ and leaves every other face. The change it makes, weighted by the face area $A_f$
+($\mathrm{m}^2$), is booked as a rate per row:
+
+$$
+\mathbf M_{\mathrm{p}}[r] \mathrel{+}= \sum_{f:\,(f,r)\in\mathcal W_d} A_f
+\left(\mathbf T^{\mathrm{p}}_d[r,f] - \mathbf T_d[r,f]^{\mathrm{before}}\right).
+$$ {#eq-ch10-prescribed-book}
+
+The booking is {{< code src/hydro/flux_register.cpp FluxRegister::overwrite_ >}}, called by `apply_prescribed`.
+
+The rate is a flux times an area, so after the stage fold (@sec-ch10-amounts) it is an amount of the row per step.
+A wall-plane prescription has $\mathbf T^{\mathrm{p}}_d = 0$ on its prescribed rows; a mask prescription carries its
+own values. The kept parts of the direction are prescribed with the same faces and values, but only the total
+books.
+
+### Numerical method
+
+The apply runs at four places in a hydro stage: on $x_1$ after the seam reconciliation, on $x_2$ and $x_3$ after
+the panel seams, on every active direction after the sources' posts (so a source's post on a wall face is removed
+before the divergence), and on $x_1$ once more after the implicit correction. The last one runs when the implicit
+correction ran, because that correction writes $\mathbf T_1$ directly, or when the written mark of $x_1$ is set:
+every `add`, `scale` and `replace` sets the mark and every apply clears it, so a writer after the
+pre-divergence apply (such as the settling carry of the positivity limiter, @sec-ch08-carry) calls for the
+apply. Otherwise the faces are already prescribed and the apply is skipped. The scalar module applies its own
+register's prescription the same way. @fig-ch10-register-order shows the order.
+
+### Code
+
+| what | code link | symbol | switch |
+|---|---|---|---|
+| the wall planes and free rows | {{< code src/hydro/flux_register.cpp FluxRegister::set_prescribed_walls >}} | `set_prescribed_walls` | wall boundary |
+| a mask and values | {{< code src/hydro/flux_register.cpp FluxRegister::set_prescribed >}} | `set_prescribed` | none |
+| the apply and its booking | {{< code src/hydro/flux_register.cpp FluxRegister::apply_prescribed >}} | `apply_prescribed` | none |
+| the write-and-book | {{< code src/hydro/flux_register.cpp FluxRegister::overwrite_ >}} | `overwrite_` | none |
+| the written mark | {{< code src/hydro/flux_register.hpp FluxRegister::written_since_prescribed >}} | `written_since_prescribed` | none |
+| the hydro call sites | {{< code src/hydro/hydro_forward.cpp HydroImpl::forward >}} | `forward` | none |
+
+: The code of prescribed faces. {#tbl-ch10-prescribed-code}
+
+Walk-through: `apply_prescribed` takes the wall-plane path when planes were set (gather the planes, zero their
+prescribed rows, prescribe the kept parts plane by plane, then `overwrite_` writes and books), else the mask path
+(`where(mask, value, total)` through `overwrite_`). Either way it clears the written mark. `overwrite_` stops with
+an error if the register was reset without its coordinate, because it needs $A_f$.
+
+### Tests
+
+| test (ctest name) | what it asserts | tolerance | where the tolerance comes from |
+|---|---|---|---|
+| `tests/test_prescribed_after_sources.cpp` (`test_prescribed_after_sources.release`), `FluxRegister.a_source_post_on_the_walls_is_prescribed_again` and `FluxRegister.a_source_post_on_the_walls_does_not_reach_du` | a source's post on a wall face is removed before the divergence | exact | the test source |
+| same file, `FluxRegister.a_prescribed_wall_temperature_conducts_in_a_full_step` | a fixed-temperature wall conducts $20\,\Delta t$ of energy and books no removal; a reflecting wall conducts nothing | `EXPECT_NEAR` relative $10^{-9}$ on the conducted energy; $10^{-12}$ of the total energy on the booked amount | the test source: the conducted energy is a product of a few factors; the booking is a sum over the domain |
+| same file, `FluxRegister.the_written_mark_follows_the_writers` | add, scale and replace set the mark, the apply clears it | exact | the test source |
+| `tests/test_flux_register.cpp` (`test_flux_register.release`), `FluxRegister.apply_prescribed_writes_the_value_and_books_the_change` | the apply writes the value and books $A_f$ times the change | relative $10^{-15}$ | the test source |
+| `tests/test_flux_positivity_carry.cpp` (`test_flux_positivity_carry.release`), `flux_positivity.the_limiter_keeps_the_wall_faces_prescribed` | the limiter's writes leave the wall faces prescribed | exact | the test source |
+
+: The tests of prescribed faces, with their tolerances. {#tbl-ch10-prescribed-tests}
+
+Evidence: missing evidence at the pin; these tests were not run for this chapter. CPU.
+
+### Limits
+
+The prescription is per face and row; a prescription that depends on the state within the stage is outside this
+scheme. Which boundary conditions supply planes, and with which free rows, is the boundary chapter's. Switch
+combinations are in @sec-ch12-matrix.

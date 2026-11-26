@@ -1,0 +1,106 @@
+## Posts: how a producer writes a face flux (no switch) {#sec-ch10-posts}
+
+<!-- PROVENANCE
+pin: snapy@73c45a7c8c991209924e1137992352c335575062 (UCzhangxi/snapy v3/final)
+sources: src/hydro/flux_register.hpp, src/hydro/flux_register.cpp, tests/test_flux_register.cpp
+status: draft
+author: jihenghu
+reviewer: XinyueWang05
+-->
+
+### Summary
+
+A face flux in snapy is not a private array of the code that computes it. The register owns, for each active
+direction, one tensor of face fluxes, the stage total; the Riemann solve writes it, and later producers (the
+sources, the limiters) add to it or scale it in place. Routing every write through a few register calls is what
+lets the register keep wall faces prescribed, keep copies of named parts, and know that a direction changed.
+
+::: {.callout-note title="At a glance"}
+**Purpose.** Write a direction's stage total in place: the first producer's slot, then plain row adds and in-place
+scales, in call order ([-@eq-ch10-posts-add]).
+
+**Data.** $\mathbf T_d$, rows by faces, in the flux storage dtype; a post is a flux density per unit face area and
+time, before stage weights.
+
+**Placement.** Inside a stage, between `begin_stage` and `end_stage`.
+
+**Activation.** Always; no switch.
+
+**Guarantee / limits.** The adds round exactly as successive in-place adds of the same increments.
+
+**Evidence.** The Tests layer of this section.
+:::
+
+Local symbols: $\mathbf T_d$ is the stage total of direction  \in \{1, 2, 3\}$, a tensor of rows by faces;
+$\mathbf q$ is one producer's increment for a list of rows; $\phi$ is a scale factor. Every write marks direction
+$ as written (@sec-ch10-prescribed).
+
+### Derivation
+
+No equation beyond bookkeeping. For a list of rows , \dots, r_m$ and an increment $\mathbf q$ with $ rows,
+an add is
+
+2330
+\mathbf T_d[r_k] \leftarrow \mathbf T_d[r_k] + \mathbf q[k], \qquad k = 1, \dots, m,
+2330 {#eq-ch10-posts-add}
+
+The add is {{< code src/hydro/flux_register.cpp FluxRegister::add >}}.
+
+done in call order and never fused with another producer's add. A scale multiplies the rows in place,
+$\mathbf T_d[r_k] \leftarrow \phi\,\mathbf T_d[r_k]$, with $\phi$ either one factor for every row or one per row.
+Floating-point addition is not associative, so the order is part of the result: two producers that add in the
+same order give the same bits on every device.
+
+### Numerical method
+
+The first post of a stage is the slot: `slot` returns $\mathbf T_d$ itself, the producer writes it, and
+`post_slot` records its name. An add whose rows are contiguous is one in-place add on a row range; other row lists
+add row by row. No scatter-add is used: on CUDA a scatter-add of FP64 rows adds atomically, so its result can depend
+on thread order, and the captured stage must equal the eager one bitwise. A part that a reader requested at reset
+(a kept part) receives a copy of the increment of the producer with the same name. @fig-ch10-register-order shows
+where the posts fall in a stage.
+
+```{python}
+#| label: fig-ch10-register-order
+#| fig-cap: "The register's writes in one stage, in order: the posts, the prescribed-face apply before the divergence, the apply after the implicit correction, the wall batch's flush and the end of the stage, which folds the stage total into the step field."
+#| fig-alt: "A vertical list of seven steps, each with a coloured marker and a one-line description, connected by arrows from begin_stage down to end_stage."
+#| echo: false
+from snapy_report.ch10.figures.fig_register_order import make_fig
+make_fig()
+```
+
+### Code
+
+| what | code link | symbol | switch |
+|---|---|---|---|
+| the first post | {{< code src/hydro/flux_register.cpp FluxRegister::slot >}} | `slot` | none |
+| record the slot's name | {{< code src/hydro/flux_register.cpp FluxRegister::post_slot >}} | `post_slot` | none |
+| row adds | {{< code src/hydro/flux_register.cpp FluxRegister::add >}} | `add` | none |
+| in-place scale | {{< code src/hydro/flux_register.cpp FluxRegister::scale >}} | `scale` | none |
+| kept parts | {{< code src/hydro/flux_register.cpp FluxRegister::kept >}} | `kept` | none |
+
+: The code of the posts. {#tbl-ch10-posts-code}
+
+Walk-through: `add` checks that the increment has as many rows as the list, marks the direction, and either adds
+on one row range (contiguous rows) or adds row by row; a kept part of the same name is overwritten with the
+increment. `scale` marks the direction and multiplies each listed row. An increment with the wrong number of rows
+stops with an error that names the producer.
+
+### Tests
+
+| test (ctest name) | what it asserts | tolerance | where the tolerance comes from |
+|---|---|---|---|
+| `tests/test_flux_register.cpp` (`test_flux_register.release`), `FluxRegister.add_in_call_order_keeps_the_pin_rounding` | successive adds round as the same in-place adds | exact (`torch::equal`) | the test source |
+| same file, `FluxRegister.scale_multiplies_the_rows_in_place` | a scale multiplies the listed rows in place | exact | the test source |
+| same file, `FluxRegister.kept_parts_are_requested_at_reset` | a kept part exists only when requested, and holds the producer's increment | exact | the test source |
+
+: The tests of the posts, with their tolerances. {#tbl-ch10-posts-tests}
+
+Evidence: missing evidence at the pin; these tests were not run for this chapter. CPU; the file has no CUDA case.
+
+### Limits
+
+The adds are exact only as bookkeeping: the result depends on the order of the producers, which the stage fixes.
+A producer that writes $\mathbf T_d$ directly, without `add` or `scale`, does not mark the direction; the implicit
+correction does this and is handled by its own apply (@sec-ch10-prescribed). Switch combinations are in
+@sec-ch12-matrix.
