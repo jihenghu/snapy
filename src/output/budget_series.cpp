@@ -97,7 +97,8 @@ void create(std::string const& path, BudgetRecord const& r) {
 }
 #endif
 
-//! the files this process has started, so a later record appends
+//! the files this process's current runs have started, so a later record
+//! appends; a budget output that binds to a new block drops its file
 std::mutex series_mutex;
 std::set<std::string> started_files;
 //! the local blocks that have recorded this interval, by series file
@@ -176,6 +177,10 @@ void BudgetOutput::bind(MeshBlockImpl* pmb) {
   for (int dim = 1; dim <= 3; ++dim)
     if (freg.total(dim).defined()) freg.request_step_field(dim);
   _rows = BudgetConsumer::row_names(*pmb);
+  // a new run starts its series file again: its first record creates the
+  // file, or appends to it when the run resumes from a carry (append)
+  std::lock_guard<std::mutex> lock(series_mutex);
+  started_files.erase(path(pmb));
 }
 
 void BudgetOutput::observe(MeshBlockImpl const* pmb, Variables const& vars,
