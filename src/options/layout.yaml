@@ -12,7 +12,7 @@ doc: >
 extra_keys:
   "": [layout, nb1, nb2, nb3, verbose, backend]
 options:
-  - {name: type, key: layout, type: string, default: slab, doc: "Layout: slab or cubed-sphere."}
+  - {name: type, key: layout, type: string, default: slab, doc: "Layout: slab, cubed or cubed-sphere."}
   - {name: py, key: nb3, type: int, default: 1, doc: "Blocks along x3."}
   - {name: px, key: nb2, type: int, default: 1, doc: "Blocks along x2."}
   - {name: pz, key: nb1, type: int, default: 1, doc: "Blocks along x1."}
