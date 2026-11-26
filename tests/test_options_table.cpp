@@ -3,6 +3,7 @@
 
 // C/C++
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -409,4 +410,46 @@ TEST(options_table, blocks_per_process_lives_in_the_layout) {
   op->blocks_per_process(3);
   EXPECT_EQ(op->block()->layout()->blocks_per_process(), 3);
   EXPECT_THROW(MeshOptionsImpl::create()->blocks_per_process(1), c10::Error);
+}
+
+// `word` stands alone in `text`: not inside a longer word (letters, digits and
+// '-' join a word, so "cubed" is not found in "cubed-sphere")
+static bool names_word(std::string const& text, std::string const& word) {
+  auto joins = [](char c) { return std::isalnum(c) || c == '-' || c == '_'; };
+  for (auto at = text.find(word); at != std::string::npos;
+       at = text.find(word, at + 1)) {
+    bool before = at == 0 || !joins(text[at - 1]);
+    auto end = at + word.size();
+    bool after = end == text.size() || !joins(text[end]);
+    if (before && after) return true;
+  }
+  return false;
+}
+
+// the layout row's description names every layout type LayoutImpl::create
+// accepts (it builds the layout without a block), and the probe is not empty
+TEST(options_table, layout_doc_names_every_accepted_type) {
+  auto table = YAML::LoadFile(std::string(SNAPY_SOURCE_DIR) +
+                              "/src/options/layout.yaml");
+  std::string doc;
+  for (auto const& row : table["options"])
+    if (row["name"].as<std::string>() == "type")
+      doc = row["doc"].as<std::string>();
+  ASSERT_FALSE(doc.empty()) << "no layout type row";
+  int accepted = 0;
+  for (auto type : {"slab", "cubed", "cubed-sphere", "no-such-layout"}) {
+    auto op = LayoutOptionsImpl::create();
+    op->type(type);
+    bool ok = true;
+    try {
+      LayoutImpl::create(op, nullptr);
+    } catch (c10::Error const&) {
+      ok = false;
+    }
+    accepted += ok;
+    if (ok)
+      EXPECT_TRUE(names_word(doc, type)) << "LayoutImpl::create accepts '"
+                                         << type << "', the doc says: " << doc;
+  }
+  EXPECT_GE(accepted, 2);
 }
